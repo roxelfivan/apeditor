@@ -12,10 +12,35 @@
 > See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.5.2](https://img.shields.io/badge/version-0.5.2-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.2)
+[![v0.5.3](https://img.shields.io/badge/version-0.5.3-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.3)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md), or click **?** in the top bar (in-app Help renders the same pages and follows Light / Dark mode).
+
+---
+
+## What's new in v0.5.3
+
+> First user-visible release on top of [v0.5.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.2)'s internal refactor. Three feature areas: a full JSON backup export, broader empty / gated-state copy on Import + the `@` doc picker + the Google AI Mode paste flow, and per-row Re-link / Dismiss affordances in the comment tray for stale comments. No prompt / store / LLM-facing contract changes. (The session-only API key shipped in v0.5.2 as `persistApiKey` — its UX and store shape are unchanged by this release.)
+
+**Backup**
+
+1. **Export full backup (JSON).** A new **Export .json** button at the bottom of the file-actions popover (next to **Export .md**) downloads the current document plus its comments, chat history, and revisions as a single file. Filename matches the existing `${title}.md` pattern with a `.json` extension. The payload is versioned (`schema: 'apeditor-document-backup'`, `version: 1`) so a future re-importer can detect / upgrade older backups. Write-only in v0.5.3.
+
+**Clearer empty / gated states**
+
+2. **OCR-vs-key gate copy.** The Import popover now shows a contextual paragraph under the language checker explaining what runs locally versus what needs an API key. With no key: *"OCR works without an API key. Adding one in Settings lets the recognised text be rewritten as Markdown before insertion. Without a key, raw text is inserted as-is."* With a key configured the paragraph switches to a cyan *"Key configured. Files are OCR'd locally and rewritten as Markdown via your model before insertion."* so the user always knows which path they're on.
+3. **Empty-state copy in the `@` doc picker.** Three states — `no-workspace` (zero docs), `only-current` (only the current doc is open, which the picker excludes by design), and `no-match` (typed a query with no matches) — are now distinguished with context-appropriate copy and a `data-empty-reason` attribute for analytics / testing.
+4. **Two-step Google AI Mode paste hint.** A numbered list now sits above the paste-answer textarea spelling out: (1) Google AI Mode opened in a new tab with your prompt, (2) copy the answer out of that tab, (3) paste it below — ⌘/Ctrl+Enter to commit. First-time users no longer paste their original question here by mistake.
+
+**Per-comment Re-link + Dismiss**
+
+5. **Stale-comment list in the tray.** When the document has outdated comments, the tray grows a collapsed *"N stale comments — Re-link or Dismiss"* list. Each row shows the original snippet, a **Re-link** button (opens the new `ReanchorPicker`), and a **Dismiss** button (per-row, via the existing `deleteComment` + ⌘Z action). A small **Dismiss all** in the row header preserves the swept-everything path.
+6. **`ReanchorPicker` modal.** Lists the current document's heading sections (or its paragraphs when there are no headings). Selecting a row re-anchors the comment to the chosen slice. Uses the existing `reattachComment(id, { start, end })` action so ⌘Z reverts cleanly.
+
+Export Markdown, import size / page caps, best-effort Apply, the comment-ops undo toast, gated-state tooltips, comment-batch send, secret redaction, outdated-comment bulk dismiss, and session-only API key all stay as they were in v0.5.0 / v0.5.1 / v0.5.2.
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.5.3 entry and prior changelogs.
 
 ---
 
@@ -575,7 +600,7 @@ the result at your caret.
 - `src/utils/ocrMarkdown.ts` — streams the extracted text
   through the configured model and unwraps an accidental outer
   markdown fence.
-- `src/components/FileActionsButton.tsx` (formerly `ImportMediaButton.tsx`) — image+PDF picker, language checkboxes, progress UI, plus a one-click Markdown export; after OCR, dispatches an
+- `src/components/FileActionsButton.tsx` (formerly `ImportMediaButton.tsx`) — image+PDF picker, language checkboxes, progress UI, plus one-click Markdown and JSON-backup exports; after OCR, dispatches an
   `mvp:insert-text` `CustomEvent` that `Editor.tsx` consumes to
   splice the Markdown in.
 
@@ -630,6 +655,7 @@ src/
 │   │                        # popover / prompt textareas.
 │   └── useInlineCompletion.ts
 ├── utils/
+│   ├── backup.ts            # Document + comments + chat + revisions JSON bundle.
 │   ├── comments.ts          # Re-anchor, batch format, selection rect.
 │   ├── diff.ts              # Line-diff helper for revisions / rationales.
 │   ├── googleAiMode.ts      # Google AI Mode deep-link builder.
@@ -651,6 +677,7 @@ src/
     ├── HelpDocs.tsx         # Themed Help overlay (renders docs/*.md).
     ├── PromptLibrary.tsx
     ├── ProposedEditCard.tsx # Apply / Reject cards for AI diffs.
+    ├── ReanchorPicker.tsx   # Heading / paragraph picker for re-anchoring stale comments (v0.5.3).
     ├── RevisionHistory.tsx
     ├── SettingsModal.tsx    # Provider, System Message, Rationale Rules.
     ├── ImportMediaButton.tsx  → FileActionsButton.tsx (v0.5.0+)
@@ -712,6 +739,7 @@ per-release notes also ship on the GitHub release pages.
 
 | Version | Highlights |
 | --- | --- |
+| [v0.5.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.3) | **First user-visible release on top of v0.5.2's refactor.** Full JSON backup export (document + comments + chat + revisions) from the file-actions popover. Per-comment **Re-link** + **Dismiss** in the comment tray, with an inline heading/paragraph picker. Broader gated-state copy on Import, the `@` picker, and the Google AI Mode paste flow. |
 | [v0.5.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.2) | **Internal / sustainability.** Removed four hardcoded debug POSTs from the chat pipeline (production-leak fix). Split the 1,485-line `useStore` into 5 single-responsibility files. Moved the `@`-mention parser to `utils/`. No UI or store-schema changes; no migration. |
 | [v0.5.1](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.1) | **Phase 1 + 2 UX.** Format-menu font-size docs, gated-state tooltips, ⌘Z comment-ops toast; Chat **selection only**, outbound secret redaction, outdated **Dismiss** / **Re-attach**, session-only API key. |
 | [v0.5.0](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.0) | **Export Markdown** from the file-actions popover, import size and page caps with friendly errors, inline confirmation prompt for best-effort Apply when the AI quote is gone. **Popover alignment pass** + component rename `ImportMediaButton` → `FileActionsButton`. |

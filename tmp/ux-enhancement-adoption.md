@@ -29,17 +29,23 @@
 
 | ID | Item | Phase | Why it's still open | First source |
 |---|---|---|---|---|
-| A | JSON backup export (comments + chat + revisions) | P2.5 | Markdown ships today; the JSON side of the same export was deferred. `downloadTextFile` helpers are now in `src/utils/storage.ts` so the primitive is ready. | `src/components/FileActionsButton.tsx`, `src/utils/storage.ts` |
-| B | Batch-dismiss / re-select outdated comments | P2.4 | v0.5.1 added the "no longer anchored" badge and helpful copy, but the `CommentTray` footer "X comments no longer anchored — Dismiss / Re-link" affordance isn't wired yet. | `src/components/CommentTray.tsx`, `src/utils/comments.ts` |
-| C | Clearer empty / gated states (broader pass) | P1.2 | PR #17 added tooltips; full empty-state coverage (empty `@` picker with < 2 docs, OCR keyless-but-rewrite-needs-key copy in plain prose) is still partial. | `src/components/mentions/{DocPicker,SectionPicker}.tsx`, `src/components/FileActionsButton.tsx`, `src/components/SettingsModal.tsx` |
+| A | JSON backup export (comments + chat + revisions) | P2.5 | **Shipped in v0.5.3** \xe2\x80\x94 `src/utils/backup.ts` + Export `.json` section in `FileActionsButton`. | \xe2\x80\x94 |
+| B | Batch-dismiss / re-select outdated comments | P2.4 | **Shipped in v0.5.3** \xe2\x80\x94 `CommentTray` collapsed stale list with per-row Re-link / Dismiss + `ReanchorPicker` modal + `isCommentStale` helper. | \xe2\x80\x94 | 
+| C | Clearer empty / gated states (broader pass) | P1.2 | **Shipped in v0.5.3** \xe2\x80\x94 OCR-vs-key flip in `FileActionsButton`, three-state empty copy + `data-empty-reason` in `DocPicker`, three-step numbered hint above the Google AI Mode paste textarea in `ChatPanel`. | \xe2\x80\x94 |
 | D | Mentions: single 2-pane picker (Option B) | P3.1 | `MentionInput.tsx` still mounts `DocPicker` then `SectionPicker` separately — see `src/components/mentions/MentionInput.tsx` and `docs/REFACTORING.md` §4 Option B. | `src/components/mentions/MentionInput.tsx`, `docs/REFACTORING.md` |
 | E | In-Help keyboard / shortcut map + conflict hints (⌘B) | P3.3 | `docs/keyboard-shortcuts.md` is comprehensive; `src/components/HelpDocs.tsx` does not yet expose it as a tab. | `src/components/HelpDocs.tsx`, `docs/keyboard-shortcuts.md` |
 | F | Accessibility pass (resize handles, overlays, comment-layer SR labels) | P3.4 | Many `role` / `aria-*` values already exist on diff cards and `ResizeHandle`; comment layer + popovers still need an audit. | `src/components/CommentLayer.tsx`, `src/components/CommentPopover.tsx`, `src/components/ResizeHandle.tsx` |
-| G | Google AI Mode paste UX (larger clipboard target + truncated-URL warning) | P3.5 | `src/utils/googleAiMode.ts` builds the URL but the paste UX in `src/components/ChatPanel.tsx` (paste-answer textarea) is unchanged. | `src/components/ChatPanel.tsx`, `src/utils/googleAiMode.ts` |
+| G | Google AI Mode paste UX (larger clipboard target + truncated-URL warning) | P3.5 | v0.5.3 added the numbered hint above the paste textarea. Still TODO: one-click clipboard paste button + truncated-URL warning (Google's `\xe2\x80\xa6` marker). | `src/components/ChatPanel.tsx`, `src/utils/googleAiMode.ts` |
 | H | Phase 4 — Mobile-first layout | P4 | No dedicated mobile layout; narrow-viewport overlay work in v0.4.9 was survival mode. | `src/App.tsx`, `src/components/CommentPopover.tsx` |
 | I | Phase 5 — Major product upgrades | P5 | Not started. Lexical, embeddings, sync, agents, i18n, hardened key storage — one ticket each. | `README.md` (intentionally-not list), `SECURITY.md` |
 
 ---
+
+### Cross-cutting rules update after v0.5.3
+
+- v0.5.2's `persistApiKey` field is the source of truth for the session-only API key feature. New code must NOT add a parallel `forgetKeyOnClose` / `writeApiKey(key, forget)` helper.
+- The closed branches `feat/v0.5.2-slice-b` and `feat/v0.5.3-slice-c` that previously attempted this work were closed without merging; the canonical implementation lives in v0.5.3.
+- `dismissOutdatedComments`, `reattachComment(id, range)`, and `deleteComment` are pre-existing in `src/store/store.ts` (moved there during the v0.5.2 refactor) \xe2\x80\x94 no new actions are needed for Items A\xe2\x80\x93C, only new selectors + handlers + a new picker component + a new predicate helper.
 
 ## Slice ordering (least-risk first)
 
