@@ -1,3 +1,56 @@
+## v0.5.3 — Full JSON backup, fuller empty / gated states, per-row comment Re-link / Dismiss
+
+User-visible release on top of [v0.5.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.2) (the internal-only refactor + debug-POST strip). v0.5.2 itself did not ship any of these features, and the session-only API key feature shipped earlier under the name `persistApiKey` ([`src/store/types.ts`](src/store/types.ts), default `true`). The two custom-install branches `feat/v0.5.2-slice-b` and `feat/v0.5.3-slice-c` that previously attempted to ship this code were closed without merging; v0.5.3 is the canonical home for everything in them.
+
+### Added
+
+- **Export full backup (JSON).** A new **Export .json** button at the bottom of the file-actions popover (sibling to **Export .md**) downloads the current document, its comments, its chat history, and its revisions as a single file. Filename matches the existing `${title}.md` pattern with a `.json` extension. The payload is versioned (`schema: 'apeditor-document-backup'`, `version: 1`) so a future re-importer can detect and upgrade older backups; v0.5.3 ships write-only.
+- **OCR-vs-key gate copy.** The Import popover now shows a contextual paragraph under the language checker explaining what runs locally versus what needs an API key. With no key: *"OCR works without an API key. Adding one in Settings lets the recognised text be rewritten as Markdown before insertion. Without a key, raw text is inserted as-is."* When a key is configured the paragraph switches to a confirmation ("Key configured. Files are OCR'd locally and rewritten as Markdown via your model before insertion.") so the user always knows which path they're on.
+- **Two-step Google AI Mode paste hint.** When the provider is `google-ai-mode` and a paste is awaiting, a numbered list now sits between the section header and the paste textarea spelling out: (1) Google AI Mode opened in a new tab with your prompt, (2) copy the answer out of that tab, (3) paste it below — ⌘/Ctrl+Enter to commit. First-time users no longer paste their original question here by mistake.
+- **Per-row stale list in the comment tray.** When the document has any outdated comments, the tray now grows a collapsed-by-default *"N stale comments — Re-link or Dismiss"* expandable list. Each row shows the original snippet, a **Re-link** button, and a **Dismiss** button. A small *Dismiss all* (the previous bulk action) lives in the row header so the swept-everything path is still one click.
+- **`ReanchorPicker` modal.** A new picker component (renders in the editor pane, mirrors `SectionPicker`'s visual style) lists the current document's heading structure (or its paragraphs when there are no headings). Selecting a row emits the byte `(start, end)` of that slice and calls the existing `reattachComment(id, { start, end })` store action. Keyboard: `↑` / `↓` to move, `Enter` to confirm, `Esc` to cancel.
+- **`isCommentStale(comment, content)` helper.** New pure export from [`src/utils/comments.ts`](src/utils/comments.ts) that mirrors the strategies used by `reanchorComment` so a UI surface can flag stale rows without mutating anything.
+
+### Changed
+
+- **Comment tray UX.** The bulk *Dismiss outdated* button is demoted to a secondary *Dismiss all* action on the stale list header — the new per-row *Dismiss* is now the fastest single-comment path.
+- **Empty-state copy in the `@` doc picker.** When there are no other documents to mention, the picker now spells out the reason instead of showing "No matching documents" across the board. Three states are distinguished by a `data-empty-reason` attribute (`no-workspace` / `only-current` / `no-match`).
+
+### Behaviour that did NOT change
+
+- The Markdown export flow.
+- OCR pipeline, language picker, import size / page caps.
+- Google AI Mode URL generation — only the in-app paste affordance copy changed.
+- The `Comment` system, the `Document` model, the chat pipeline, and the `Comment`-round / undo / reanchor logic.
+- The session-only API key feature (shipped in v0.5.2 as `persistApiKey`) — its UI / store are unchanged.
+- All prompt, store, and LLM-facing contracts.
+
+### Internal
+
+- `src/utils/backup.ts` — new module. `buildDocumentBackup({documentId, documents, comments, chats, revisions, appVersion})` returns a `DocumentBackup` (or `null` for unknown ids); `serialiseDocumentBackup` emits pretty-printed JSON. `BACKUP_SCHEMA` and `BACKUP_VERSION` are exported so a future importer can match. No React / DOM imports.
+- `src/components/ReanchorPicker.tsx` — new component. Heading sections (or paragraph fallback) rendered as rows; emits `{ start, end, label }`. Reuses the `.mention-popover` CSS classes so the picker is visually consistent with the @-section picker.
+- `src/components/FileActionsButton.tsx` — added four store selectors (`documents`, `commentsByDoc`, `chatsByDoc`, `revisionsByDoc`), `onBackupClick` mirroring the existing `onExportClick` error / UX shape, a third popover section ("Export full backup (JSON)") with the same structural template as the two previous sections, and the contextual OCR-vs-key paragraph under the language checker. The new button carries `data-backup-toggle` for future keyboard wiring.
+- `src/components/mentions/DocPicker.tsx` — added an `emptyReason` derivation (`no-workspace` / `only-current` / `no-match`) from a memoised `othersCount` plus the existing `candidates` list, and replaced the one-size-fits-all "No matching documents." with the three context-appropriate strings. Carries `data-empty-reason={reason}` for any future analytics / testing selector.
+- `src/components/ChatPanel.tsx` — added a three-step `<ol>` between the "Paste the AI Mode answer" `<label>` and the existing `<textarea>` placeholder. Rendered only when `isKeyless && awaitingPaste`, so it never affects users on a keyed provider.
+- `src/components/CommentTray.tsx` — extended with `outdatedComments`, `onDismissOne`, `onReanchor` props. When both per-row callbacks are provided, the old bulk `Dismiss outdated` button is replaced with the new expandable stale list.
+- `src/components/Editor.tsx` — wires the picker: new `reanchorFor` state (`{ commentId, anchor }`) opened from the tray's `onReanchor`, closed by confirm / cancel. Reuses the existing `reattachComment` action so the undo stack gets an `update-body` op and ⌘Z reverts cleanly.
+- `src/utils/comments.ts` — new `isCommentStale(comment, content): boolean` export. Mirrors strategies 1 + 3 of `reanchorComment` and short-circuits on already-flagged comments.
+- `src/index.css` — new `.cm-tray__btn--ghost`, `.cm-tray__stale*`, `.cm-stale-list*`, and `.relink-picker` rules. Light + dark theme parity, matched to the existing tray palette.
+
+### Verification
+
+- `npx tsc --noEmit -p tsconfig.app.json` — clean.
+- `npm run build` — clean.
+- Manual:
+  - File actions popover, with a document that has comments and chat history → **Export .json** → file downloads as `<title>.json` (correctly sanitised). Opening the file shows `schema`, `version`, `exportedAt`, `appVersion`, `document`, `comments`, `chats`, `revisions`. Open with no document → button disabled.
+  - File actions popover with no API key configured → paragraph shows the warn-coloured "OCR works without an API key" message. Add a key in Settings → paragraph switches to the cyan "Key configured" confirmation.
+  - Mention picker: type `@` in the chat input with only the current document open → "Only the current document is open. Create another in the sidebar to reference it with @." Delete all docs → "No documents yet. Create one in the sidebar, then reference it with @." Type a query that matches nothing → "No matching documents."
+  - Settings → Provider → Google AI Mode, then send a chat with ⌘+Enter → Google opens in a new tab. Switch back → the three numbered steps appear above the paste textarea; ⌘+Enter commits as before.
+  - Edit a document so a comment's anchor moves; reload ApEditor → comment flips to **Outdated**. Open the comment tray → the stale list appears collapsed. Click the caret → list expands with one row showing the snippet, **Re-link** + **Dismiss** buttons. Click *Dismiss* → row disappears, the bulk *Send to AI* count drops by one. ⌘Z → row reappears.
+  - Same starting state. Click *Re-link* → the picker modal opens in the editor pane with the document's headings listed (or paragraphs when there are no headings). `↓` to a heading, `Enter` → the picker closes, the comment's anchor updates to the chosen slice, the badge moves to the new location. The undo toast *"Comment re-anchored — ⌘Z to revert"* briefly appears. ⌘Z → comment flips back to outdated and the old anchor is restored.
+
+---
+
 ## v0.5.2 — Codebase sanity pass + long-term sustainability refactor
 
 Internal-only release on top of [v0.5.1](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.1). No user-visible behaviour changes; one shipped bug-fix (a debug-instrumentation leak in the production bundle) plus a layered refactor of the two files that had grown to the point of blocking sustainable development. UI, store schema, and `localStorage` payloads are unchanged; no migration is required to upgrade.

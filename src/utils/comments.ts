@@ -593,3 +593,43 @@ export function clampToContainer(
   if (top < minTop) top = minTop;
   return { left, top };
 }
+
+/**
+ * Predicate: is this comment's latest-round anchor no longer findable
+ * in `content`? Mirrors the strategies used by `reanchorComment` so a
+ * UI surface (e.g. `CommentTray`) can flag stale rows without
+ * mutating anything.
+ *
+ * Returns `false` for comments that are already `outdated: true`
+ * (re-anchor skips them, so the predicate has to short-circuit too)
+ * or whose snippet can still be located either at the original
+ * offsets or anywhere in the document via the fuzzy match
+ * (`findEditAnchor`). Mirrors strategies 1 + 3 of `reanchorComment`
+ * — strategy 4 (head/tail fallback) is intentionally excluded to
+ * avoid false positives in a predicate that has no way to decide
+ * when it should run.
+ *
+ * Pure. No React / DOM imports.
+ */
+export function isCommentStale(comment: Comment, content: string): boolean {
+  // Already-flagged comments stay stale; the re-anchor pass skips
+  // them entirely, so the predicate has to short-circuit too.
+  if (comment.outdated) return true;
+
+  const snippet = comment.snippet;
+  if (!snippet) return true;
+
+  // Strategy 1: byte-exact match at the current offsets.
+  if (
+    comment.start >= 0 &&
+    comment.end <= content.length &&
+    comment.end > comment.start &&
+    content.slice(comment.start, comment.end) === snippet
+  ) {
+    return false;
+  }
+  // Strategy 3: full-document fuzzy match via the same helper the
+  // re-anchor pass uses (`findEditAnchor` handles whitespace /
+  // Setext / ATX / escape drift).
+  return findEditAnchor(content, snippet) === null;
+}
