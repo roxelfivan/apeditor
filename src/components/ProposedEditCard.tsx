@@ -5,7 +5,14 @@ import { useStore } from '@/store/useStore';
 import type { MentionToken, ProposedEdit } from '@/types';
 import { lineDiff } from '@/utils/diff';
 import { remarkPlugins, rehypePlugins } from '@/utils/markdown';
-import { applyEdit, applyEditAtCaret, findEditAnchor, findBestEffortAnchor, type BestEffortAnchor } from '@/utils/proposedEdit';
+import {
+  applyEdit,
+  applyEditAtCaret,
+  findEditAnchor,
+  findBestEffortAnchor,
+  prepareBestEffortReplace,
+  type BestEffortAnchor,
+} from '@/utils/proposedEdit';
 import { ResizeHandle } from '@/components/ResizeHandle';
 import { MentionInput } from '@/components/mentions/MentionInput';
 import {
@@ -56,6 +63,7 @@ interface Props {
 type CardStatus =
   | { kind: 'idle' }
   | { kind: 'applied' }
+  | { kind: 'best-effort-applied' }
   | { kind: 'rejected' }
   | { kind: 'committed' };
 
@@ -87,9 +95,9 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
   const storedSize = useStore((s) => s.layout.previewSizes[sizeKey]);
   const setPreviewSize = useStore((s) => s.setPreviewSize);
   // Editor focus + caret state for the doc this card is anchored against.
-  // Used to decide whether Force-apply can run (requires focus + a known
-  // caret). Subscribing to a per-doc record keeps re-renders scoped to
-  // the doc in question, not every keystroke in any doc.
+  // Used to decide whether Highlight Apply can run (requires a selection).
+  // Subscribing to a per-doc record keeps re-renders scoped to the doc
+  // in question, not every keystroke in any doc.
   const editorState = useStore((s) => s.editorFocus[docId]);
 
   const [status, setStatus] = useState<CardStatus>({ kind: 'idle' });
@@ -130,9 +138,9 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
   // also drives `applyEdit` so the disabled-state and Apply click are
   // always looking for the same span.
   const anchorInfo = useMemo(() => {
-    if (!content) return { found: false, idx: -1, multiple: false };
+    if (!content) return { found: false, idx: -1, length: 0, multiple: false };
     const anchor = findEditAnchor(content, edit.original);
-    if (!anchor) return { found: false, idx: -1, multiple: false };
+    if (!anchor) return { found: false, idx: -1, length: 0, multiple: false };
 
     // To detect multiple matches cheaply, run the same lookup starting
     // one character past the first hit and see if anything else surfaces.
@@ -143,42 +151,134 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
     return {
       found: true,
       idx: anchor.idx,
+      length: anchor.length,
       multiple: second !== null,
     };
   }, [content, edit.original]);
 
-  // When the strict six-strategy `findEditAnchor` fails, fall back to a
-  // best-effort token-overlap match. The result is gated behind an
-  // inline confirmation prompt — we never silently rewrite text. The
-  // memo runs only when the strict anchor is missing, so the O(N·W)
-  // scan is not paid on the happy path.
-  const bestEffortAnchor: BestEffortAnchor | null = useMemo(() => {
-    if (anchorInfo.found) return null;
-    if (!content || !edit.original) return null;
-    return findBestEffortAnchor(content, edit.original);
-  }, [anchorInfo.found, content, edit.original]);
-
-  // When the user clicks Apply and the strict anchor is missing, we
-  // promote them into a best-effort confirmation instead of doing
-  // nothing. `pendingBestEffort` holds the anchor we propose to replace
-  // so the inline prompt can show the exact matched span.
-  const [pendingBestEffort, setPendingBestEffort] =
+  // Best-effort match is deferred off the render path so a long document
+  // + many proposed-edit cards cannot freeze first paint. Exact-anchor
+  // lookup above stays synchronous (cheap).
+  const [bestEffortAnchor, setBestEffortAnchor] =
     useState<BestEffortAnchor | null>(null);
-
-  // Drop any pending confirmation if the document content moves out
-  // from under us (the user keeps typing, another card gets applied,
-  // etc.). The span is now stale and the diff no longer matches the
-  // surrounding text.
   useEffect(() => {
-    if (!pendingBestEffort) return;
-    const span = content.slice(
-      pendingBestEffort.idx,
-      pendingBestEffort.idx + pendingBestEffort.length
-    );
-    if (!span) {
-      setPendingBestEffort(null);
+    if (anchorInfo.found || !content || !edit.original) {
+      setBestEffortAnchor(null);
+      return;
     }
-  }, [content, pendingBestEffort]);
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      setBestEffortAnchor(
+        findBestEffortAnchor(content, edit.original, edit.replacement)
+      );
+    };
+    // Prefer idle time; fall back to a macrotask so the UI can paint.
+    let idleId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const ric = (
+      globalThis as unknown as {
+        requestIdleCallback?: (
+          cb: () => void,
+          opts?: { timeout: number }
+        ) => number;
+        cancelIdleCallback?: (id: number) => void;
+      }
+    ).requestIdleCallback;
+    if (typeof ric === 'function') {
+      idleId = ric(run, { timeout: 200 });
+    } else {
+      timeoutId = setTimeout(run, 0);
+    }
+    return () => {
+      cancelled = true;
+      if (idleId !== undefined) {
+        (
+          globalThis as unknown as { cancelIdleCallback?: (id: number) => void }
+        ).cancelIdleCallback?.(idleId);
+      }
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+    };
+  }, [anchorInfo.found, content, edit.original, edit.replacement]);
+
+  // Track whether user has a text selection in the editor (required for
+  // Highlight Apply). Re-renders when the user selects text.
+  const hasSelection = useMemo(
+    () =>
+      editorState &&
+      typeof editorState.selectionStart === 'number' &&
+      typeof editorState.selectionEnd === 'number' &&
+      editorState.selectionStart !== editorState.selectionEnd,
+    [editorState]
+  );
+
+  /** Best Effort is only applyable when the match has no duplication block. */
+  const bestEffortUsable =
+    !!bestEffortAnchor && !bestEffortAnchor.duplicationReason;
+
+  /** Primary Apply is available via Exact or usable Best Effort. */
+  const canApply =
+    anchorInfo.found || bestEffortUsable;
+
+  // Publish the matched Original span into the editor (Write/Preview/Split)
+  // so the user can see where Apply would land. Cleared on unmount / when
+  // no anchor remains / after the card is dismissed.
+  const setProposedEditHighlight = useStore((s) => s.setProposedEditHighlight);
+  const cardKey = `${messageId}:${edit.id}`;
+  const highlightStart = anchorInfo.found
+    ? anchorInfo.idx
+    : bestEffortAnchor?.idx ?? -1;
+  const highlightEnd = anchorInfo.found
+    ? anchorInfo.idx + anchorInfo.length
+    : bestEffortAnchor
+      ? bestEffortAnchor.idx + bestEffortAnchor.length
+      : -1;
+  useEffect(() => {
+    // Guard: store action may be missing for one frame after HMR.
+    if (typeof setProposedEditHighlight !== 'function') return;
+    if (
+      status.kind === 'rejected' ||
+      status.kind === 'committed' ||
+      status.kind === 'applied' ||
+      status.kind === 'best-effort-applied'
+    ) {
+      setProposedEditHighlight(docId, cardKey, null);
+      return;
+    }
+    const range =
+      highlightStart >= 0 && highlightEnd > highlightStart
+        ? { start: highlightStart, end: highlightEnd }
+        : null;
+    setProposedEditHighlight(docId, cardKey, range);
+    return () => {
+      if (typeof setProposedEditHighlight === 'function') {
+        setProposedEditHighlight(docId, cardKey, null);
+      }
+    };
+  }, [
+    docId,
+    cardKey,
+    highlightStart,
+    highlightEnd,
+    status.kind,
+    setProposedEditHighlight,
+  ]);
+
+  // Show the best-effort info panel when there is no exact match and a
+  // best-effort span exists, or after a best-effort apply.
+  const showBestEffortPanel =
+    (!anchorInfo.found && !!bestEffortAnchor) ||
+    status.kind === 'best-effort-applied';
+
+  // Track the confidence + duplication reason of the applied best-effort edit.
+  // Stored separately from bestEffortAnchor because anchor idx/length become
+  // stale once the document changes (another edit, typing, etc.).
+  const [appliedBestEffortInfo, setAppliedBestEffortInfo] = useState<{
+    confidence: number;
+    duplicationReason: string | null;
+    /** The passage that was actually replaced (captured at apply time, not recomputed). */
+    appliedText: string;
+  } | null>(null);
 
   // Unified (Inline) view still uses a line-level +/- diff. Split view
   // renders full Original / Proposed columns as Preview-style markdown
@@ -297,31 +397,22 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
   if (status.kind === 'rejected' || status.kind === 'committed') return null;
 
   /**
-   * Perform the actual text replace + store recording, parameterised
-   * by the anchor we want to splice. Used by both the strict-anchor
-   * Apply path and the user-confirmed best-effort path so the two
-   * share one code path for the mutation, recording, and selection-
-   * jump. A future slice may extend `recordAppliedEdit` with an
-   * `appliedVia: 'strict' | 'best-effort'` field for audit; for now
-   * the two paths produce identical recorded edits.
+   * Splice `text` over `anchor` and record the applied edit. Shared by
+   * Exact, Best Effort, and (via a separate path) used for bookkeeping
+   * consistency with Highlight Apply.
    */
-  const performReplace = (anchor: { idx: number; length: number }) => {
+  const performReplace = (
+    anchor: { idx: number; length: number },
+    text: string = edit.replacement
+  ) => {
     if (!doc) return;
     const next =
       doc.content.slice(0, anchor.idx) +
-      edit.replacement +
+      text +
       doc.content.slice(anchor.idx + anchor.length);
     useStore.getState().updateDocumentContent(doc.id, next);
-    // Record the adopted edit against the comment that produced it.
-    // The store's `recordAppliedEdit` resolves the right comment by
-    // walking the document's comment batch that was sent to AI, so
-    // we don't need to know the comment id here. We also pass the
-    // exact new anchor range (the replaced text's start/end in the
-    // post-apply document) so the comment re-anchors to the
-    // ADOPTED text — not the original — preventing the highlight
-    // from drifting to a wider span on the next re-anchor pass.
     const newStart = anchor.idx;
-    const newEnd = anchor.idx + edit.replacement.length;
+    const newEnd = anchor.idx + text.length;
     useStore.getState().recordAppliedEdit({
       documentId: doc.id,
       messageId,
@@ -333,86 +424,68 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
       appliedAt: Date.now(),
       newAnchor: { start: newStart, end: newEnd },
     });
-    // Select the adopted replacement in the editor so the caret /
-    // selection rectangle matches the new highlight exactly.
     window.dispatchEvent(
       new CustomEvent('mvp:select-range', {
         detail: { start: newStart, end: newEnd },
       })
     );
-    setStatus({ kind: 'applied' });
-    // Drop any pending best-effort confirmation now that we've
-    // committed — the diff card is about to disappear.
-    setPendingBestEffort(null);
   };
 
+  /**
+   * Primary Apply: Exact if anchored, else usable Best Effort.
+   * Status is set before the mutation so the button disables immediately.
+   */
   const handleApply = () => {
     if (!doc) return;
-    const r = applyEdit(doc.content, edit.original, edit.replacement);
-    if (r.ok) {
-      performReplace(r.anchor);
+    if (anchorInfo.found) {
+      setStatus({ kind: 'applied' });
+      const r = applyEdit(doc.content, edit.original, edit.replacement);
+      if (r.ok) {
+        performReplace(r.anchor);
+      } else {
+        setStatus({ kind: 'idle' });
+      }
       return;
     }
-    // Strict match failed. If we have a best-effort candidate,
-    // promote to the inline confirmation prompt instead of bailing
-    // silently — the user already clicked Apply, so showing them a
-    // proposed approximate match is the next-best outcome. If
-    // there's no best-effort either, fall back to the existing
-    // Force-apply / skip behaviour.
-    if (bestEffortAnchor) {
-      setPendingBestEffort(bestEffortAnchor);
-    }
-  };
-
-  /**
-   * User confirmed the best-effort approximation. Splice using the
-   * pending anchor (NOT a fresh `findBestEffortAnchor` call — the
-   * content may have moved between the prompt and the click).
-   */
-  const handleConfirmBestEffort = () => {
-    if (!pendingBestEffort) return;
-    performReplace(pendingBestEffort);
-  };
-
-  /**
-   * User rejected the approximation. Drop the pending state so the
-   * card returns to its normal "not anchored" view; they can still use
-   * Force-apply or the comment flow from there.
-   */
-  const handleCancelBestEffort = () => {
-    setPendingBestEffort(null);
-  };
-
-  // Force-apply: drop the AI's `replacement` at the user's caret, or
-  // replace the user's selection if a range is selected. Used when the
-  // AI's `original` quote can't be matched in the current document.
-  // The user is responsible for choosing the location.
-  const handleForceApply = () => {
-    if (!doc) return;
-    // NOTE: the focused gate was removed. Clicking this button blurs
-    // the textarea (the button lives in the chat panel, not the editor),
-    // which would cause the button to be disabled before its own `click`
-    // handler can fire. The caret indices stay valid across the blur
-    // because `Editor.reportCaret` reads them from the live DOM before
-    // writing `focused: false`.
-    // Bail if the user has switched documents since this card mounted.
-    const liveDocId = useStore.getState().currentDocumentId;
-    if (liveDocId !== docId) return;
-    const r = applyEditAtCaret(
+    if (!bestEffortAnchor || bestEffortAnchor.duplicationReason) return;
+    const captured = bestEffortAnchor;
+    const prepared = prepareBestEffortReplace(
       doc.content,
       edit.replacement,
-      {
-        selectionStart: editorState.selectionStart,
-        selectionEnd: editorState.selectionEnd,
-      }
+      { idx: captured.idx, length: captured.length }
     );
+    if (!prepared) return;
+    const appliedText = doc.content.slice(
+      prepared.idx,
+      prepared.idx + prepared.length
+    );
+    setStatus({ kind: 'best-effort-applied' });
+    setAppliedBestEffortInfo({
+      confidence: captured.confidence,
+      duplicationReason: null,
+      appliedText,
+    });
+    performReplace(
+      { idx: prepared.idx, length: prepared.length },
+      prepared.text
+    );
+  };
+
+  /**
+   * Highlight Apply: replace the user's current selection with the
+   * replacement. Manual override when Exact/Best Effort are unavailable
+   * or the user wants a different span.
+   */
+  const handleHighlightApply = () => {
+    if (!doc) return;
+    const liveDocId = useStore.getState().currentDocumentId;
+    if (liveDocId !== docId) return;
+    const r = applyEditAtCaret(doc.content, edit.replacement, {
+      selectionStart: editorState.selectionStart,
+      selectionEnd: editorState.selectionEnd,
+    });
     if (!r.ok) return;
     useStore.getState().updateDocumentContent(doc.id, r.next);
-    // Record the adopted edit against the comment that produced it.
-    // Force-apply uses the same recordAppliedEdit path; the comment
-    // lookup falls back to snippet overlap so the rationale is
-    // attached to the most likely producing comment. The new anchor
-    // is the post-apply range of the inserted replacement.
     const insertedStart = editorState.selectionStart ?? 0;
     const insertedEnd = insertedStart + edit.replacement.length;
     useStore.getState().recordAppliedEdit({
@@ -466,35 +539,13 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
     }
   };
 
-  // Apply is enabled as long as EITHER the strict anchor matches OR a
-  // best-effort candidate is available. The click handler routes
-  // between the two paths; the user is never silently rewriting text
-  // because every best-effort Apply requires an inline confirmation.
-  const canApplyStrict = anchorInfo.found;
-  const canApplyBestEffort = !anchorInfo.found && bestEffortAnchor !== null;
-  const disabled =
-    status.kind === 'applied' || (!canApplyStrict && !canApplyBestEffort);
-
-  // Force-apply is the only path that can succeed when the AI quote is
-  // not anchored in the document. It is gated on:
-  //   1. The anchor missing (otherwise normal Apply should be used).
-  //   2. The card not already applied.
-  //   3. A known caret position (selectionStart >= 0).
-  // The doc-switch guard is checked inside `handleForceApply` (it reads
-  // `currentDocumentId` from the store at click time) so we don't have
-  // to subscribe here.
-  // Note: we deliberately do NOT gate on `editorState.focused`. The act
-  // of clicking this button blurs the textarea (the button is rendered
-  // in the chat panel, not the editor), which would disable the button
-  // via React re-render before its `click` handler can fire. The caret
-  // indices in the store stay valid across the blur because
-  // `Editor.reportCaret` reads them from the live DOM before writing
-  // `focused: false`.
-  const canForceApply =
-    !anchorInfo.found &&
-    status.kind !== 'applied' &&
-    typeof editorState?.selectionStart === 'number' &&
-    (editorState?.selectionStart ?? -1) >= 0;
+  const appliedOrBusy =
+    status.kind === 'applied' || status.kind === 'best-effort-applied';
+  const applyPathLabel = anchorInfo.found
+    ? 'Exact match'
+    : bestEffortUsable
+      ? `Best effort · ${Math.round((bestEffortAnchor?.confidence ?? 0) * 100)}%`
+      : null;
 
   const size = storedSize ?? { w: DEFAULT_WIDTH, h: DEFAULT_HEIGHT };
   const isSized = !!storedSize;
@@ -554,7 +605,7 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
       </div>
 
       <div className="pe-diff flex-1 min-h-0">
-        {!anchorInfo.found && (
+        {!anchorInfo.found && !showBestEffortPanel && (
           <div
             className="mb-2 py-1.5 px-2 rounded border border-cyber-warn/50 bg-cyber-warn/10 text-[11px] leading-snug text-cyber-warn"
             role="status"
@@ -566,56 +617,41 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
               The AI&rsquo;s original quote doesn&rsquo;t appear in the
               current document &mdash; it may have been edited since this
               reply was generated, or the AI quoted a different wording.
-              {bestEffortAnchor
-                ? <> Press <span className="font-semibold text-cyber-warn">Apply</span> to review an approximate match, or click in the editor and use <span className="font-semibold text-cyber-warn">Force-apply</span> to drop the new wording at your caret.</>
-                : <> Normal Apply is unavailable; click in the editor, then use <span className="font-semibold text-cyber-warn">Force-apply</span>.</>}
+              <br />
+              Select text in the editor and use{' '}
+              <span className="font-semibold text-cyber-warn">Highlight Apply</span>{' '}
+              to replace your selection.
             </div>
           </div>
         )}
-        {/* Best-effort confirmation prompt. Shown only when the user has
-            clicked Apply on a missing-anchor card AND a best-effort
-            candidate resolved. Renders the matched span inline so the
-            user can decide whether to splice it. */}
-        {pendingBestEffort && content && (
+        {/* Best-effort info panel: pre-apply match preview, or post-apply
+            snapshot of what was replaced. */}
+        {showBestEffortPanel && content && (
           <div
             className="mb-2 py-1.5 px-2 rounded border border-cyber-warn/60 bg-cyber-warn/10 text-[11px] leading-snug"
-            role="alertdialog"
-            aria-label="Approximate match confirmation"
+            role="status"
           >
             <div className="font-semibold mb-1 text-cyber-warn">
-              Approximate match found
+              Best effort match
             </div>
             <div className="text-paper-inkSoft dark:text-cyber-muted mb-1">
-              No exact match for the AI&rsquo;s quote. We can apply this
-              change to the closest matching passage (confidence&nbsp;
-              <span className="font-mono text-cyber-warn">
-                {Math.round(pendingBestEffort.confidence * 100)}%
-              </span>
-              ). Review the matched text before confirming.
-            </div>
-            <div className="mt-1 p-1.5 rounded bg-white/70 dark:bg-ape-base/70 border border-paper-hairline dark:border-cyber-border font-mono text-[11px] whitespace-pre-wrap break-words max-h-32 overflow-auto">
-              {content.slice(
-                pendingBestEffort.idx,
-                pendingBestEffort.idx + pendingBestEffort.length
+              {status.kind === 'best-effort-applied'
+                ? <>Applied at {appliedBestEffortInfo && <span className="font-mono text-cyber-warn font-semibold">{Math.round(appliedBestEffortInfo.confidence * 100)}%</span>} confidence.</>
+                : bestEffortAnchor
+                  ? <>Matched passage at <span className="font-mono text-cyber-warn font-semibold">{Math.round(bestEffortAnchor.confidence * 100)}%</span> confidence. Apply uses this approximate span.</>
+                  : null}
+              {bestEffortAnchor?.duplicationReason && status.kind !== 'best-effort-applied' && (
+                <span className="ml-2 text-cyber-danger text-[10px]">
+                  Apply blocked — {bestEffortAnchor.duplicationReason}. Select text and use Highlight Apply.
+                </span>
               )}
             </div>
-            <div className="mt-1.5 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                className="btn-ghost-sm"
-                onClick={handleCancelBestEffort}
-                title="Keep the document unchanged"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn-fire-sm"
-                onClick={handleConfirmBestEffort}
-                title="Replace the matched passage with the proposed text"
-              >
-                Replace this passage
-              </button>
+            <div className="mt-1 p-1.5 rounded bg-white/70 dark:bg-ape-base/70 border border-paper-hairline dark:border-cyber-border font-mono text-[11px] whitespace-pre-wrap break-words max-h-24 overflow-auto">
+              {status.kind === 'best-effort-applied' && appliedBestEffortInfo
+                ? appliedBestEffortInfo.appliedText
+                : bestEffortAnchor
+                  ? content.slice(bestEffortAnchor.idx, bestEffortAnchor.idx + bestEffortAnchor.length)
+                  : ''}
             </div>
           </div>
         )}
@@ -652,9 +688,9 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
             ))}
           </div>
         )}
-        {!anchorInfo.found && (
+        {!canApply && !hasSelection && (
           <div className="mt-1 px-3 text-[10px] text-paper-inkSoft dark:text-cyber-muted italic">
-            Not anchored to current text &mdash; applying uses Force-apply.
+            Select text in the editor to enable Highlight Apply.
           </div>
         )}
       </div>
@@ -664,7 +700,7 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
           type="button"
           className="btn-ghost-sm"
           onClick={handleReject}
-          disabled={status.kind === 'applied'}
+          disabled={appliedOrBusy}
           title="Dismiss this proposed change"
         >
           Reject
@@ -673,32 +709,35 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
           type="button"
           className="btn-fire-sm"
           onClick={handleApply}
-          disabled={disabled}
+          disabled={!canApply || appliedOrBusy}
           title={
             anchorInfo.found
               ? anchorInfo.multiple
-                ? 'Multiple matches; the first will be replaced'
-                : 'Apply this change to the document'
-              : canApplyBestEffort
-                ? 'No exact match — apply will show an approximate match to confirm'
-                : 'Original text not found in current document'
+                ? 'Exact match (multiple found; the first will be replaced)'
+                : 'Apply using exact match in the document'
+              : bestEffortUsable
+                ? 'No exact match — apply using the best-effort span shown above'
+                : 'No applyable anchor — select text and use Highlight Apply'
           }
         >
           Apply
         </button>
-        <button
-          type="button"
-          className="text-xs px-2 py-1 rounded font-medium border border-cyber-warn/60 text-cyber-warn bg-cyber-warn/5 transition-colors hover:bg-cyber-warn/15 disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={handleForceApply}
-          disabled={!canForceApply}
-          title={
-            canForceApply
-              ? 'Insert the proposed text at your caret (or replace your selection)'
-              : 'Click in the document to enable Force-apply'
-          }
-        >
-          Force-apply&hellip;
-        </button>
+        {applyPathLabel && !appliedOrBusy && (
+          <span className="text-[10px] text-paper-inkSoft dark:text-cyber-muted">
+            {applyPathLabel}
+          </span>
+        )}
+        {hasSelection && (
+          <button
+            type="button"
+            className="text-xs px-2 py-1 rounded font-medium border border-cyber-cyan/60 text-cyber-cyan bg-cyber-cyan/5 transition-colors hover:bg-cyber-cyan/15 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleHighlightApply}
+            disabled={appliedOrBusy}
+            title="Replace your current selection with the proposed text"
+          >
+            Highlight Apply
+          </button>
+        )}
       </div>
 
       {/* Comment box for "Reject with feedback". The user types a reason
@@ -724,7 +763,7 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
           ariaLabel={`Rejection comment for ${edit.id}`}
           placeholder="Why reject? (sent to the AI as revision feedback) — type @ to reference a document"
           className="ape-field pe-comment__textarea"
-          disabled={status.kind === 'applied' || !!staged}
+          disabled={status.kind === 'applied' || status.kind === 'best-effort-applied' || !!staged}
           containerClassName={`pe-comment__input ${
             staged
               ? 'pe-comment__input--staged'
@@ -743,6 +782,7 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
             onClick={handleRejectWithFeedback}
             disabled={
               status.kind === 'applied' ||
+              status.kind === 'best-effort-applied' ||
               staged ||
               (!comment.trim() && mentions.length === 0)
             }
@@ -757,7 +797,7 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
         </div>
       </div>
 
-      {status.kind === 'applied' && (
+      {(status.kind === 'applied' || status.kind === 'best-effort-applied') && (
         <div className="pe-status applied">Applied to document.</div>
       )}
       {!anchorInfo.found && edit.original && (

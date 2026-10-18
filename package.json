@@ -1,7 +1,7 @@
 {
   "name": "apeditor",
   "private": true,
-  "version": "0.5.2",
+  "version": "0.5.3",
   "type": "module",
   "description": "Minimal local-first AI markdown editor (MVP).",
   "scripts": {
@@ -12,7 +12,8 @@
     "prebuild": "node scripts/sync-ocr-runtime-assets.mjs",
     "sync:ocr-assets": "node scripts/sync-ocr-runtime-assets.mjs",
     "typecheck": "tsc -b --noEmit",
-    "test:heading-sections": "node scripts/test-heading-sections.mjs"
+    "test:heading-sections": "node scripts/test-heading-sections.mjs",
+    "test:proposed-edit": "node scripts/test-proposed-edit.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.0.13",

@@ -26,7 +26,7 @@ This guide is for people using the app. It covers every screen and everyday task
 4. [Writing](writing.md) — editor, formatting, Predict
 5. [Comments](comments.md) — highlights, badges, Send to AI
 6. [Chat](chat.md) — messages, selection, Google AI Mode
-7. [Proposed edits](proposed-edits.md) — Apply, Reject, Force-apply
+7. [Proposed edits](proposed-edits.md) — Apply, Reject, Highlight Apply
 8. [Prompt library](prompt-library.md) — saved prompts
 9. [Revision history](revisions.md) — snapshots and restore
 10. [Import from photos or PDFs](import.md)

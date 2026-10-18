@@ -106,7 +106,7 @@ Key files:
 | [`ChatPanel.tsx`](components/ChatPanel.tsx) | 1287 | AI chat + keyless fallback (Google AI Mode) + proposed-edit cards + Apply-All + rejection staging. Largest "feature" component. |
 | [`SettingsModal.tsx`](components/SettingsModal.tsx) | 822 | API provider, key, model, system message, rationale rules, font sizes. Resizable from 8 edges. |
 | [`CommentPopover.tsx`](components/CommentPopover.tsx) | 883 | Read/edit/delete one comment. Shows diffs of applied proposed edits. Resizable. |
-| [`ProposedEditCard.tsx`](components/ProposedEditCard.tsx) | 747 | One AI-proposed edit: original ↔ replacement diff, Apply / Reject / Force-apply. Resizable from 8 edges. |
+| [`ProposedEditCard.tsx`](components/ProposedEditCard.tsx) | — | One AI-proposed edit: original ↔ replacement diff, Apply (Exact → Best Effort) / Reject / Highlight Apply. Resizable from 8 edges. |
 | [`RevisionHistory.tsx`](components/RevisionHistory.tsx) | 232 | List + diff + restore + delete saved revisions. |
 | [`CommentComposer.tsx`](components/CommentComposer.tsx) | 246 | Floating composer for a new comment. Wraps `MentionInput`. |
 | [`CommentLayer.tsx`](components/CommentLayer.tsx) | 155 | Mirror overlay that paints `<mark>` highlights behind the textarea. Forwards ref to `getSelectionRect`. |

@@ -139,8 +139,8 @@ text sent with your message.
 **Reject** on each one. For several changes in one reply, use
 **Apply N changes** in the chat footer. After Apply, open the comment
 badge to read the rationale (multi-round history if you follow up).
-If a quote no longer matches the document, click in the editor and
-use **Force-apply…**.
+If a quote no longer matches the document, select the target text and
+use **Highlight Apply**.
 
 ## 9. ✨ Get sentence suggestions while writing
 

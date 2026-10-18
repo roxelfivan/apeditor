@@ -21,7 +21,7 @@
 
 ## What's new in v0.5.3
 
-> First user-visible release on top of [v0.5.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.2)'s internal refactor. Three feature areas: a full JSON backup export, broader empty / gated-state copy on Import + the `@` doc picker + the Google AI Mode paste flow, and per-row Re-link / Dismiss affordances in the comment tray for stale comments. No prompt / store / LLM-facing contract changes. (The session-only API key shipped in v0.5.2 as `persistApiKey` — its UX and store shape are unchanged by this release.)
+> First user-visible release on top of [v0.5.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.2)'s internal refactor. Four feature areas: a full JSON backup export; broader empty / gated-state copy on Import + the `@` doc picker + the Google AI Mode paste flow; per-row Re-link / Dismiss for stale comments; and a streamlined **proposed-edit Apply waterfall** (Exact → Best Effort → Highlight). No prompt / store / LLM-facing contract changes. (The session-only API key shipped in v0.5.2 as `persistApiKey` — its UX and store shape are unchanged by this release.)
 
 **Backup**
 
@@ -38,7 +38,14 @@
 5. **Stale-comment list in the tray.** When the document has outdated comments, the tray grows a collapsed *"N stale comments — Re-link or Dismiss"* list. Each row shows the original snippet, a **Re-link** button (opens the new `ReanchorPicker`), and a **Dismiss** button (per-row, via the existing `deleteComment` + ⌘Z action). A small **Dismiss all** in the row header preserves the swept-everything path.
 6. **`ReanchorPicker` modal.** Lists the current document's heading sections (or its paragraphs when there are no headings). Selecting a row re-anchors the comment to the chosen slice. Uses the existing `reattachComment(id, { start, end })` action so ⌘Z reverts cleanly.
 
-Export Markdown, import size / page caps, best-effort Apply, the comment-ops undo toast, gated-state tooltips, comment-batch send, secret redaction, outdated-comment bulk dismiss, and session-only API key all stay as they were in v0.5.0 / v0.5.1 / v0.5.2.
+**Proposed-edit Apply waterfall**
+
+7. **One Apply button.** Each proposed-edit card shows **Reject | Apply** (plus **Highlight Apply** only when you have a selection). Apply picks Exact when the quote matches, otherwise Best Effort — you no longer choose between separate Exact / Best Effort buttons.
+8. **Form-safer Best Effort.** Matching requires ~85% coverage of the quoted passage, expands to section / paragraph boundaries, strips re-emitted headings so they are not double-printed, and blocks Apply when a splice would duplicate surrounding text (fall through to Highlight Apply).
+9. **Apply N** uses the same waterfall. Bulk apply tries Exact, then Best Effort, per edit; skipped cards still accept Highlight Apply.
+10. **Editor highlight** of the matched Original / Best Effort span so you can see where Apply would land before you click.
+
+Export Markdown, import size / page caps, the comment-ops undo toast, gated-state tooltips, comment-batch send, secret redaction, outdated-comment bulk dismiss, and session-only API key all stay as they were in v0.5.0 / v0.5.1 / v0.5.2.
 
 See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.5.3 entry and prior changelogs.
 
@@ -397,21 +404,20 @@ the editor parses into a track-changes style card:
 
 - **Split / Inline** — **Split** shows Original and Proposed as
   Preview-style markdown; **Inline** keeps a unified line diff.
-- **Apply** — write the change into the document at the anchored
-  position, re-anchor the related comment highlight (and selection)
-  to the **replacement** text, and record the rationale on the
-  comment's current round. Fails if `original` no longer matches;
-  the card flips to **Missing** and offers **Force-apply…** at the
-  current caret.
+- **Apply** — Exact match if the quote is still in the document,
+  otherwise Best Effort. Re-anchors the related comment highlight
+  to the **replacement** text and records the rationale on the
+  comment's current round. A muted label shows which path ran.
+- **Highlight Apply** — only when the editor has a selection;
+  replaces that span with the proposed text (manual override).
 - **Reject** — discard the change.
 - **Reject with feedback** — stage a reason for a follow-up chat
   turn; on **Send** the staged reasons are folded into a single
   prompt so the model can address them all together.
 - **Apply N changes** (chat footer) — auto-snapshots the document
-  (`Before Apply All`), then bulk-applies every anchored edit in
-  that reply. Un-anchorable edits are skipped silently with a
-  footer line like `Applied 4 of 5 changes (1 skipped — not
-  anchored)`.
+  (`Before Apply All`), then bulk-applies every edit via the same
+  Exact → Best Effort waterfall. Un-anchorable edits are skipped
+  with a footer line pointing at Highlight Apply.
 
 Chat **Send** also auto-saves a `Before AI send` revision before
 the turn starts.
@@ -619,7 +625,7 @@ Dark matches the editor. Start at the [table of contents](docs/README.md):
 - [Writing](docs/writing.md) — editor, formatting, Predict
 - [Comments](docs/comments.md) — highlights, badges, Send to AI
 - [Chat](docs/chat.md) — messages, selection, Google AI Mode
-- [Proposed edits](docs/proposed-edits.md) — Apply, Reject, Force-apply
+- [Proposed edits](docs/proposed-edits.md) — Apply, Reject, Highlight Apply
 - [Reference other documents (`@`)](docs/reference-other-documents.md) — attach a doc or heading sections *(v0.4.7 / v0.4.8)*
 - [Prompt library](docs/prompt-library.md) — saved prompts
 - [Revision history](docs/revisions.md) — snapshots and restore
@@ -739,7 +745,7 @@ per-release notes also ship on the GitHub release pages.
 
 | Version | Highlights |
 | --- | --- |
-| [v0.5.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.3) | **First user-visible release on top of v0.5.2's refactor.** Full JSON backup export (document + comments + chat + revisions) from the file-actions popover. Per-comment **Re-link** + **Dismiss** in the comment tray, with an inline heading/paragraph picker. Broader gated-state copy on Import, the `@` picker, and the Google AI Mode paste flow. |
+| [v0.5.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.3) | **First user-visible release on top of v0.5.2's refactor.** Full JSON backup export; per-comment **Re-link** / **Dismiss**; gated-state copy polish; proposed-edit **Apply waterfall** (Exact → Best Effort → Highlight) with form-safer matching. |
 | [v0.5.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.2) | **Internal / sustainability.** Removed four hardcoded debug POSTs from the chat pipeline (production-leak fix). Split the 1,485-line `useStore` into 5 single-responsibility files. Moved the `@`-mention parser to `utils/`. No UI or store-schema changes; no migration. |
 | [v0.5.1](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.1) | **Phase 1 + 2 UX.** Format-menu font-size docs, gated-state tooltips, ⌘Z comment-ops toast; Chat **selection only**, outbound secret redaction, outdated **Dismiss** / **Re-attach**, session-only API key. |
 | [v0.5.0](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.0) | **Export Markdown** from the file-actions popover, import size and page caps with friendly errors, inline confirmation prompt for best-effort Apply when the AI quote is gone. **Popover alignment pass** + component rename `ImportMediaButton` → `FileActionsButton`. |

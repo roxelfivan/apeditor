@@ -17,9 +17,9 @@ The red box shows the provider message, or **Unknown error**.
 
 ## Proposed edits will not Apply
 
-**Apply** needs an exact match of the quoted original in the current document. If you edited while waiting, restore a **Before AI send** revision, or click in the document and use **Force-apply…**. See [Proposed edits](proposed-edits.md).
+**Apply** tries an exact match first, then Best Effort. If both fail (or Best Effort is blocked to avoid duplication), select the target text and use **Highlight Apply**. Or restore a **Before AI send** revision. See [Proposed edits](proposed-edits.md).
 
-**Apply n changes** may report that some items were skipped because they were not anchored.
+**Apply n changes** may report that some items were skipped because they were not anchored — use Highlight Apply on those cards.
 
 ## Comment says Outdated
 
