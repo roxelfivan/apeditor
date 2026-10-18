@@ -91,6 +91,7 @@ export const useStore = create<StoreState>()(
         previewSizes: {},
       },
       editorFocus: {},
+      proposedEditHighlights: {},
       comments: {},
       commentUndoStack: [],
 
@@ -281,6 +282,37 @@ export const useStore = create<StoreState>()(
             },
           },
         })),
+      setProposedEditHighlight: (documentId, cardKey, range) =>
+        set((s) => {
+          const map = s.proposedEditHighlights ?? {};
+          const prev = map[documentId] ?? [];
+          const existing = prev.find((h) => h.cardKey === cardKey);
+          // No-op when unchanged — prevents Editor re-render storms.
+          if (
+            range === null &&
+            !existing
+          ) {
+            return s;
+          }
+          if (
+            range &&
+            existing &&
+            existing.start === range.start &&
+            existing.end === range.end
+          ) {
+            return s;
+          }
+          const without = prev.filter((h) => h.cardKey !== cardKey);
+          const next = range
+            ? [...without, { cardKey, start: range.start, end: range.end }]
+            : without;
+          return {
+            proposedEditHighlights: {
+              ...map,
+              [documentId]: next,
+            },
+          };
+        }),
 
       // ---- Comment actions: delegated to ./actions.ts ----
       addComment: (comment) => addCommentAction(set, get, comment),
@@ -572,6 +604,14 @@ export const useStore = create<StoreState>()(
           }
           if (typeof state.sendSelectionOnly !== 'boolean') {
             repairs.sendSelectionOnly = false;
+          }
+          // Ephemeral proposed-edit highlights must always be an object.
+          // Older in-memory / HMR sessions may lack the field entirely.
+          if (
+            !state.proposedEditHighlights ||
+            typeof state.proposedEditHighlights !== 'object'
+          ) {
+            repairs.proposedEditHighlights = {};
           }
           if (state.persistApiKey === false) {
             const sessionKey = readSessionApiKey();

@@ -103,6 +103,22 @@ function rescueRawJsonEdits(
 }
 
 /**
+ * Strip paragraph-reference markers (e.g. `[p10]@354`) that the chat
+ * pipeline injects so the LLM knows which paragraph the user picked.
+ * The model sometimes echoes those back inside `original` / `replacement`,
+ * and they should never land in the user's document. Also strips a
+ * trailing `@<digits>` if the brackets were dropped.
+ */
+function stripParagraphReferences(s: string): string {
+  if (!s) return s;
+  let out = s.replace(/\s*\[p\d+\]@?\d*/gi, '');
+  out = out.replace(/\s+@\d+(?=\s|$)/g, '');
+  // Collapse multiple blank lines left over after removal.
+  out = out.replace(/[ \t]{2,}/g, ' ');
+  return out;
+}
+
+/**
  * Try `tryParseEdit` first; on failure, attempt a tolerant repair by
  * escaping unescaped `"` characters that appear inside the AI's string
  * values. The AI frequently emits strings containing literal double
@@ -119,16 +135,19 @@ function tryParseEditLenient(body: string): ProposedEdit | null {
   // older AI replies; we default to an empty string when missing.
   const id = extractJsonString(body, 'id');
   const summary = extractJsonString(body, 'summary');
-  const original = extractJsonString(body, 'original');
-  const replacement = extractJsonString(body, 'replacement');
-  if (id && summary && original !== null && replacement !== null) {
+  const originalRaw = extractJsonString(body, 'original');
+  const replacementRaw = extractJsonString(body, 'replacement');
+  if (id && summary && originalRaw !== null && replacementRaw !== null) {
     const rationale = extractJsonString(body, 'rationale') ?? '';
+    // Strip @-mention sentinels + paragraph refs.
+    const strip = (s: string) =>
+      stripParagraphReferences(parseMentionsFromSentinels(s).plain);
     return {
       id,
       summary,
       rationale,
-      original,
-      replacement,
+      original: strip(originalRaw),
+      replacement: strip(replacementRaw),
     };
   }
   return null;
@@ -180,12 +199,17 @@ function tryParseEdit(body: string): ProposedEdit | null {
       // Empty string is treated the same as missing by the UI.
       const rationale =
         typeof obj.rationale === 'string' ? obj.rationale : '';
+      // Strip @-mention sentinels + paragraph refs from original/replacement
+      // so they don't leak as raw text into the diff preview or the
+      // document after Apply (e.g. "[p33] @1184" or "[p10]@354").
+      const strip = (s: string) =>
+        stripParagraphReferences(parseMentionsFromSentinels(s).plain);
       return {
         id: obj.id,
         summary: obj.summary,
         rationale,
-        original: obj.original,
-        replacement: obj.replacement,
+        original: strip(obj.original),
+        replacement: strip(obj.replacement),
       };
     }
   } catch {
@@ -347,33 +371,122 @@ export function findEditAnchor(
  * intent is to recover from "near misses" — the user re-flowed a
  * paragraph, swapped a few words, or the model paraphrased instead of
  * quoting — without ever silently rewriting text. The function returns
- * a confidence score alongside the anchor so the UI can decide whether
- * to surface an inline confirmation prompt or to fall back to the
- * existing Force-apply / skip path.
+ * a confidence score alongside the anchor so the UI can show the matched
+ * passage; Apply is blocked when `duplicationReason` is set (user falls
+ * through to Highlight Apply).
  *
- * Strategy:
- *   1. Tokenise `original` on whitespace + markdown-significant
- *      boundaries. Reject if fewer than 3 tokens or total length
- *      under 30 chars — too little signal to safely approximate.
- *   2. Tokenise `content` the same way.
- *   3. Slide a window of N tokens across the content tokens, scoring
- *      each window by how many of its tokens appear in the original
- *      in order (allowing one-character substitutions and one-char
- *      Levenshtein distance per token).
- *   4. Require ≥ 60% token overlap AND the window length within
- *      ±50% of the original token count.
- *   5. Refuse if `content` is over `MAX_BEST_EFFORT_DOC_BYTES` —
- *      the O(N·W) scan would block the tab.
- *
- * Returns `null` for ambiguous or low-confidence matches. The caller
- * decides whether to show a confirm prompt; we don't make that UX call
- * here.
+ * Strategy (order matches implementation):
+ *   1. Longest exact substring of `original` in `content` (≥ 40 chars),
+ *      then `expandBestEffortRange` + `prepareBestEffortReplace`.
+ *   2. If that fails, token sweep (≥ 40% in-order overlap), then expand
+ *      + prepare the same way.
+ *   3. Refuse unless the prepared span covers ≥ ~85% of `original`, or
+ *      a coherent markdown section body was snapped. Refuse on
+ *      duplication. Refuse if `content` is over
+ *      `MAX_BEST_EFFORT_DOC_BYTES`.
  */
 export interface BestEffortAnchor {
   idx: number;
   length: number;
   /** 0..1, fraction of the original tokens found in the matched window in order. */
   confidence: number;
+  /**
+   * Reason string if replacing this anchor with the replacement text would
+   * create a word-duplication artefact, otherwise null.
+   */
+  duplicationReason: string | null;
+}
+
+/**
+ * After replacing `anchor` in `content` with `replacement`, check whether
+ * the character immediately before or after the replaced span would now
+ * appear adjacent to identical text, creating a duplication artefact.
+ * Returns the reason string if duplication would occur, or null if safe.
+ */
+export function checkReplacementDuplication(
+  content: string,
+  anchor: { idx: number; length: number },
+  replacement: string
+): string | null {
+  // Walk backwards from anchor start, collecting up to BEFORE_MAX chars.
+  const BEFORE_MAX = 60;
+  const AFTER_MAX = 100;
+  const leading = content.slice(
+    Math.max(0, anchor.idx - BEFORE_MAX),
+    anchor.idx
+  );
+  // Walk forwards from anchor end, collecting up to AFTER_MAX chars.
+  const trailing = content.slice(
+    anchor.idx + anchor.length,
+    anchor.idx + anchor.length + AFTER_MAX
+  );
+
+  // Collect n-grams (1, 2, 3 words) from leading and trailing context.
+  const wordRe = /\b\w+\b/g;
+  const leadingWords: string[] = [];
+  let lm: RegExpExecArray | null;
+  wordRe.lastIndex = 0;
+  while ((lm = wordRe.exec(leading)) !== null) leadingWords.push(lm[0]);
+
+  const trailingWords: string[] = [];
+  let tm: RegExpExecArray | null;
+  while ((tm = wordRe.exec(trailing)) !== null) trailingWords.push(tm[0]);
+
+  // Build n-gram sets for each side (only meaningful for N>1).
+  const toNgrams = (words: string[], n: number): Set<string> => {
+    const s = new Set<string>();
+    for (let i = 0; i <= words.length - n; i++) {
+      s.add(words.slice(i, i + n).join(' '));
+    }
+    return s;
+  };
+
+  // Check if any leading 2-gram or 3-gram also appears in trailing.
+  // 1-gram check is too aggressive — common words like "the", "is", "and"
+  // appear in both leading and trailing 100% of the time. The 2-gram
+  // check catches real phrase-level duplication without false positives.
+  // We also filter out n-grams that are entirely stopwords.
+  const STOPWORDS = new Set([
+    'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+    'and', 'or', 'but', 'if', 'of', 'to', 'in', 'on', 'at', 'for', 'by',
+    'with', 'this', 'that', 'it', 'as', 'from', 'not', 'so',
+  ]);
+  const isContentful = (words: string[]) => words.some((w) => !STOPWORDS.has(w.toLowerCase()));
+  for (const ngrams of [
+    toNgrams(leadingWords, 3),
+    toNgrams(leadingWords, 2),
+  ]) {
+    for (const ng of ngrams) {
+      const ngWords = ng.split(' ');
+      if (!isContentful(ngWords)) continue;
+      if (trailingWords.join(' ').includes(ng)) {
+        return `The phrase "${ng}" appears on both sides of the matched passage — applying would duplicate it`;
+      }
+    }
+  }
+
+  // Adjacent overlap only: if the start of `replacement` matches the
+  // start of the trailing context (2+ contentful words), the splice
+  // would double-print that lead-in. Checking "anywhere in trailing
+  // 100 chars" was too noisy for common nouns.
+  if (replacement && replacement.length > 0) {
+    const replWords = (replacement.match(/\b\w+\b/g) ?? []).filter(
+      (w) => !STOPWORDS.has(w.toLowerCase())
+    );
+    if (replWords.length >= 2 && trailingWords.length >= 2) {
+      const lead = replWords.slice(0, 2).join(' ').toLowerCase();
+      const trailLead = trailingWords
+        .filter((w) => !STOPWORDS.has(w.toLowerCase()))
+        .slice(0, 2)
+        .join(' ')
+        .toLowerCase();
+      if (lead && lead === trailLead) {
+        return `The start of the replacement ("${replWords.slice(0, 2).join(' ')}") already begins the text after the matched passage — applying would duplicate it`;
+      }
+    }
+  }
+
+  return null;
 }
 
 const MAX_BEST_EFFORT_DOC_BYTES = 100 * 1024;
@@ -382,33 +495,39 @@ const MAX_BEST_EFFORT_DOC_BYTES = 100 * 1024;
  * Cheap word-tokeniser that splits on whitespace + common markdown
  * boundaries so a heading marker or list bullet doesn't fuse into
  * the adjacent word. Punctuation stays attached to the token — the
- * match pass treats `word` and `word.` as different tokens on
- * purpose, since the AI usually preserves trailing punctuation.
+ * match pass strips it via `normalizeToken` before comparing.
  */
 function tokenizeForBestEffort(s: string): string[] {
   if (!s) return [];
   // Split on runs of whitespace, line breaks, or markdown block
   // boundaries. Inline emphasis markers (`` ` ``, `*`, `_`) stay
-  // attached to their containing word; we don't try to strip them.
+  // attached to their containing word; `normalizeToken` strips them.
   return s.split(/\s+/).filter((t) => t.length > 0);
 }
 
+/** Strip case / punctuation / markdown wrappers so `potential,` ≈ `potential`. */
+function normalizeToken(t: string): string {
+  return t
+    .toLowerCase()
+    .replace(/^[\*_`~#>\[\]()"'“”‘’•·]+/, '')
+    .replace(/[\*_`~#>\[\]()"'“”‘’.,;:!?]+$/g, '');
+}
+
 /**
- * 1-edit-distance check between two short tokens (≤ 8 chars). We
- * approximate Levenshtein with a length-difference check plus a
- * set-equality fallback: if both tokens are ≤ 8 chars and differ by
- * 0–1 character via substitution, treat them as a near-match. The
- * cap on length is the safety belt — a longer token with 1 substitution
- * is usually a real word change, not a typo.
+ * 1-edit-distance check between two short tokens (≤ 8 chars), after
+ * normalisation. Longer tokens must match exactly once normalised.
  */
 function isNearToken(a: string, b: string): boolean {
-  if (a === b) return true;
-  if (Math.abs(a.length - b.length) > 1) return false;
-  const len = Math.max(a.length, b.length);
+  const na = normalizeToken(a);
+  const nb = normalizeToken(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  if (Math.abs(na.length - nb.length) > 1) return false;
+  const len = Math.max(na.length, nb.length);
   if (len > 8) return false;
   let diffs = 0;
   for (let i = 0; i < len; i++) {
-    if (a[i] !== b[i]) {
+    if (na[i] !== nb[i]) {
       diffs++;
       if (diffs > 1) return false;
     }
@@ -416,109 +535,565 @@ function isNearToken(a: string, b: string): boolean {
   return diffs <= 1;
 }
 
-export function findBestEffortAnchor(
+const BEST_EFFORT_MIN_CONFIDENCE = 0.4;
+const SUBSTRING_MIN_LEN = 40;
+
+/**
+ * Longest contiguous substring of `original` that appears verbatim in
+ * `content`. Also returns `origOffset` — where that slice starts inside
+ * `original` — so callers can expand to the full quoted span.
+ */
+function findLongestSubstringAnchor(
   content: string,
   original: string
+): { idx: number; length: number; origOffset: number; confidence: number } | null {
+  if (original.length < SUBSTRING_MIN_LEN) return null;
+  const maxLen = Math.min(original.length, 500);
+  let best: { idx: number; length: number; origOffset: number } | null = null;
+
+  // Binary search on substring length; for each candidate length, scan
+  // original offsets for a hit in content.
+  let lo = SUBSTRING_MIN_LEN;
+  let hi = maxLen;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    let hit: { idx: number; length: number; origOffset: number } | null = null;
+    for (let i = 0; i + mid <= original.length; i++) {
+      // Prefer cuts that start on a whitespace/boundary so we don't
+      // match mid-word crumbs.
+      if (i > 0 && !/\s/.test(original[i - 1])) continue;
+      const slice = original.slice(i, i + mid);
+      const at = content.indexOf(slice);
+      if (at !== -1) {
+        hit = { idx: at, length: mid, origOffset: i };
+        break;
+      }
+    }
+    if (hit) {
+      best = hit;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  if (!best) return null;
+  return {
+    idx: best.idx,
+    length: best.length,
+    origOffset: best.origOffset,
+    confidence: Math.min(1, best.length / Math.max(original.length, 1)),
+  };
+}
+
+/** Minimum fraction of `original.length` a Best Effort span must cover. */
+export const BEST_EFFORT_COVERAGE_MIN = 0.85;
+
+function firstNonEmptyLine(s: string): string {
+  return s.split('\n').find((l) => l.trim().length > 0)?.trim() ?? '';
+}
+
+/**
+ * Expand start/end to the nearest markdown block boundaries that contain
+ * the match: previous blank line (or after a heading), next blank line
+ * or next ATX heading of any level.
+ */
+function expandToBlockBoundaries(
+  content: string,
+  start: number,
+  end: number
+): { start: number; end: number } {
+  let s = start;
+  let e = end;
+  // Walk start back to the previous blank line, but stop after a heading
+  // line so we don't pull the heading into the hole when the next step
+  // will leave it in place.
+  while (s > 0) {
+    const prevNl = content.lastIndexOf('\n', s - 1);
+    const lineStart = prevNl < 0 ? 0 : prevNl + 1;
+    const line = content.slice(lineStart, s).replace(/\n$/, '');
+    if (line.trim() === '') {
+      s = lineStart;
+      break;
+    }
+    if (/^#{1,6}\s+\S/.test(line.trim())) {
+      // Leave heading outside the hole.
+      break;
+    }
+    s = lineStart;
+    if (prevNl < 0) break;
+  }
+  // Walk end forward to next blank line or next heading.
+  while (e < content.length) {
+    const nextNl = content.indexOf('\n', e);
+    if (nextNl < 0) {
+      e = content.length;
+      break;
+    }
+    const lineStart = nextNl + 1;
+    const nextNext = content.indexOf('\n', lineStart);
+    const lineEnd = nextNext < 0 ? content.length : nextNext;
+    const line = content.slice(lineStart, lineEnd);
+    if (line.trim() === '' || /^#{1,6}\s+\S/.test(line.trim())) {
+      e = nextNl;
+      break;
+    }
+    e = lineEnd;
+  }
+  return { start: s, end: e };
+}
+
+/**
+ * Expand a partial substring match so Best Effort replaces the
+ * whole AI-quoted passage — not just the shared chunk. Without this,
+ * `replacement` is spliced into a short hole and the rest of `original`
+ * stays in the document (reads as duplication).
+ *
+ * Strategy:
+ *   1. Exact prefix/suffix of `original` around the matched slice.
+ *   2. Else snap to the markdown section BODY that contains the match —
+ *      the heading itself is NOT included when `replacement` re-emits
+ *      the same heading line.
+ *   3. Else expand to paragraph / block boundaries containing the match.
+ */
+export function expandBestEffortRange(
+  content: string,
+  original: string,
+  anchor: { idx: number; length: number },
+  origOffset = -1,
+  replacement = ''
+): { idx: number; length: number; sectionSnap: boolean } {
+  let start = anchor.idx;
+  let end = anchor.idx + anchor.length;
+  let sectionSnap = false;
+  if (start < 0 || end > content.length || start >= end) {
+    return { idx: anchor.idx, length: anchor.length, sectionSnap: false };
+  }
+
+  const matched = content.slice(start, end);
+  let off = origOffset;
+  if (off < 0) {
+    off = original.indexOf(matched);
+  }
+
+  const firstOrigLine = firstNonEmptyLine(original);
+  const firstReplLine = firstNonEmptyLine(replacement);
+  const isHeadingQuote = /^#{1,6}\s+\S/.test(firstOrigLine);
+  // Skip absorbing the heading into the hole when the replacement
+  // re-emits the same heading (or when we only have the original quote
+  // and it starts with a heading — conservative default).
+  const skipHeadingInHole =
+    isHeadingQuote &&
+    (!firstReplLine || firstReplLine === firstOrigLine);
+
+  if (off >= 0) {
+    let prefix = original.slice(0, off);
+    if (skipHeadingInHole) {
+      const hlEnd = prefix.indexOf('\n');
+      prefix = hlEnd >= 0 ? prefix.slice(hlEnd + 1) : '';
+    }
+    const suffix = original.slice(off + matched.length);
+
+    if (
+      prefix &&
+      start >= prefix.length &&
+      content.slice(start - prefix.length, start) === prefix
+    ) {
+      start -= prefix.length;
+    }
+    if (suffix && content.slice(end, end + suffix.length) === suffix) {
+      end += suffix.length;
+    }
+  }
+
+  // If we still cover less than ~85% of the quote, snap to the
+  // section body. We deliberately do NOT include the heading line
+  // when replacement re-emits it.
+  if (end - start < original.length * BEST_EFFORT_COVERAGE_MIN) {
+    const firstLine = firstOrigLine;
+    const heading = firstLine.match(/^(#{1,6})\s+/);
+    if (heading && firstLine.length >= 4) {
+      const searchFrom = Math.max(0, start - original.length);
+      const searchTo = Math.min(content.length, end + 80);
+      const window = content.slice(searchFrom, searchTo);
+      const rel = window.indexOf(firstLine);
+      if (rel !== -1) {
+        const headingEnd = searchFrom + rel + firstLine.length;
+        let bodyStart = headingEnd;
+        if (content[bodyStart] === '\n') bodyStart += 1;
+        const level = heading[1].length;
+        const after = content.slice(headingEnd);
+        const nextRe = new RegExp(`\\n#{1,${level}}\\s`);
+        const m = nextRe.exec(after);
+        let candidateEnd = end;
+        if (m && typeof m.index === 'number') {
+          candidateEnd = headingEnd + m.index;
+        } else {
+          candidateEnd = Math.min(
+            content.length,
+            Math.max(end, bodyStart + original.length)
+          );
+        }
+        const secStart = skipHeadingInHole ? bodyStart : searchFrom + rel;
+        const secLen = candidateEnd - secStart;
+        if (secLen >= 8 && secLen <= original.length * 2.2) {
+          start = secStart;
+          end = candidateEnd;
+          sectionSnap = true;
+        }
+      }
+    }
+  }
+
+  // Still short: grow to paragraph / block boundaries containing the match.
+  if (end - start < original.length * BEST_EFFORT_COVERAGE_MIN) {
+    const block = expandToBlockBoundaries(content, start, end);
+    const blockLen = block.end - block.start;
+    if (
+      blockLen >= end - start &&
+      blockLen <= original.length * 2.2 &&
+      blockLen >= 8
+    ) {
+      start = block.start;
+      end = block.end;
+    }
+  }
+
+  return { idx: start, length: Math.max(0, end - start), sectionSnap };
+}
+
+/**
+ * Finalise a Best Effort hole before splice: strip a re-emitted heading
+ * from the matched span, and grow the hole (prefer) or trim the
+ * replacement when adjacent text would duplicate the start/end of
+ * `replacement`. Returns null if the result would still duplicate.
+ */
+export function prepareBestEffortReplace(
+  content: string,
+  replacement: string,
+  anchor: { idx: number; length: number }
+): { idx: number; length: number; text: string } | null {
+  let start = anchor.idx;
+  let end = anchor.idx + anchor.length;
+  if (start < 0 || end > content.length || start > end) return null;
+  let text = replacement;
+
+  // Grow hole right when content immediately after matches a suffix of text.
+  {
+    const maxK = Math.min(content.length - end, text.length, 200);
+    for (let k = maxK; k >= 8; k--) {
+      if (content.slice(end, end + k) === text.slice(text.length - k)) {
+        end += k;
+        break;
+      }
+    }
+  }
+
+  // Grow hole left when content immediately before matches a prefix of text,
+  // but never re-absorb an ATX heading that replacement will re-emit.
+  {
+    const replHead = firstNonEmptyLine(text);
+    const skipHead =
+      /^#{1,6}\s+\S/.test(replHead) ? replHead : null;
+    const maxK = Math.min(start, text.length, 200);
+    for (let k = maxK; k >= 8; k--) {
+      const before = content.slice(start - k, start);
+      if (before !== text.slice(0, k)) continue;
+      if (skipHead) {
+        const beforeFirst = firstNonEmptyLine(before);
+        if (beforeFirst === skipHead) continue;
+      }
+      start -= k;
+      break;
+    }
+  }
+
+  // If trailing still starts with the start of text, grow to absorb it.
+  {
+    const trailing = content.slice(end);
+    const maxK = Math.min(text.length, trailing.length, 200);
+    for (let k = maxK; k >= 8; k--) {
+      if (trailing.startsWith(text.slice(0, k))) {
+        end += k;
+        break;
+      }
+    }
+  }
+
+  // Absorb residual original text on the same paragraph line (classic
+  // short-hole duplication: replacement is a full rewrite but the match
+  // only covered a shared prefix). Then, if still short vs replacement,
+  // grow to block boundaries.
+  if (end < content.length && content[end] !== '\n') {
+    const nl = content.indexOf('\n', end);
+    end = nl === -1 ? content.length : nl;
+  }
+  {
+    const replBodyLen = text.length;
+    if (end - start < replBodyLen * 0.85) {
+      const block = expandToBlockBoundaries(content, start, end);
+      if (
+        block.end > end &&
+        block.end - start <= Math.max(replBodyLen * 2.2, end - start + 200)
+      ) {
+        end = block.end;
+      }
+    }
+  }
+
+  // Strip leading ATX heading from the hole LAST so grow-left cannot
+  // put it back. When the heading stays in the document, also strip the
+  // same heading from the inserted text so it is not double-printed.
+  {
+    const span = content.slice(start, end);
+    const lineEnd = span.indexOf('\n');
+    if (lineEnd > 0) {
+      const firstLine = span.slice(0, lineEnd).trim();
+      if (/^#{1,6}\s/.test(firstLine)) {
+        const replHead = text.split('\n', 1)[0].trim();
+        if (replHead === firstLine) {
+          start += lineEnd + 1;
+          while (start < end && content[start] === '\n') start += 1;
+          // Drop the re-emitted heading (+ following blank lines) from text.
+          const textNl = text.indexOf('\n');
+          if (textNl >= 0) {
+            let t = textNl + 1;
+            while (t < text.length && text[t] === '\n') t += 1;
+            text = text.slice(t);
+          } else {
+            text = '';
+          }
+        }
+      }
+    }
+  }
+  // If the hole no longer includes the heading (already body-only) but
+  // replacement still starts with that heading line sitting immediately
+  // before the hole, strip it from text the same way.
+  {
+    const replHead = firstNonEmptyLine(text);
+    if (/^#{1,6}\s+\S/.test(replHead)) {
+      const before = content.slice(Math.max(0, start - replHead.length - 2), start);
+      if (before.includes(replHead)) {
+        const textNl = text.indexOf('\n');
+        if (textNl >= 0) {
+          let t = textNl + 1;
+          while (t < text.length && text[t] === '\n') t += 1;
+          text = text.slice(t);
+        }
+      }
+    }
+  }
+  if (start > end) return null;
+
+  const prepared = { idx: start, length: Math.max(0, end - start), text };
+  const dup = checkReplacementDuplication(
+    content,
+    { idx: prepared.idx, length: prepared.length },
+    prepared.text
+  );
+  if (dup) return null;
+  return prepared;
+}
+
+/**
+ * Finalise a raw match into a BestEffortAnchor: expand, prepare (heading
+ * strip + overlap grow), coverage-gate, and duplication-check. Returns
+ * null when the match is too short or would duplicate.
+ */
+function finaliseBestEffortAnchor(
+  content: string,
+  original: string,
+  replacement: string,
+  raw: { idx: number; length: number; confidence: number },
+  origOffset = -1
+): BestEffortAnchor | null {
+  const expanded = expandBestEffortRange(
+    content,
+    original,
+    { idx: raw.idx, length: raw.length },
+    origOffset,
+    replacement
+  );
+  const prepared = prepareBestEffortReplace(
+    content,
+    replacement,
+    { idx: expanded.idx, length: expanded.length }
+  );
+  if (!prepared) {
+    // Still surface the expanded span with a duplication reason so the
+    // card can show the matched passage and steer the user to Highlight.
+    const dup =
+      checkReplacementDuplication(
+        content,
+        { idx: expanded.idx, length: expanded.length },
+        replacement
+      ) ?? 'Applying here would duplicate surrounding text';
+    return {
+      idx: expanded.idx,
+      length: expanded.length,
+      confidence: Math.min(
+        1,
+        Math.max(raw.confidence, expanded.length / Math.max(original.length, 1))
+      ),
+      duplicationReason: dup,
+    };
+  }
+
+  // When replacement re-emits the same ATX heading, the prepared hole
+  // is body-only — measure coverage against the body of `original`.
+  let origForCoverage = original;
+  {
+    const firstOrig = firstNonEmptyLine(original);
+    const firstRepl = firstNonEmptyLine(replacement);
+    if (
+      /^#{1,6}\s+\S/.test(firstOrig) &&
+      firstRepl === firstOrig
+    ) {
+      const hlEnd = original.indexOf('\n');
+      if (hlEnd >= 0) origForCoverage = original.slice(hlEnd + 1);
+    }
+  }
+  const coverage = prepared.length / Math.max(origForCoverage.length, 1);
+  const coverageOk =
+    coverage >= BEST_EFFORT_COVERAGE_MIN || expanded.sectionSnap;
+  if (!coverageOk) return null;
+
+  return {
+    idx: prepared.idx,
+    length: prepared.length,
+    confidence: Math.min(1, Math.max(raw.confidence, coverage)),
+    duplicationReason: null,
+  };
+}
+
+export function findBestEffortAnchor(
+  content: string,
+  original: string,
+  replacement: string
 ): BestEffortAnchor | null {
   if (!content || !original) return null;
   if (content.length > MAX_BEST_EFFORT_DOC_BYTES) return null;
   if (original.length < 30) return null;
 
-  const origTokens = tokenizeForBestEffort(original);
-  if (origTokens.length < 3) return null;
+  let substringFallback: BestEffortAnchor | null = null;
 
-  // Build content tokens AND keep their (start, end) byte offsets so
-  // we can convert a window of tokens back into a {idx, length}.
-  const contentTokens: { token: string; start: number; end: number }[] = [];
+  // Cheap path first: longest exact substring, then expand + prepare.
   {
-    const re = /\S+/g;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(content)) !== null) {
-      contentTokens.push({ token: m[0], start: m.index, end: m.index + m[0].length });
+    const sub = findLongestSubstringAnchor(content, original);
+    if (sub && sub.confidence >= 0.25) {
+      const finalised = finaliseBestEffortAnchor(
+        content,
+        original,
+        replacement,
+        {
+          idx: sub.idx,
+          length: sub.length,
+          confidence: sub.confidence,
+        },
+        sub.origOffset
+      );
+      // Usable (no duplication) wins immediately. A dup-blocked match
+      // still falls through to the token sweep in case that yields a
+      // cleaner span; if not, we return the dup-blocked result below.
+      if (finalised && !finalised.duplicationReason) return finalised;
+      if (finalised) substringFallback = finalised;
     }
   }
-  if (contentTokens.length < origTokens.length) return null;
 
-  const n = origTokens.length;
-  // Skip budget: how many content tokens may be absorbed without
-  // matching any original token. With `n` original tokens, allow
-  // up to half that many extra content tokens. Confidence is the
-  // real bound on how loose the match can be — this only caps the
-  // WIDTH of the matched span in tokens.
-  const maxSkip = Math.max(2, Math.floor(n * 0.5));
-  // Lookahead window for matching a content token against original
-  // tokens. A lookahead of 5 lets us recover from "the first N
-  // original tokens were reworded out of the document" — the first
-  // surviving original token gets matched even if it sits up to 5
-  // positions deep in `origTokens`. Larger values catch more paraphrase
-  // cases but increase the chance of accidental matches between common
-  // words; the confidence threshold + skip budget cap the downside.
-  const LOOKAHEAD = Math.max(5, Math.floor(n * 0.5));
-  // Cap on the matched content span in tokens. Prevents one early
-  // match from absorbing a whole document.
-  const maxMatchedTokens = Math.ceil(n * 1.5);
-
+  // Token sweep only when substring failed or was dup-blocked.
   let best: BestEffortAnchor | null = null;
-
-  // For each possible starting position in contentTokens, scan forward
-  // trying to match all `n` original tokens in order. At each content
-  // token we try to match it against original[oi..oi+LOOKAHEAD] and
-  // advance `oi` to the matched index + 1 (so the match is always in-
-  // order, but gaps in the original are absorbed silently rather than
-  // forcing consecutive alignment). Confidence = matchedCount / n;
-  // a candidate is rejected if its matched content length exceeds
-  // `maxMatchedTokens`.
-  for (let start = 0; start < contentTokens.length; start++) {
-    let oi = 0;
-    let skips = 0;
-    let firstMatch = -1;
-    let lastMatch = -1;
-    let matchedCount = 0;
-    for (let ci = start; ci < contentTokens.length; ci++) {
-      const ct = contentTokens[ci];
-      if (oi >= n) break;
-      // Try the current original token first, then look ahead a few
-      // positions to absorb leading rewordings in the document.
-      let matchedAt = -1;
-      const limit = Math.min(n, oi + LOOKAHEAD + 1);
-      for (let k = oi; k < limit; k++) {
-        if (isNearToken(ct.token, origTokens[k])) {
-          matchedAt = k;
-          break;
+  {
+    const origTokens = tokenizeForBestEffort(original);
+    if (origTokens.length >= 3) {
+      const contentTokens: { token: string; start: number; end: number }[] = [];
+      {
+        const re = /\S+/g;
+        let m: RegExpExecArray | null;
+        while ((m = re.exec(content)) !== null) {
+          contentTokens.push({
+            token: m[0],
+            start: m.index,
+            end: m.index + m[0].length,
+          });
         }
       }
-      if (matchedAt !== -1) {
-        if (firstMatch === -1) firstMatch = ci;
-        lastMatch = ci;
-        oi = matchedAt + 1;
-        matchedCount++;
-      } else {
-        skips++;
-        if (skips > maxSkip) break;
+      if (contentTokens.length >= 3) {
+        const n = origTokens.length;
+        const maxSkip = Math.max(2, Math.floor(n * 0.5));
+        const LOOKAHEAD = Math.min(8, Math.max(5, Math.floor(n * 0.25)));
+        const maxMatchedTokens = Math.ceil(n * 1.5);
+        const seedNorms = new Set(
+          origTokens
+            .slice(0, Math.min(6, n))
+            .map((t) => normalizeToken(t))
+            .filter(Boolean)
+        );
+        const deadline = performance.now() + 12;
+
+        for (let start = 0; start < contentTokens.length; start++) {
+          if (performance.now() > deadline) break;
+          if (!seedNorms.has(normalizeToken(contentTokens[start].token))) {
+            continue;
+          }
+          let oi = 0;
+          let skips = 0;
+          let firstMatch = -1;
+          let lastMatch = -1;
+          let matchedCount = 0;
+          for (let ci = start; ci < contentTokens.length; ci++) {
+            const ct = contentTokens[ci];
+            if (oi >= n) break;
+            let matchedAt = -1;
+            const limit = Math.min(n, oi + LOOKAHEAD + 1);
+            for (let k = oi; k < limit; k++) {
+              if (isNearToken(ct.token, origTokens[k])) {
+                matchedAt = k;
+                break;
+              }
+            }
+            if (matchedAt !== -1) {
+              if (firstMatch === -1) firstMatch = ci;
+              lastMatch = ci;
+              oi = matchedAt + 1;
+              matchedCount++;
+            } else {
+              skips++;
+              if (skips > maxSkip) break;
+            }
+            if (lastMatch !== -1 && ci - start + 1 > maxMatchedTokens) break;
+          }
+          if (matchedCount === 0) continue;
+          const matchedTokenCount = lastMatch - firstMatch + 1;
+          if (matchedTokenCount > maxMatchedTokens) continue;
+          const confidence = matchedCount / n;
+          if (confidence < BEST_EFFORT_MIN_CONFIDENCE) continue;
+          if (best === null || confidence > best.confidence) {
+            best = {
+              idx: contentTokens[firstMatch].start,
+              length:
+                contentTokens[lastMatch].end - contentTokens[firstMatch].start,
+              confidence,
+              duplicationReason: null,
+            };
+            if (confidence >= 1.0) break;
+          }
+        }
       }
-      // Bail early if the match is already much wider than the
-      // original token count.
-      if (lastMatch !== -1 && ci - start + 1 > maxMatchedTokens) break;
-    }
-    if (matchedCount === 0) continue;
-    const matchedTokenCount = lastMatch - firstMatch + 1;
-    if (matchedTokenCount > maxMatchedTokens) continue;
-    const confidence = matchedCount / n;
-    if (confidence < 0.6) continue;
-    if (best === null || confidence > best.confidence) {
-      best = {
-        idx: contentTokens[firstMatch].start,
-        length:
-          contentTokens[lastMatch].end - contentTokens[firstMatch].start,
-        confidence,
-      };
-      // Early exit: 100% match is as good as it gets; any other
-      // starting position would be a worse match by definition.
-      if (confidence >= 1.0) return best;
     }
   }
 
-  return best;
+  if (best) {
+    const finalised = finaliseBestEffortAnchor(
+      content,
+      original,
+      replacement,
+      best
+    );
+    if (finalised && !finalised.duplicationReason) return finalised;
+    if (finalised) return finalised;
+  }
+
+  return substringFallback;
 }
 
 /**
@@ -542,16 +1117,13 @@ export function applyEdit(
 
 /**
  * Apply a batch of `ProposedEdit`s in order against a running string
- * accumulator. Each edit's `original` is looked up against the *current*
- * accumulator (which already reflects any prior edits in the batch), so
- * two overlapping edits compose correctly: the second `applyEdit` runs
- * against text that has the first edit applied.
+ * accumulator. Waterfall per edit: Exact → Best Effort (prepared) → skip.
+ * Each lookup runs against the *current* accumulator so overlapping
+ * edits compose correctly.
  *
- * Edits whose `original` is not found in the current accumulator are
- * skipped silently — no error is raised. The caller derives the skip
- * count from `edits.length - appliedIds.length` for any user-visible
- * summary, matching the per-message "Apply All" action's footer
- * (`"Applied X of Y changes (Z skipped — not anchored)"`).
+ * Edits that cannot be Exact- or Best-Effort-anchored are skipped
+ * silently. The caller derives the skip count from
+ * `edits.length - appliedIds.length` for the "Apply N" footer.
  */
 export function applyAllEdits(
   content: string,
@@ -576,17 +1148,37 @@ export function applyAllEdits(
     replacement: string;
   }> = [];
   for (const edit of edits) {
-    const anchor = findEditAnchor(acc, edit.original);
-    if (!anchor) continue;
+    const exact = findEditAnchor(acc, edit.original);
+    if (exact) {
+      acc =
+        acc.slice(0, exact.idx) +
+        edit.replacement +
+        acc.slice(exact.idx + exact.length);
+      appliedIds.push(edit.id);
+      appliedAnchors.push({
+        id: edit.id,
+        idx: exact.idx,
+        replacement: edit.replacement,
+      });
+      continue;
+    }
+    const be = findBestEffortAnchor(acc, edit.original, edit.replacement);
+    if (!be || be.duplicationReason) continue;
+    const prepared = prepareBestEffortReplace(
+      acc,
+      edit.replacement,
+      { idx: be.idx, length: be.length }
+    );
+    if (!prepared) continue;
     acc =
-      acc.slice(0, anchor.idx) +
-      edit.replacement +
-      acc.slice(anchor.idx + anchor.length);
+      acc.slice(0, prepared.idx) +
+      prepared.text +
+      acc.slice(prepared.idx + prepared.length);
     appliedIds.push(edit.id);
     appliedAnchors.push({
       id: edit.id,
-      idx: anchor.idx,
-      replacement: edit.replacement,
+      idx: prepared.idx,
+      replacement: prepared.text,
     });
   }
   return { next: acc, appliedIds, appliedAnchors };
@@ -594,9 +1186,8 @@ export function applyAllEdits(
 
 /**
  * Insert / replace at a known caret or selection in `content`. Used by
- * the Force-apply path on a ProposedEditCard when the AI's `original`
- * couldn't be anchored in the current document. The user is responsible
- * for choosing the location; this helper does no anchor lookup.
+ * Highlight Apply on a ProposedEditCard when the user manually selects
+ * the span to replace. This helper does no anchor lookup.
  *
  * - If `selectionStart !== selectionEnd`, the selected range is replaced
  *   with `replacement`.

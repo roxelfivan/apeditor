@@ -1,4 +1,4 @@
-## v0.5.3 — Full JSON backup, fuller empty / gated states, per-row comment Re-link / Dismiss
+## v0.5.3 — JSON backup, comment Re-link / Dismiss, gated-state polish, Apply waterfall
 
 User-visible release on top of [v0.5.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.2) (the internal-only refactor + debug-POST strip). v0.5.2 itself did not ship any of these features, and the session-only API key feature shipped earlier under the name `persistApiKey` ([`src/store/types.ts`](src/store/types.ts), default `true`). The two custom-install branches `feat/v0.5.2-slice-b` and `feat/v0.5.3-slice-c` that previously attempted to ship this code were closed without merging; v0.5.3 is the canonical home for everything in them.
 
@@ -10,20 +10,28 @@ User-visible release on top of [v0.5.2](https://github.com/roxelfivan/apeditor/r
 - **Per-row stale list in the comment tray.** When the document has any outdated comments, the tray now grows a collapsed-by-default *"N stale comments — Re-link or Dismiss"* expandable list. Each row shows the original snippet, a **Re-link** button, and a **Dismiss** button. A small *Dismiss all* (the previous bulk action) lives in the row header so the swept-everything path is still one click.
 - **`ReanchorPicker` modal.** A new picker component (renders in the editor pane, mirrors `SectionPicker`'s visual style) lists the current document's heading structure (or its paragraphs when there are no headings). Selecting a row emits the byte `(start, end)` of that slice and calls the existing `reattachComment(id, { start, end })` store action. Keyboard: `↑` / `↓` to move, `Enter` to confirm, `Esc` to cancel.
 - **`isCommentStale(comment, content)` helper.** New pure export from [`src/utils/comments.ts`](src/utils/comments.ts) that mirrors the strategies used by `reanchorComment` so a UI surface can flag stale rows without mutating anything.
+- **Proposed-edit editor highlight.** While a card is open, the matched Exact or Best Effort span is painted in the editor so you can see where Apply would land.
 
 ### Changed
 
 - **Comment tray UX.** The bulk *Dismiss outdated* button is demoted to a secondary *Dismiss all* action on the stale list header — the new per-row *Dismiss* is now the fastest single-comment path.
 - **Empty-state copy in the `@` doc picker.** When there are no other documents to mention, the picker now spells out the reason instead of showing "No matching documents" across the board. Three states are distinguished by a `data-empty-reason` attribute (`no-workspace` / `only-current` / `no-match`).
+- **Proposed-edit Apply waterfall.** Cards expose a single **Apply** button (Exact if the quote matches, otherwise Best Effort) plus **Highlight Apply** only when the editor has a selection. Separate Exact / Best Effort / always-visible Force-apply affordances are gone. **Apply N** uses the same Exact → Best Effort waterfall per edit.
+- **Form-safer Best Effort.** Matching requires ~85% coverage of the quoted passage (or a coherent section snap), expands to markdown block / section boundaries, strips re-emitted ATX headings from both the hole and the inserted text, grows residual same-line leftovers into the hole, and **blocks** Apply when a splice would duplicate surrounding text (user falls through to Highlight Apply). Softened the previous noisy first/last-word duplication heuristic.
+- **Onboarding / skip copy.** Welcome text and Apply-All skip messaging say **Highlight Apply** instead of Force-apply.
+
+### Fixed
+
+- **Debug ingest POSTs on the proposed-edit path.** Hardcoded `fetch('http://127.0.0.1:7578/ingest/...')` blocks left in `ProposedEditCard` / `findBestEffortAnchor` during waterfall development are removed so they cannot leak into the production bundle.
 
 ### Behaviour that did NOT change
 
 - The Markdown export flow.
 - OCR pipeline, language picker, import size / page caps.
 - Google AI Mode URL generation — only the in-app paste affordance copy changed.
-- The `Comment` system, the `Document` model, the chat pipeline, and the `Comment`-round / undo / reanchor logic.
+- The `Comment` system, the `Document` model, and the `Comment`-round / undo / reanchor logic (aside from the new tray / picker UI).
 - The session-only API key feature (shipped in v0.5.2 as `persistApiKey`) — its UI / store are unchanged.
-- All prompt, store, and LLM-facing contracts.
+- All prompt, store, and LLM-facing contracts (proposed-edit JSON schema unchanged; only client-side apply matching / UX changed).
 
 ### Internal
 
@@ -31,15 +39,20 @@ User-visible release on top of [v0.5.2](https://github.com/roxelfivan/apeditor/r
 - `src/components/ReanchorPicker.tsx` — new component. Heading sections (or paragraph fallback) rendered as rows; emits `{ start, end, label }`. Reuses the `.mention-popover` CSS classes so the picker is visually consistent with the @-section picker.
 - `src/components/FileActionsButton.tsx` — added four store selectors (`documents`, `commentsByDoc`, `chatsByDoc`, `revisionsByDoc`), `onBackupClick` mirroring the existing `onExportClick` error / UX shape, a third popover section ("Export full backup (JSON)") with the same structural template as the two previous sections, and the contextual OCR-vs-key paragraph under the language checker. The new button carries `data-backup-toggle` for future keyboard wiring.
 - `src/components/mentions/DocPicker.tsx` — added an `emptyReason` derivation (`no-workspace` / `only-current` / `no-match`) from a memoised `othersCount` plus the existing `candidates` list, and replaced the one-size-fits-all "No matching documents." with the three context-appropriate strings. Carries `data-empty-reason={reason}` for any future analytics / testing selector.
-- `src/components/ChatPanel.tsx` — added a three-step `<ol>` between the "Paste the AI Mode answer" `<label>` and the existing `<textarea>` placeholder. Rendered only when `isKeyless && awaitingPaste`, so it never affects users on a keyed provider.
+- `src/components/ChatPanel.tsx` — added a three-step `<ol>` between the "Paste the AI Mode answer" `<label>` and the existing `<textarea>` placeholder. Rendered only when `isKeyless && awaitingPaste`, so it never affects users on a keyed provider. Apply-All skip copy updated for Highlight Apply; `applyAllEdits` now waterfalls Exact → Best Effort.
 - `src/components/CommentTray.tsx` — extended with `outdatedComments`, `onDismissOne`, `onReanchor` props. When both per-row callbacks are provided, the old bulk `Dismiss outdated` button is replaced with the new expandable stale list.
-- `src/components/Editor.tsx` — wires the picker: new `reanchorFor` state (`{ commentId, anchor }`) opened from the tray's `onReanchor`, closed by confirm / cancel. Reuses the existing `reattachComment` action so the undo stack gets an `update-body` op and ⌘Z reverts cleanly.
+- `src/components/Editor.tsx` — wires the re-link picker; paints ephemeral `proposedEditHighlights` for open cards.
+- `src/components/ProposedEditCard.tsx` — single `handleApply` waterfall; Highlight Apply only with selection; best-effort transparency panel retained.
+- `src/utils/proposedEdit.ts` — `expandBestEffortRange`, `prepareBestEffortReplace`, coverage gate, duplication block, waterfall `applyAllEdits`.
 - `src/utils/comments.ts` — new `isCommentStale(comment, content): boolean` export. Mirrors strategies 1 + 3 of `reanchorComment` and short-circuits on already-flagged comments.
-- `src/index.css` — new `.cm-tray__btn--ghost`, `.cm-tray__stale*`, `.cm-stale-list*`, and `.relink-picker` rules. Light + dark theme parity, matched to the existing tray palette.
+- `src/index.css` — new `.cm-tray__btn--ghost`, `.cm-tray__stale*`, `.cm-stale-list*`, `.relink-picker`, and proposed-edit highlight rules.
+- `scripts/test-proposed-edit.mjs` + `npm run test:proposed-edit` — harness for Exact / Best Effort / heading / overlap / `applyAllEdits`.
+- `package.json` version bumped to `0.5.3`.
 
 ### Verification
 
-- `npx tsc --noEmit -p tsconfig.app.json` — clean.
+- `npm run typecheck` — clean.
+- `npm run test:proposed-edit` — clean (7 cases).
 - `npm run build` — clean.
 - Manual:
   - File actions popover, with a document that has comments and chat history → **Export .json** → file downloads as `<title>.json` (correctly sanitised). Opening the file shows `schema`, `version`, `exportedAt`, `appVersion`, `document`, `comments`, `chats`, `revisions`. Open with no document → button disabled.
@@ -48,6 +61,7 @@ User-visible release on top of [v0.5.2](https://github.com/roxelfivan/apeditor/r
   - Settings → Provider → Google AI Mode, then send a chat with ⌘+Enter → Google opens in a new tab. Switch back → the three numbered steps appear above the paste textarea; ⌘+Enter commits as before.
   - Edit a document so a comment's anchor moves; reload ApEditor → comment flips to **Outdated**. Open the comment tray → the stale list appears collapsed. Click the caret → list expands with one row showing the snippet, **Re-link** + **Dismiss** buttons. Click *Dismiss* → row disappears, the bulk *Send to AI* count drops by one. ⌘Z → row reappears.
   - Same starting state. Click *Re-link* → the picker modal opens in the editor pane with the document's headings listed (or paragraphs when there are no headings). `↓` to a heading, `Enter` → the picker closes, the comment's anchor updates to the chosen slice, the badge moves to the new location. The undo toast *"Comment re-anchored — ⌘Z to revert"* briefly appears. ⌘Z → comment flips back to outdated and the old anchor is restored.
+  - Proposed-edit card with an exact quote → one **Apply** button labelled with "Exact match"; click applies once. With a paraphrased quote that still overlaps → "Best effort · N%"; Apply replaces the section body without double-printing the heading. With no usable match → tip to select text → **Highlight Apply** appears after selection.
 
 ---
 
@@ -88,46 +102,6 @@ Internal-only release on top of [v0.5.1](https://github.com/roxelfivan/apeditor/
 
 - `npm run typecheck` — clean.
 - `npm run build` — clean. Main entry chunk is 790.43 kB (was 791.91 kB in v0.5.1 — a 1.5 kB reduction from the deleted debug code; OCR / pdfjs / worker-entry chunks are unchanged).
-
----
-
-## v0.5.3 — Per-comment re-link picker for stale comments
-
-Adoption slice **C** from the UX-roadmap adoption plan ([tmp/ux-enhancement-adoption.md](https://github.com/roxelfivan/apeditor/blob/main/tmp/ux-enhancement-adoption.md)). Completes the comment lifecycle: v0.5.1 added "no longer anchored" badge copy + a bulk *Dismiss outdated*; this slice adds per-comment **Re-link** + **Dismiss** controls on the tray, plus an inline picker for choosing a new anchor. Same prompt / store / LLM-facing contracts as v0.5.1.
-
-### Added
-
-- **Per-row stale list in the comment tray.** When the document has any outdated comments, the tray now grows a collapsed-by-default *"N stale comments — Re-link or Dismiss"* expandable list. Each row shows the original snippet, a **Re-link** button, and a **Dismiss** button. A small *Dismiss all* (the previous bulk action) lives in the row header so the swept-everything path is still one click.
-- **`ReanchorPicker` modal.** A new picker component (renders in the editor pane, mirrors `SectionPicker`'s visual style) lists the current document's heading structure (or its paragraphs when there are no headings). Selecting a row emits the byte `(start, end)` of that slice and calls the existing `reattachComment(id, { start, end })` store action. Keyboard: `↑` / `↓` to move, `Enter` to confirm, `Esc` to cancel.
-- **`isCommentStale(comment, content)` helper.** New pure export from `src/utils/comments.ts` that mirrors the strategies used by `reanchorComment` so a UI surface can flag stale rows without mutating anything. Same predicate the tray uses.
-
-### Changed
-
-- **Comment tray UX.** The bulk *Dismiss outdated* button is demoted to a secondary *Dismiss all* action on the stale list header — the new per-row *Dismiss* is now the fastest single-comment path.
-
-### Behaviour that did NOT change
-
-- Comment body editing, rounds, rationales, applied-edit recording.
-- Bulk *Send to AI* batch (Send button still works the same way).
-- The `popover` *Re-attach* affordance on outdated comments (uses the editor's current selection) — the tray picker is a complementary path that does not need a pre-existing selection.
-- All prompt, store, and LLM-facing contracts.
-
-### Internal
-
-- `src/utils/comments.ts` — new `isCommentStale(comment, content): boolean` export. Mirrors strategies 1 + 3 of `reanchorComment` and short-circuits on already-flagged comments.
-- `src/components/ReanchorPicker.tsx` — new component. Heading sections (or paragraph fallback) rendered as rows; emits `{ start, end, label }`. Reuses the `.mention-popover` CSS classes so the picker is visually consistent with the @-section picker.
-- `src/components/CommentTray.tsx` — extended with `outdatedComments`, `onDismissOne`, `onReanchor` props. When both per-row callbacks are provided, the old bulk `Dismiss outdated` button is replaced with the new expandable stale list. Callers that only pass `onDismissOutdated` keep the v0.5.1 UX unchanged.
-- `src/components/Editor.tsx` — wires the picker: new `reanchorFor` state (`{ commentId, anchor }`) opened from the tray's `onReanchor`, closed by confirm / cancel. Reuses the existing `reattachComment` action so the undo stack gets an `update-body` op and ⌘Z reverts cleanly.
-- `src/index.css` — new `.cm-tray__btn--ghost`, `.cm-tray__stale*`, `.cm-stale-list*`, and `.relink-picker` rules. Light + dark theme parity, matched to the existing tray palette.
-
-### Verification
-
-- `npx tsc --noEmit -p tsconfig.app.json` — clean.
-- `npm run build` — clean.
-- Manual:
-  - Edit a document so a comment's anchor moves; reload ApEditor → comment flips to **Outdated**. Open the comment tray → the stale list appears collapsed. Click the caret → list expands with one row showing the snippet, **Re-link** + **Dismiss** buttons. Click *Dismiss* → row disappears, the bulk *Send to AI* count drops by one. ⌘Z → row reappears.
-  - Same starting state. Click *Re-link* → the picker modal opens in the editor pane with the document's headings listed (or paragraphs when there are no headings). `↓` to a heading, `Enter` → the picker closes, the comment's anchor updates to the chosen slice, the badge moves to the new location. The undo toast *"Comment re-anchored — ⌘Z to revert"* briefly appears. ⌘Z → comment flips back to outdated and the old anchor is restored.
-  - Same starting state with all comments outdated. Click *Dismiss all* in the row header → every outdated comment is removed in one gesture; each can still be restored one-by-one via ⌘Z.
 
 ---
 

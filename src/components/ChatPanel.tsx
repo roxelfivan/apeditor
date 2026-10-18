@@ -674,9 +674,9 @@ export function ChatPanel() {
   };
 
   // Bulk-apply every anchorable ProposedEdit in an assistant message in
-  // one document update. Skips edits whose `original` is not found in
-  // the current document — those keep their "Potential mismatch
-  // detected" banner and the user can still use Force-apply manually.
+  // one document update (Exact → Best Effort waterfall). Skips edits
+  // that cannot be anchored — those keep their mismatch banner and the
+  // user can still use Highlight Apply manually.
   const applyAllForMessage = (messageId: string) => {
     // Doc-switch safety: re-read the current doc id at click time so a
     // stale closure can't write to the wrong document.
@@ -723,7 +723,7 @@ export function ChatPanel() {
       const newAnchor = anchor
         ? {
             start: anchor.idx,
-            end: anchor.idx + edit.replacement.length,
+            end: anchor.idx + anchor.replacement.length,
           }
         : undefined;
       if (newAnchor) lastRange = newAnchor;
@@ -1312,7 +1312,7 @@ function MessageBubble({
                           applyAllSummary.total
                         } changes (${
                           applyAllSummary.total - applyAllSummary.applied
-                        } skipped — not anchored). Use Apply anyway or Force-apply on those cards.`}
+                        } skipped — not anchored). Use Highlight Apply on those cards.`}
                   </div>
                 )}
               </div>

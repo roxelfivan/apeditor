@@ -32,6 +32,18 @@ export interface EditorFocusState {
   selectionEnd: number;
 }
 
+/**
+ * Temporary highlight of a proposed-edit's matched Original span in the
+ * Write / Preview / Split panes. Not persisted — cleared when the card
+ * unmounts or the anchor disappears.
+ */
+export interface ProposedEditHighlight {
+  /** `${messageId}:${editId}` so multiple cards don't clobber each other. */
+  cardKey: string;
+  start: number;
+  end: number;
+}
+
 export interface StoreState {
   // Documents
   documents: DocumentRecord[];
@@ -118,9 +130,16 @@ export interface StoreState {
   /**
    * Per-document editor focus + caret state. Updated by `Editor.tsx` on
    * focus / blur / select / keyup so the ProposedEditCard can decide
-   * whether the Force-apply path is available. Not persisted.
+   * whether Highlight Apply is available. Not persisted.
    */
   editorFocus: Record<string, EditorFocusState>;
+
+  /**
+   * Per-document temporary proposed-edit highlights (Write/Preview/Split).
+   * Keyed by documentId; each entry is the set of active card ranges.
+   * Not persisted.
+   */
+  proposedEditHighlights: Record<string, ProposedEditHighlight[]>;
 
   /**
    * Per-document inline comments, keyed by documentId. Each entry is a
@@ -187,6 +206,16 @@ export interface StoreState {
   setEditorFocus: (
     documentId: string,
     info: { focused: boolean; selectionStart: number; selectionEnd: number }
+  ) => void;
+
+  /**
+   * Upsert or clear one proposed-edit highlight for a document. Pass
+   * `range: null` to remove the card's entry.
+   */
+  setProposedEditHighlight: (
+    documentId: string,
+    cardKey: string,
+    range: { start: number; end: number } | null
   ) => void;
 
   // Comment actions. All operate on a single document and never mutate

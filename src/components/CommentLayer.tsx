@@ -23,18 +23,28 @@ import type { Comment } from '@/types';
  * parent can call `getSelectionRect(mirrorEl, start, end)` from
  * `src/utils/comments.ts` to position the floating composer.
  */
+interface ExtraHighlight {
+  start: number;
+  end: number;
+}
+
 interface Props {
   /** Full document text. */
   content: string;
   /** Comments to highlight. Sorted by `(start, end)` by the parent. */
   comments: Comment[];
+  /**
+   * Temporary proposed-edit Original spans. Rendered with
+   * `.cm-highlight--proposed` so they read distinctly from comments.
+   */
+  extraHighlights?: ExtraHighlight[];
   /** Optional className appended to `.cm-mirror`. */
   className?: string;
 }
 
 export const CommentLayer = memo(
   forwardRef<HTMLDivElement, Props>(function CommentLayer(
-    { content, comments, className },
+    { content, comments, extraHighlights, className },
     ref
   ) {
     // Pre-sort + merge so we can render the highlights in one pass.
@@ -43,8 +53,8 @@ export const CommentLayer = memo(
     // the CSS class via `rgba(..., 0.22)` background + transparent
     // text. (See `.cm-highlight` in `src/index.css`.)
     const segments = useMemo(
-      () => buildSegments(content, comments),
-      [content, comments]
+      () => buildSegments(content, comments, extraHighlights ?? []),
+      [content, comments, extraHighlights]
     );
 
     return (
@@ -64,6 +74,7 @@ export const CommentLayer = memo(
               key={i}
               className={[
                 'cm-highlight',
+                seg.proposed ? 'cm-highlight--proposed' : '',
                 seg.outdated ? 'cm-highlight--outdated' : '',
               ]
                 .filter(Boolean)
@@ -88,61 +99,76 @@ interface Segment {
   value: string;
   commentId?: string;
   outdated?: boolean;
+  proposed?: boolean;
 }
 
 /**
  * Slice `content` into alternating text / mark segments based on the
- * active comments. Sort comments by `(start, end)` first so document
- * order is preserved; overlapping ranges render as nested `<mark>`
- * spans (React + the browser handle this naturally — the inner mark
- * inherits the outer mark's class for stacked tints).
+ * active comments (+ optional proposed-edit ranges). Sort by
+ * `(start, end)` first so document order is preserved.
  *
- * Defensive against malformed offsets: any comment whose `(start, end)`
- * is out of bounds or inverted is dropped from the highlight but left
- * in the comments list so the popover can still surface it.
+ * Defensive against malformed offsets: any range whose `(start, end)`
+ * is out of bounds or inverted is dropped from the highlight.
  */
-function buildSegments(content: string, comments: Comment[]): Segment[] {
-  if (comments.length === 0) {
+function buildSegments(
+  content: string,
+  comments: Comment[],
+  extraHighlights: ExtraHighlight[]
+): Segment[] {
+  if (comments.length === 0 && extraHighlights.length === 0) {
     return [{ kind: 'text', value: content }];
   }
 
-  // Build an event timeline: at each boundary, a comment starts or ends.
-  type Event = { at: number; type: 'start' | 'end'; comment: Comment };
+  type Event = {
+    at: number;
+    type: 'start' | 'end';
+    id: string;
+    outdated?: boolean;
+    proposed?: boolean;
+  };
   const events: Event[] = [];
   for (const c of comments) {
     const start = Math.max(0, Math.min(c.start, content.length));
     const end = Math.max(start, Math.min(c.end, content.length));
     if (start === end) continue;
-    events.push({ at: start, type: 'start', comment: c });
-    events.push({ at: end, type: 'end', comment: c });
+    events.push({ at: start, type: 'start', id: c.id, outdated: c.outdated });
+    events.push({ at: end, type: 'end', id: c.id, outdated: c.outdated });
+  }
+  for (let i = 0; i < extraHighlights.length; i++) {
+    const h = extraHighlights[i];
+    const start = Math.max(0, Math.min(h.start, content.length));
+    const end = Math.max(start, Math.min(h.end, content.length));
+    if (start === end) continue;
+    const id = `pe-extra-${i}`;
+    events.push({ at: start, type: 'start', id, proposed: true });
+    events.push({ at: end, type: 'end', id, proposed: true });
   }
   events.sort((a, b) => a.at - b.at || (a.type === 'end' ? -1 : 1));
 
   const segments: Segment[] = [];
   let cursor = 0;
-  const openStack: Comment[] = [];
+  const openStack: Event[] = [];
   for (const ev of events) {
     if (ev.at > cursor) {
       segments.push({ kind: 'text', value: content.slice(cursor, ev.at) });
       cursor = ev.at;
     }
     if (ev.type === 'start') {
-      openStack.push(ev.comment);
+      openStack.push(ev);
     } else {
-      const idx = openStack.findIndex((c) => c.id === ev.comment.id);
+      const idx = openStack.findIndex((c) => c.id === ev.id);
       if (idx !== -1) openStack.splice(idx, 1);
     }
     if (openStack.length > 0) {
-      // Find the next event position (or end of content) to know how
-      // much text to consume for this mark segment.
       const nextAt =
         events.find((e) => e.at > ev.at)?.at ?? content.length;
       if (nextAt > cursor) {
         segments.push({
           kind: 'mark',
           value: content.slice(cursor, nextAt),
-          commentId: openStack[0]?.id,
-          outdated: openStack.some((c) => c.outdated),
+          commentId: openStack.find((o) => !o.proposed)?.id,
+          outdated: openStack.some((o) => o.outdated),
+          proposed: openStack.some((o) => o.proposed),
         });
         cursor = nextAt;
       }

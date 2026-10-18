@@ -401,6 +401,27 @@ html.dark .diff-remove {
   @apply px-3 py-2 border-b border-paper-hairline
     bg-paper-elevated flex items-center gap-2;
 }
+/* Highlighted matched passage in the split preview Original pane. */
+.proposed-edit-card .pe-original-highlight {
+  background: rgba(255, 230, 0, 0.35);
+  border-radius: 3px;
+  padding: 0 2px;
+}
+html.dark .proposed-edit-card .pe-original-highlight {
+  background: rgba(255, 200, 0, 0.2);
+}
+/* Wrapper approach: highlight the entire Original pane. */
+.proposed-edit-card .pe-original-highlight-wrapper {
+  background: rgba(255, 230, 0, 0.25);
+  border-left: 3px solid rgba(255, 200, 0, 0.7);
+  border-radius: 4px;
+  padding: 4px 6px;
+  margin: -4px -6px;
+}
+html.dark .proposed-edit-card .pe-original-highlight-wrapper {
+  background: rgba(255, 200, 0, 0.12);
+  border-left-color: rgba(255, 200, 0, 0.5);
+}
 .proposed-edit-card .pe-summary {
   @apply text-xs text-paper-ink flex-1 truncate;
 }
@@ -677,12 +698,30 @@ html.dark .cm-mirror {
   outline: 1px dashed rgba(232, 93, 59, 0.6);
   outline-offset: -1px;
 }
+/* Proposed-edit Original span — temporary yellow band in Write/Split. */
+.cm-highlight--proposed {
+  background: rgba(255, 213, 0, 0.38);
+}
 html.dark .cm-highlight {
   background: rgba(232, 93, 59, 0.18);
 }
 html.dark .cm-highlight--outdated {
   background: rgba(232, 93, 59, 0.28);
   outline-color: rgba(232, 93, 59, 0.8);
+}
+html.dark .cm-highlight--proposed {
+  background: rgba(255, 213, 0, 0.28);
+}
+
+/* Proposed-edit Original span in Preview / Split Preview (via rehype-raw). */
+.pe-doc-highlight {
+  background: rgba(255, 213, 0, 0.38);
+  border-radius: 2px;
+  color: inherit;
+  padding: 0 0.05em;
+}
+html.dark .pe-doc-highlight {
+  background: rgba(255, 213, 0, 0.28);
 }
 
 /* The textarea needs to sit *above* the mirror so its caret and

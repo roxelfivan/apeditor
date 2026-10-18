@@ -115,6 +115,9 @@ export function Editor() {
   const currentComments = useStore(
     (s) => (doc ? s.comments[doc.id] ?? [] : [])
   );
+  const proposedEditHighlights = useStore(
+    (s) => (doc ? s.proposedEditHighlights?.[doc.id] ?? [] : [])
+  );
   const addComment = useStore((s) => s.addComment);
   const updateCommentBody = useStore((s) => s.updateCommentBody);
   const deleteComment = useStore((s) => s.deleteComment);
@@ -461,8 +464,8 @@ export function Editor() {
   }, [inline, inlineEnabled]);
 
   // When the document changes (or the editor unmounts), report blur for
-  // the previous doc so cards don't think Force-apply is still enabled
-  // when the user has switched documents.
+  // the previous doc so cards don't think Highlight Apply is still
+  // enabled when the user has switched documents.
   useEffect(() => {
     const prevDocId = doc?.id;
     return () => {
@@ -987,6 +990,36 @@ export function Editor() {
     () => [...currentComments].sort((a, b) => a.start - b.start),
     [currentComments]
   );
+
+  // Proposed-edit Original spans → CommentLayer + Preview highlight.
+  const peExtraHighlights = useMemo(
+    () =>
+      proposedEditHighlights.map((h) => ({ start: h.start, end: h.end })),
+    [proposedEditHighlights]
+  );
+  const previewMarkdown = useMemo(() => {
+    const raw = doc?.content || '';
+    if (!raw || peExtraHighlights.length === 0) {
+      return raw || '*Nothing to preview yet.*';
+    }
+    // Inject HTML <mark> wrappers at source offsets. rehype-raw is
+    // already enabled, so Preview/Split render the temporary band.
+    // Process from the end so earlier offsets stay valid.
+    const sorted = [...peExtraHighlights].sort((a, b) => b.start - a.start);
+    let out = raw;
+    for (const h of sorted) {
+      const start = Math.max(0, Math.min(h.start, out.length));
+      const end = Math.max(start, Math.min(h.end, out.length));
+      if (start === end) continue;
+      out =
+        out.slice(0, start) +
+        '<mark class="pe-doc-highlight">' +
+        out.slice(start, end) +
+        '</mark>' +
+        out.slice(end);
+    }
+    return out || '*Nothing to preview yet.*';
+  }, [doc?.content, peExtraHighlights]);
 
   // Active comment object (or null) for the popover.
   const activeComment = useMemo(
@@ -1543,6 +1576,7 @@ export function Editor() {
                     ref={mirrorRef}
                     content={doc.content}
                     comments={sortedComments}
+                    extraHighlights={peExtraHighlights}
                   />
                 )}
                 <textarea
@@ -1926,7 +1960,7 @@ export function Editor() {
               remarkPlugins={remarkPlugins}
               rehypePlugins={rehypePlugins}
             >
-              {doc.content || '*Nothing to preview yet.*'}
+              {previewMarkdown}
             </ReactMarkdown>
           </div>
         )}
