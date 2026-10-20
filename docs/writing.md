@@ -1,8 +1,8 @@
 # Writing
 
-The center pane is your Markdown editor. You always edit plain Markdown; Preview and Split show how it will look.
+The center pane is your Markdown editor. You always edit plain Markdown; Preview and Split show how it will look. Graph maps the workspace from that Markdown.
 
-## Write, Preview, and Split
+## Write, Preview, Split, and Graph
 
 Use the dropdown on the left of the editor toolbar:
 
@@ -11,10 +11,23 @@ Use the dropdown on the left of the editor toolbar:
 | **Write** | Editable text. Placeholder: *Start writing in Markdown…* |
 | **Preview** | Rendered Markdown (headings, lists, links, tables, and so on) |
 | **Split** | Write on the left, Preview on the right. Drag the divider. |
+| **Graph** | A map of your documents, headings, `[[wikilinks]]`, and `@` mentions. Format, Comment, and Predict hide — there is no textarea. |
 
 An empty Preview shows *Nothing to preview yet.*
 
 You can comment only in **Write** or on the Write side of **Split**. Select text there, then use **Comment**.
+
+### Graph and `[[term]]`
+
+Graph compiles what is already in the workspace. It does not ask an AI to invent concepts.
+
+- Each sidebar document is a node. The open document is marked.
+- Each Markdown heading (`#` / Setext) is a node under its document.
+- Write `[[Name]]` (optional `[[Name|label]]` or `[[Name#Heading]]`) to add a wikilink, the same syntax as Obsidian / LLM wiki.
+- If `Name` matches another document title, Graph draws a line to that document (or heading). If it does not, Graph adds a **term** node. Click it to select that `[[…]]` span.
+- `@` mentions on comments also draw lines to the referenced document or heading.
+
+Hover a node to dim everything that is not a neighbor. Click a document to open it. Click a heading or term to open its document and select the passage. Graph does not create a new document when you click a term.
 
 ## Bold, italic, underline
 

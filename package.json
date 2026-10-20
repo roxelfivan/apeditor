@@ -13,7 +13,8 @@
     "sync:ocr-assets": "node scripts/sync-ocr-runtime-assets.mjs",
     "typecheck": "tsc -b --noEmit",
     "test:heading-sections": "node scripts/test-heading-sections.mjs",
-    "test:proposed-edit": "node scripts/test-proposed-edit.mjs"
+    "test:proposed-edit": "node scripts/test-proposed-edit.mjs",
+    "test:graph": "node scripts/test-graph.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.0.13",

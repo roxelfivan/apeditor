@@ -58,8 +58,8 @@ export interface StoreState {
   // Saved prompts (user library).
   prompts: Prompt[];
 
-  // Editor view mode: write (textarea) or preview (rendered markdown).
-  viewMode: 'write' | 'preview' | 'split';
+  // Editor view mode: write (textarea), preview, split, or graph.
+  viewMode: 'write' | 'preview' | 'split' | 'graph';
 
   // Editor font size in pixels (applies to both the textarea and the
   // prose preview). Step is 1px; range is [10, 24]. Persisted.
