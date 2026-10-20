@@ -12,25 +12,23 @@
 > See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.5.5](https://img.shields.io/badge/version-0.5.5-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.5)
+[![v0.5.6](https://img.shields.io/badge/version-0.5.6-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.6)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
 
 ---
 
-## What's new in v0.5.5
+## What's new in v0.5.6
 
-> Preview renders `[[wikilinks]]` as purple labels without brackets; Graph Reset re-lays out a tidier atom map; in-app **Functional Specification** for engineers; Graph-open + Chat typing no longer blanks the tab. Built on [v0.5.4](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.4).
+> Round-trips the v1 `DocumentBackup` shape introduced in v0.5.3: a backup produced by **Export .json** can now be re-imported with comments, chat history, and revisions intact, and the editor switches to the imported document. Patch on top of [v0.5.5](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.5); nothing else moved.
 
-1. **Preview / Split wikilinks.** `[[Name]]`, `[[Name|label]]`, and `[[Name#Heading]]` show as purple text (no `[[` `]]`). Write mode keeps the raw syntax. `@` mention sentinels are unchanged.
-2. **Functional Specification.** Top-bar **`{ }`** opens the developer guide from [`func_spec/`](./func_spec/README.md). Separate from Help. Esc closes either overlay.
-3. **Graph Reset** restores labels and zoom, then remounts a tidy atom layout. Layout polish reduces crossed wikilink chords through the nucleus.
-4. **Stability.** With Graph open, typing in Chat no longer hits React’s max update depth and blanks the tab.
+1. **Import full backup (JSON).** A new **Import .json** button (one popover section below the existing **Export .json**) restores a document plus its comments, chat history, and revisions from a backup file. The clean case (no id collisions) imports in one tap without any modal; colliding ids open a per-row modal with **Replace / Skip / Keep both** so imports never silently overwrite.
+2. **Bidirectional `DocumentBackup` v1.** `parseDocumentBackup` is the inverse of `serialiseDocumentBackup`. Round-tripping a populated backup produces a deep-equal document state, including comment rounds, mention tokens, and revisions. Backups produced by v0.5.3+ can be re-imported unchanged.
 
-Graph compile rules, JSON backup, and the proposed-edit Apply waterfall stay as they were in v0.5.4 / v0.5.3.
+The Preview wikilinks / Functional Specification / Graph Reset / blank-tab stability fixes from [v0.5.5](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.5), and the existing Export .json / Export .md / OCR Import flows, all stay as before.
 
-See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.5.5 entry and prior changelogs.
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.5.6 entry and prior changelogs.
 
 ---
 
@@ -57,7 +55,11 @@ See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.5.4 entry and prior change
 
 **Backup**
 
-1. **Export full backup (JSON).** A new **Export .json** button at the bottom of the file-actions popover (next to **Export .md**) downloads the current document plus its comments, chat history, and revisions as a single file. Filename matches the existing `${title}.md` pattern with a `.json` extension. The payload is versioned (`schema: 'apeditor-document-backup'`, `version: 1`) so a future re-importer can detect / upgrade older backups. Write-only in v0.5.3.
+1. **Export full backup (JSON).** A new **Export .json** button at the bottom of the file-actions popover (next to **Export .md**) downloads the current document plus its comments, chat history, and revisions as a single file. Filename matches the existing `${title}.md` pattern with a `.json` extension. The payload is versioned (`schema: 'apeditor-document-backup'`, `version: 1`).
+
+**Round-trip**
+
+2. **Restore from JSON backup.** A new **Import .json** button (one popover section below Export) restores a document plus its comments, chat history, and revisions from a backup file produced by **Export .json**. Picker accepts `application/json`; an inline error surfaces for size caps (`BACKUP_MAX_FILE_BYTES`), JSON parse failures, and version mismatches. The clean case (no id collisions) imports in one tap; colliding ids open a per-row modal with **Replace / Skip / Keep both** so imports never silently overwrite. Successful imports land the new doc at the top of the sidebar and the editor switches to it. Backups are now bidirectional at v1 — exporting and re-importing produces a deep-equal document state. Cover the inverse of item 1 in v0.5.3.
 
 **Clearer empty / gated states**
 
@@ -784,6 +786,7 @@ per-release notes also ship on the GitHub release pages.
 
 | Version | Highlights |
 | --- | --- |
+| [v0.5.6](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.6) | **Import full backup (JSON).** Round-trips the v1 `DocumentBackup` shipped in v0.5.3 — Export `.json` and Import `.json` are now a single round-trip. Per-row modal for id collisions; never overwrites silently. |
 | [v0.5.5](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.5) | **Preview wikilinks** (purple, no brackets); Graph Reset tidy layout; in-app **Functional Specification**; Graph+Chat blank-tab fix. |
 | [v0.5.4](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.4) | **Graph view.** Documents, headings, `[[wikilinks]]`, and `@` mentions as a local knowledge graph. Help **What's new** page. |
 | [v0.5.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.3) | **First user-visible release on top of v0.5.2's refactor.** Full JSON backup export; per-comment **Re-link** / **Dismiss**; gated-state copy polish; proposed-edit **Apply waterfall** (Exact → Best Effort → Highlight) with form-safer matching. |

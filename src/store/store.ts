@@ -20,6 +20,7 @@ import type {
 } from '@/types';
 import { applyThemeClass } from '@/utils/theme';
 import { reattachCommentToRange } from '@/utils/comments';
+import { buildKeepBothDocument } from '@/utils/backup';
 import {
   normalizeRationaleRulesOverride,
   normalizeSystemMessage,
@@ -102,6 +103,71 @@ export const useStore = create<StoreState>()(
           currentDocumentId: doc.id,
         }));
         return doc.id;
+      },
+
+      /**
+       * Apply one resolved ImportPlan to the store. The caller (the
+       * Import-backup popover in `FileActionsButton.tsx`) is
+       * responsible for computing ImportPlans — this action only
+       * performs the side-effect-free store mutation that each
+       * strategy requires.
+       *
+       *   - `'replace'` — overwrite `documents[id]` and replace the
+       *                  `comments[id]` / `chats[id]` / `revisions[id]`
+       *                  slices wholesale. `currentDocumentId` is left
+       *                  alone; the caller switches to the imported
+       *                  doc via `setCurrentDocument` after the loop.
+       *   - `'skip'`    — drop the payload silently; returns `null`.
+       *   - `'keep-both'` — land the imported doc + its slices under a
+       *                  freshly-minted id, with title suffixed
+       *                  `(imported)`. The doc lands at the top of the
+       *                  sidebar (same convention as `createDocument`).
+       *
+       * Returns the final id the document lives under, or `null`
+       * for `'skip'`. The caller uses this to call
+       * `setCurrentDocument`.
+       */
+      applyImportPlan: (plan) => {
+        if (plan.strategy === 'skip') return { importedId: null };
+        if (plan.strategy === 'keep-both') {
+          let resolvedId = '';
+          set((s) => {
+            const newDoc = buildKeepBothDocument({
+              newId: plan.resolvedId,
+              sourceTitle: plan.document.title,
+              sourceContent: plan.document.content,
+              sourceCreatedAt: plan.document.createdAt,
+              sourceUpdatedAt: plan.document.updatedAt,
+            });
+            resolvedId = newDoc.id;
+            return {
+              documents: [newDoc, ...s.documents],
+              comments: { ...s.comments, [newDoc.id]: plan.comments },
+              chats: { ...s.chats, [newDoc.id]: plan.chats },
+              revisions: { ...s.revisions, [newDoc.id]: plan.revisions },
+            };
+          });
+          return { importedId: resolvedId };
+        }
+        // 'replace' — overwrite in place. Wholesale replace keeps
+        // the sidebar position intact (matches the user's mental
+        // model: "the document I had is now this version") and
+        // simplifies undo should it ever be added.
+        set((s) => {
+          const existing = s.documents.find((d) => d.id === plan.resolvedId);
+          const nextDoc: DocumentRecord = existing
+            ? { ...plan.document, id: plan.resolvedId }
+            : plan.document;
+          return {
+            documents: existing
+              ? s.documents.map((d) => (d.id === plan.resolvedId ? nextDoc : d))
+              : [nextDoc, ...s.documents],
+            comments: { ...s.comments, [plan.resolvedId]: plan.comments },
+            chats: { ...s.chats, [plan.resolvedId]: plan.chats },
+            revisions: { ...s.revisions, [plan.resolvedId]: plan.revisions },
+          };
+        });
+        return { importedId: plan.resolvedId };
       },
       renameDocument: (id, title) =>
         set((s) => ({

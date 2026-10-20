@@ -238,12 +238,110 @@ export interface DocumentBackup {
 |---|---|
 | Serialisation | `serialiseDocumentBackup(backup)` → `JSON.stringify(backup, null, 2)` |
 | Unknown document | `buildDocumentBackup` returns `null` |
-| Write-only? | **Yes, in v0.5.3+.** There is no importer yet. The `version` field exists so a future importer can detect and upgrade older payloads. |
+| Round-trip? | **Yes.** `parseDocumentBackup` is the inverse: a v1 payload produced today can be re-imported losslessly. See §5. |
 | Button | `data-backup-toggle`, labelled **Export .json** |
 
 > **Treat backup files as sensitive.** They contain document content, comments, and chat history. See [Testing & security](14-testing-and-security.md#7-threat-model).
 
-## 5. The OCR-vs-key gate
+## 5. Import
+
+The backup round-trip counterpart to §4.2 — a v1 `DocumentBackup` produced by `serialiseDocumentBackup` can be parsed and merged into the live store through a new "Import full backup (JSON)" section in the same `FileActionsButton` popover. The popover catalogue is now:
+
+1. **Import photos / PDFs** — recognition plus Markdown rewrite.
+2. **Export this document** — `.md`.
+3. **Import full backup (JSON)** — restore a `.json` file.
+4. **Export full backup (JSON)** — `.json`.
+
+### 5.1 Detection + limits
+
+| Constant | Value | Scope |
+|---|---:|---|
+| `BACKUP_MAX_FILE_BYTES` | `50 * 1024 * 1024` | One file |
+
+Validating the file size before `File.text()` avoids materialising a multi-MB string in memory just to reject it.
+
+### 5.2 The pipeline
+
+```
+hidden <input type="file" accept="application/json,.json">
+  → onChange handler in FileActionsButton.onBackupFile:
+      1. Check file.size against BACKUP_MAX_FILE_BYTES. Over-cap →
+         "<name> is <size> MB — limit is 50 MB. Compress it or split it
+          before re-importing." (popover stays open).
+      2. Read text with File.text(). Read failure → inline error.
+      3. parseDocumentBackup(text) — throws BackupParseError on any
+         structural problem (see §5.3).
+      4. resolveImportDecisions({ parsed, documents }) — produces an
+         ImportDecision[] of length 1 (v1 backups are single-doc).
+      5. Branch:
+           default-only path (no collision OR explicit choice matches
+           auto-default): apply via the store and close the popover.
+           otherwise: open the collision-resolution modal (§5.5).
+```
+
+### 5.3 Parsing and validation
+
+[`parseDocumentBackup(raw)`](../src/utils/backup.ts) walks every slice and rejects any of:
+
+| Condition | Error message |
+|---|---|
+| `JSON.parse` throws | `Could not parse the file as JSON: <browser message>` |
+| Root is not an object | `Backup root is not an object` |
+| `schema !== 'apeditor-document-backup'` | `This file is not an ApEditor backup (expected schema "apeditor-document-backup", got "<…>").` |
+| `version !== BACKUP_VERSION` | `Unsupported backup version <n>. This build only imports version <v>.` |
+| Any required string field missing or wrong type | `Backup is missing or has an invalid string field: <key>` |
+| Any required number field missing or non-finite | `Backup is missing or has an invalid number field: <key>` |
+| Any required boolean field missing or wrong type | `Backup is missing or has an invalid boolean field: <key>` |
+| Identity-bearing string field (`id`, `documentId`) empty | `Backup is missing or has an invalid non-empty string field: <key>` |
+| A comment belongs to a different `documentId` than the parent document | `Backup is inconsistent: comment <id> belongs to document "<…>", not "<…>".` |
+| A revision belongs to a different `documentId` than the parent document | `Backup is inconsistent: revision <id> belongs to document "<…>", not "<…>".` |
+| A comment's top-level `(start, end)` does not mirror its latest round | `Backup is inconsistent: comment <id> top-level range (<s>, <e>) does not mirror its latest round (<s'>, <e'>).` |
+
+Identity-bearing fields (`id`, `documentId`, `kind`) reject the empty string because a missing/empty value would silently mis-link a record; `body`, `snippet`, `content`, `label`, `title` accept the empty string (a brand-new doc from `makeDoc` legitimately has empty content).
+
+### 5.4 Round-trip contract
+
+`buildDocumentBackup → serialiseDocumentBackup → parseDocumentBackup` produces a `ParsedDocumentBackup` whose `document` / `comments` / `chats` / `revisions` are deep-equal to the live state at export time (modulo the renumbered-rounds / migrated-shape work the comment restore-path may add via `reattachCommentToRange`). `npm run test:backup-roundtrip` covers:
+
+- Round-trip of a populated backup with comments / chats / revisions
+- Empty-slice round-trip (`[]` not `undefined`)
+- `buildDocumentBackup` returns `null` for unknown `documentId`
+- Every error path in §5.3
+- `resolveImportDecisions` per-strategy behaviour
+- `buildKeepBothDocument` title sanitisation + 80-char cap
+
+### 5.5 Collision resolution
+
+`resolveImportDecisions({ parsed, documents })` produces a single `ImportDecision` per `DocumentBackup` (length 1; future `WorkspaceBackup` slices will grow this) with three legal strategies:
+
+| Strategy | Effect |
+|---|---|
+| `replace` | Overwrite `documents[id]` in place; replace the `comments[id]`, `chats[id]`, `revisions[id]` slices wholesale. Default when the file's id collides with an existing local doc. |
+| `skip` | Drop the import payload silently; return `null`. The doc never lands. |
+| `keep-both` | Mint a fresh uuid, copy the `document` under it with title `${title} (imported)` (after `sanitizeFilename`, reserving 11 chars for the suffix so the marker is always visible), and store the comment / chat / revision slices under the new id. Default when the file's id does not collide. |
+
+The collision-resolution modal lists every importable row with a `Select`:
+
+- Header: `Import backup`
+- Description: `One document in this backup. Choose what to do with it:`
+- Per-row body: title, collision note (`A document with this id already exists locally.` vs. `New id; will land under a fresh id with (imported) in the title.`), and the dropdown
+- Footer: `Cancel` / `Apply` (Apply is disabled iff every row is `Skip`)
+
+The popover stays open while the modal is shown — clicking outside closes the popover but never the modal, and the modal's only exits are Cancel / Apply. Apply resolves via `resolveImportDecisions({ userChoices })` so any untouched rows keep their auto-default, then runs each plan through the store's `applyImportPlan` action and switches to the first successfully-imported doc.
+
+### 5.6 The store action
+
+`StoreState.applyImportPlan(plan: ImportPlan): { importedId: string | null }` is the only writer. It lives next to the document actions in [`store.ts`](../src/store/store.ts):
+
+| Strategy | Mutation |
+|---|---|
+| `replace` | `documents[id] ← plan.document`; `comments[id]`, `chats[id]`, `revisions[id]` replaced wholesale. If `id` is new (no prior local doc), the new doc lands at the top of `documents[]`. |
+| `skip` | No-op; returns `{ importedId: null }`. |
+| `keep-both` | New uuid via `buildKeepBothDocument({ newId, sourceTitle, sourceContent, sourceCreatedAt, sourceUpdatedAt })`. Prepends to `documents[]` so the new doc lands at the top, the same convention `createDocument` uses. `comments[newId]`, `chats[newId]`, `revisions[newId]` are written. |
+
+The store does NOT auto-switch to the imported document — `FileActionsButton.onImportApply` calls `setCurrentDocument(firstImportedId)` after the loop so the editor moves over to the imported doc.
+
+## 6. The OCR-vs-key gate
 
 The import popover shows a contextual paragraph under the language checker so the user always knows which path they are on.
 
@@ -257,7 +355,7 @@ The import popover shows a contextual paragraph under the language checker so th
 
 The import action itself is gated: without a key it raises `'Open Settings and add an API key so imported text can be formatted as Markdown.'`
 
-## 6. Invariants and gotchas
+## 7. Invariants and gotchas
 
 | # | Invariant |
 |---|---|
@@ -265,14 +363,16 @@ The import action itself is gated: without a key it raises `'Open Settings and a
 | 2 | `backend: 'wasm'` and the `ort.wasm.min.mjs` alias keep the WebGPU variants out. Changing either reintroduces ~69 MB. |
 | 3 | Every cleanup step in §2.7 must stay in its `finally` block. |
 | 4 | PaddleOCR is a module-level singleton — do not instantiate per call. |
-| 5 | The Markdown rewrite is the only part of import that needs a key. Do not gate the whole flow on it. |
+| 5 | The Markdown rewrite is the only part of OCR import that needs a key. Do not gate the whole flow on it. |
 | 6 | `mvp:insert-text` inserts **at the caret**, and the caret is restored past the inserted text. |
-| 7 | The file input is reset to `''` in a `finally` so the same files can be re-picked. |
+| 7 | The file input is reset to `''` in a `finally` (both the OCR input and the backup input) so the same files can be re-picked. |
 | 8 | `sync-ocr-runtime-assets.mjs` must keep its prune step. It runs on every install and every build. |
 | 9 | `sanitizeFilename` caps at 80 characters and adds no timestamp. |
-| 10 | Backups are **write-only**. Do not remove the `version` field; a future importer depends on it. |
+| 10 | `DocumentBackup` v1 is **bidirectional**. The `version` field must remain a single source of truth; future versions bump it and refuse any non-matching payload. |
+| 11 | Backup imports **never silently overwrite**. Every collision is resolved through the per-row modal before any `applyImportPlan` runs. |
+| 12 | `buildKeepBothDocument` reserves 11 chars for the `(imported)` suffix so the marker is always visible regardless of source title length. |
 
-## 7. Next
+## 8. Next
 
 - The rewrite's transport → [AI chat & prompts](07-ai-chat.md)
 - Build and asset configuration → [Build & configuration](13-build-and-config.md)

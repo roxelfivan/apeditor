@@ -151,6 +151,7 @@ Full changelogs are in [`RELEASE_NOTES.md`](../RELEASE_NOTES.md). The shape of t
 
 | Version | What changed |
 |---|---|
+| v0.5.6 | **Import full backup (JSON).** Round-trips the v1 `DocumentBackup` shipped in v0.5.3: backups can be re-imported with comments, chat history, and revisions intact. Per-row modal for id collisions; never overwrites silently. |
 | v0.5.5 | **Preview wikilinks** without brackets (purple); Graph Reset tidy atom layout; in-app **Functional Specification**; Graph+Chat blank-tab fix. |
 | v0.5.4 | **Graph view.** Documents, headings, `[[wikilinks]]`, and `@` mentions compiled into a local knowledge graph. Drag nodes, zoom the map. |
 | v0.5.3 | JSON backup export; per-comment Re-link / Dismiss; gated-state copy; the Apply waterfall (Exact → Best Effort → Highlight). |

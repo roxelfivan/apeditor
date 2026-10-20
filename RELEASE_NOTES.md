@@ -1,3 +1,34 @@
+## v0.5.6 — Round-trip JSON backups
+
+Patch release on top of [v0.5.5](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.5). Round-trips the v1 `DocumentBackup` shape introduced in v0.5.3: a backup produced today can be re-imported with comments, chat history, and revisions intact.
+
+### Added
+
+- **Import full backup (JSON).** A new **Import .json** button (one popover section below the existing **Export .json**) restores a document plus its comments, chat history, and revisions from a backup file. The hidden file picker accepts `application/json`; inline errors surface for the size cap (`BACKUP_MAX_FILE_BYTES = 50 MB`), JSON parse failures, missing `schema`, and version mismatches. The clean case (no id collisions) imports in one tap without any modal; colliding ids open a per-row modal with **Replace / Skip / Keep both** so imports never silently overwrite. Successful imports land the new doc at the top of the sidebar and the editor switches to it.
+- **Bidirectional `DocumentBackup` v1.** `parseDocumentBackup` is the inverse of `serialiseDocumentBackup` — exporting and re-importing produces a deep-equal document state, including comment rounds, mention tokens, and revisions. The shape is unchanged so existing backup files stay importable.
+
+### Internal
+
+- `src/utils/backup.ts` — `parseDocumentBackup`, `resolveImportDecisions`, `buildKeepBothDocument`, `BackupParseError`, `BACKUP_MAX_FILE_BYTES`. Id collisions, malformed records, and version mismatches each throw a `BackupParseError` with a user-facing message; id collisions with the live store are intentionally NOT errors (the modal resolves them).
+- `src/store/store.ts` + `src/store/types.ts` — `applyImportPlan(plan: ImportPlan)` is the single writer; the UI computes plans via `resolveImportDecisions` and feeds them in.
+- `src/components/FileActionsButton.tsx` — fourth popover section + collision-resolution modal. Outside-click is skipped while the modal is open so the popover's anchor stays in place.
+- `scripts/test-backup-roundtrip.mjs` — 19 esbuild + `node:assert/strict` cases. Wired as `npm run test:backup-roundtrip`.
+- `package.json` — `test:backup-roundtrip` script.
+- `func_spec/11-import-ocr-backup.md` — §5 Import added; invariants §7 items 10–12 rewritten for the bidirectional path.
+- `SECURITY.md` — threat-model entry updated for bidirectional v1 + Ask-only overwrite.
+- `package.json` version bumped to `0.5.6`.
+
+### Verification
+
+- `npm run test:backup-roundtrip` — 19 cases cover round-trip, every error path, collision strategy defaults, and `buildKeepBothDocument` sanitisation.
+- `npm run test:heading-sections` — clean.
+- `npm run test:proposed-edit` — clean.
+- `npm run test:graph` — clean.
+- `npm run typecheck` — clean.
+- `npm run build` — clean.
+
+---
+
 ## v0.5.5 — Preview wikilinks, Graph polish, Functional Specification
 
 User-visible release on top of [v0.5.4](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.4). Preview / Split render `[[wikilinks]]` as purple labels without brackets; Graph Reset re-lays out a tidier atom map; an in-app **Functional Specification** ships beside Help; and Graph-open + Chat typing no longer blanks the tab.

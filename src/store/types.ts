@@ -167,6 +167,19 @@ export interface StoreState {
   setCurrentDocument: (id: string | null) => void;
   updateDocumentContent: (id: string, content: string) => void;
 
+  /**
+   * Apply one resolved ImportPlan to the store. Built alongside the
+   * Import-backup feature in `FileActionsButton.tsx`; the UI computes
+   * plans via `resolveImportDecisions` and feeds them in, one at a
+   * time. `strategy` is the per-document user choice; see
+   * `src/utils/backup.ts` for the three options and their semantics.
+   *
+   * Returns the **final** id the document lives under, or `null`
+   * when the plan was `'skip'`. The caller uses this to call
+   * `setCurrentDocument` for auto-selection.
+   */
+  applyImportPlan: (plan: ImportPlan) => { importedId: string | null };
+
   saveRevision: (documentId: string, label?: string) => void;
   deleteRevision: (documentId: string, revisionId: string) => void;
   restoreRevision: (documentId: string, revisionId: string) => void;
@@ -290,6 +303,30 @@ export interface StoreState {
   ) => boolean;
   replaceCommentsForDocument: (documentId: string, comments: Comment[]) => void;
   undoLastCommentOp: () => CommentOp | null;
+}
+
+/**
+ * One resolved ImportPlan produced by `resolveImportDecisions` in
+ * `src/utils/backup.ts`. Re-exported so the store and the UI can
+ * share a single type for the per-document import payload.
+ *
+ * The store action `applyImportPlan` performs the mutation under
+ * `strategy`. The UI never writes ImportPlan-shaped objects to the
+ * store directly — it always goes through this action so the
+ * keep-both rename / id-reuse rules stay in one place.
+ */
+export interface ImportPlan {
+  document: DocumentRecord;
+  comments: Comment[];
+  chats: ChatMessage[];
+  revisions: Revision[];
+  /**
+   * Final id the document will live under once the plan lands.
+   * Equals the file's id for `'replace'` and `'skip'`, or a
+   * freshly-minted uuid for `'keep-both'`.
+   */
+  resolvedId: string;
+  strategy: 'replace' | 'skip' | 'keep-both';
 }
 
 // Re-export the rationale type so callers can import it from the store.

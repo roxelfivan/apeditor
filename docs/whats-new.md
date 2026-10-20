@@ -2,6 +2,21 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## v0.5.6 — Round-trip JSON backups
+
+**Import full backup (JSON)** ships. A new **Import .json** button sits one popover section below the existing **Export .json** and restores a document plus its comments, chat history, and revisions from a backup file.
+
+- **Clean case (no id collisions).** Pick a `.json` file, see the editor switch to the imported document. No modal.
+- **Id collisions.** A small **Import backup** modal opens. Per row, choose **Replace** (overwrite in place), **Skip** (drop the import), or **Keep both** (copy under a fresh id with `(imported)` in the title). **Apply** runs the plan and switches to the first imported doc; **Cancel** dismisses with nothing changed.
+- **Inline errors stay in the popover.** Over-cap file size (`50 MB`), malformed JSON, missing `schema`, version mismatches, and inconsistent records all surface as a single red line — close the popover to dismiss, no modal storm.
+- **No network.** Everything parses and writes locally; restoring a backup never calls the model.
+
+`DocumentBackup` v1 — the JSON shape produced by **Export .json** since v0.5.3 — is now bidirectional: exporting and re-importing produces a deep-equal document state, comment rounds and revisions included.
+
+Backups produced by v0.5.3 / v0.5.4 / v0.5.5 can be re-imported unchanged; the schema is the same.
+
+---
+
 ## v0.5.5 — Preview wikilinks, Graph polish, Functional Specification
 
 **Preview and Split** now show `[[wikilinks]]` as normal purple text — no `[[` or `]]`.
