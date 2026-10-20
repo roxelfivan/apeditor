@@ -12,10 +12,25 @@
 > See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.5.4](https://img.shields.io/badge/version-0.5.4-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.4)
+[![v0.5.5](https://img.shields.io/badge/version-0.5.5-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.5)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-**Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode).
+**Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
+
+---
+
+## What's new in v0.5.5
+
+> Preview renders `[[wikilinks]]` as purple labels without brackets; Graph Reset re-lays out a tidier atom map; in-app **Functional Specification** for engineers; Graph-open + Chat typing no longer blanks the tab. Built on [v0.5.4](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.4).
+
+1. **Preview / Split wikilinks.** `[[Name]]`, `[[Name|label]]`, and `[[Name#Heading]]` show as purple text (no `[[` `]]`). Write mode keeps the raw syntax. `@` mention sentinels are unchanged.
+2. **Functional Specification.** Top-bar **`{ }`** opens the developer guide from [`func_spec/`](./func_spec/README.md). Separate from Help. Esc closes either overlay.
+3. **Graph Reset** restores labels and zoom, then remounts a tidy atom layout. Layout polish reduces crossed wikilink chords through the nucleus.
+4. **Stability.** With Graph open, typing in Chat no longer hits React’s max update depth and blanks the tab.
+
+Graph compile rules, JSON backup, and the proposed-edit Apply waterfall stay as they were in v0.5.4 / v0.5.3.
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.5.5 entry and prior changelogs.
 
 ---
 
@@ -757,7 +772,8 @@ residual risks.
 | `npm run build` | Type-check and build for production (`dist/`). |
 | `npm run preview` | Serve the production build locally. |
 | `npm run typecheck` | Type-check only (no emit). |
-| `npm run test:graph` | Wikilink parse + workspace graph fixtures. |
+| `npm run test:graph` | Wikilink parse + workspace graph fixtures (incl. Preview formatting). |
+| `npm run check:docs` | Functional Specification internal link checker. |
 
 ---
 
@@ -768,6 +784,7 @@ per-release notes also ship on the GitHub release pages.
 
 | Version | Highlights |
 | --- | --- |
+| [v0.5.5](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.5) | **Preview wikilinks** (purple, no brackets); Graph Reset tidy layout; in-app **Functional Specification**; Graph+Chat blank-tab fix. |
 | [v0.5.4](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.4) | **Graph view.** Documents, headings, `[[wikilinks]]`, and `@` mentions as a local knowledge graph. Help **What's new** page. |
 | [v0.5.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.3) | **First user-visible release on top of v0.5.2's refactor.** Full JSON backup export; per-comment **Re-link** / **Dismiss**; gated-state copy polish; proposed-edit **Apply waterfall** (Exact → Best Effort → Highlight) with form-safer matching. |
 | [v0.5.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.2) | **Internal / sustainability.** Removed four hardcoded debug POSTs from the chat pipeline (production-leak fix). Split the 1,485-line `useStore` into 5 single-responsibility files. Moved the `@`-mention parser to `utils/`. No UI or store-schema changes; no migration. |

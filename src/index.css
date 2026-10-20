@@ -724,6 +724,15 @@ html.dark .pe-doc-highlight {
   background: rgba(255, 213, 0, 0.28);
 }
 
+/* Wikilinks in Preview / Split: show label only (no [[ ]]), purple. */
+.wiki-link {
+  color: #6b4fbb;
+  font-weight: 500;
+}
+html.dark .wiki-link {
+  color: #c4b5fd;
+}
+
 /* The textarea needs to sit *above* the mirror so its caret and
    selection rectangles paint over the highlight. */
 .comment-textarea {

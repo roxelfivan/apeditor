@@ -18,13 +18,25 @@ export interface LaidOutNode extends GraphNode {
 const CX = 0;
 const CY = 0;
 const MIN_NODE_GAP = 20;
+/** Gap between the nucleus extent and a *linked* satellite cluster. */
 const CLUSTER_GAP = 340;
+/**
+ * Unlinked satellites (e.g. Ideas with no [[wikilink]] into Welcome) used
+ * to sit a full CLUSTER_GAP away, ballooning the viewBox so the nucleus
+ * ring shrank on screen and labels stacked. Park orphans just outside
+ * the nucleus ring edge instead.
+ */
+const ORPHAN_CLUSTER_GAP = 120;
 const RELAX_ITERS = 80;
-const CHILD_SEP = 240;
-const LABEL_HALO = 110;
+/** Chord length between sibling heading centers — sized for wrapped labels. */
+const CHILD_SEP = 420;
+/** Approx half-width/height of a wrapped GraphView label (world units). */
+const LABEL_HALO = 180;
 /** Unary page title (Welcome's H1) sits just outside the nucleus. */
-const NUCLEUS_RING = 88;
-const SHELL_GAP = 280;
+const NUCLEUS_RING = 120;
+const SHELL_GAP = 380;
+/** Gap between the outer heading shell and the [[term]] ring after relax. */
+const TERM_RING_GAP = 160;
 
 export function nodeRadius(kind: GraphNode['kind'], isHub: boolean): number {
   if (kind === 'document') return 36;
@@ -415,15 +427,71 @@ export function layoutWorkspaceGraph(
     }
     const scratch = { x: 0, y: 0 };
     const local = new Map<string, { x: number; y: number }>();
-    seedAtom(doc.id, scratch, edges, nodeIds, local, Math.max(160, CHILD_SEP * 0.85));
+    const linked = incoming.length > 0;
+    seedAtom(
+      doc.id,
+      scratch,
+      edges,
+      nodeIds,
+      local,
+      linked ? Math.max(160, CHILD_SEP * 0.85) : 100
+    );
+    if (!linked) {
+      // Lone title pages otherwise inherit a full SHELL_GAP radius and
+      // park so far out that the nucleus ring shrinks on screen.
+      let maxD = 1;
+      for (const [id, p] of local) {
+        if (id === doc.id) continue;
+        maxD = Math.max(maxD, Math.hypot(p.x, p.y));
+      }
+      const target = 160;
+      if (maxD > target) {
+        const s = target / maxD;
+        for (const [id, p] of local) {
+          if (id === doc.id) continue;
+          p.x *= s;
+          p.y *= s;
+        }
+      }
+    }
     const extent = clusterExtent(scratch, [...local.keys()], local);
-    const θ = incoming.length
+    const θ = linked
       ? circularMean(incoming)
       : largestGapAngle(placedAngles());
-    const dist = currentExtent + extent + CLUSTER_GAP;
+    let dist: number;
+    if (linked) {
+      dist = currentExtent + extent + CLUSTER_GAP;
+    } else {
+      // Hub sits just past the farthest nucleus member so orphans stay
+      // inside the fitted view instead of dominating it.
+      let ringEdge = NUCLEUS_RING;
+      if (current) {
+        for (const id of membersOf(current.documentId ?? '')) {
+          const p = pos.get(id);
+          if (!p) continue;
+          ringEdge = Math.max(
+            ringEdge,
+            Math.hypot(p.x - origin.x, p.y - origin.y)
+          );
+        }
+      }
+      dist = ringEdge + ORPHAN_CLUSTER_GAP;
+    }
     const hub = placeOnRay(origin, θ, dist);
     for (const [id, p] of local) {
-      pos.set(id, { x: hub.x + p.x, y: hub.y + p.y });
+      if (id === doc.id) {
+        pos.set(id, { x: hub.x, y: hub.y });
+        continue;
+      }
+      if (!linked) {
+        // Keep orphan children outside the hub (same ray). A default
+        // seedAtom angle can park them inward onto the nucleus ring,
+        // and relaxation then shoves nearby headings outward.
+        const radial = Math.hypot(p.x, p.y);
+        pos.set(id, placeOnRay(origin, θ, dist + Math.max(radial, 160)));
+      } else {
+        pos.set(id, { x: hub.x + p.x, y: hub.y + p.y });
+      }
     }
   });
 
@@ -480,11 +548,48 @@ export function layoutWorkspaceGraph(
     return nodeRadius(n.kind, (childCount.get(id) ?? 0) > 0) + LABEL_HALO;
   };
 
+  // Pin the nucleus and every satellite-document member. Global
+  // ray-separation is relative to the Welcome origin; without this,
+  // Ideas' own hub+heading (same ray, ~88px apart) get shoved thousands
+  // of units apart, the viewBox balloons, and the nucleus ring shrinks
+  // on screen until labels stack. Satellites already have local spacing
+  // from seedAtom.
   const pinned = new Set<string>();
   if (current) pinned.add(current.id);
+  for (const doc of others) {
+    for (const id of membersOf(doc.documentId ?? '')) pinned.add(id);
+  }
   const ids = nodes.map((n) => n.id);
   for (let iter = 0; iter < RELAX_ITERS; iter++) {
     separateAlongRays(ids, pos, origin, occupyOf, pinned);
+  }
+
+  // Re-park [[term]] satellites AFTER relaxation, staying on each
+  // term's neighbor ray so wikilink chords do not cross the nucleus.
+  let headingMaxR = NUCLEUS_RING;
+  if (current) {
+    for (const id of membersOf(current.documentId ?? '')) {
+      const n = byId.get(id);
+      if (!n || n.kind === 'term') continue;
+      const p = pos.get(id);
+      if (!p) continue;
+      headingMaxR = Math.max(
+        headingMaxR,
+        Math.hypot(p.x - origin.x, p.y - origin.y)
+      );
+    }
+  }
+  const termFloor = headingMaxR + TERM_RING_GAP;
+  const rayBuckets = new Map<string, number>();
+  for (const t of terms) {
+    const raw = neighborAngles(t.id, edges, pos, origin);
+    let a = raw.length ? circularMean(raw) : Math.PI / 6;
+    // Tiny nudge only when two terms share nearly the same ray.
+    const key = (Math.round(a * 20) / 20).toFixed(2);
+    const stack = rayBuckets.get(key) ?? 0;
+    rayBuckets.set(key, stack + 1);
+    if (stack > 0) a += stack * 0.08;
+    pos.set(t.id, placeOnRay(origin, a, termFloor + stack * 48));
   }
 
   const hubOf = (n: GraphNode) => {

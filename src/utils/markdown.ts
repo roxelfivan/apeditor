@@ -11,7 +11,13 @@ import type { PluggableList } from 'unified';
 
 const sanitizeSchema: SanitizeOptions = {
   ...defaultSchema,
-  tagNames: [...(defaultSchema.tagNames ?? []), 'u'],
+  tagNames: [...(defaultSchema.tagNames ?? []), 'u', 'span'],
+  attributes: {
+    ...defaultSchema.attributes,
+    // Preview injects `<span class="wiki-link">` and `<mark class="pe-doc-highlight">`.
+    span: [...(defaultSchema.attributes?.span ?? []), 'className'],
+    mark: [...(defaultSchema.attributes?.mark ?? []), 'className'],
+  },
 };
 
 export const remarkPlugins: PluggableList = [remarkGfm];

@@ -1,3 +1,48 @@
+## v0.5.5 — Preview wikilinks, Graph polish, Functional Specification
+
+User-visible release on top of [v0.5.4](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.4). Preview / Split render `[[wikilinks]]` as purple labels without brackets; Graph Reset re-lays out a tidier atom map; an in-app **Functional Specification** ships beside Help; and Graph-open + Chat typing no longer blanks the tab.
+
+### Added
+
+- **Preview / Split wikilink display.** `formatWikilinksForPreview` turns `[[Name]]`, `[[Name|label]]`, and `[[Name#Heading]]` into `<span class="wiki-link">…</span>` (alias → heading → target). Write mode keeps the raw `[[…]]` syntax. Mention sentinels (`[[mention:…]]`) are skipped.
+- **Functional Specification overlay.** Top-bar **`{ }`** and `⌘/Ctrl+Shift+E` open `FuncSpecDocs` over `func_spec/*.md` (catalog in `src/docs/funcSpecCatalog.ts`). Esc closes Help or the Functional Specification.
+- **`npm run check:docs`.** `scripts/check-func-spec-links.mjs` verifies Functional Specification internal links.
+
+### Changed
+
+- **Graph Reset** remounts via `graphEpoch` and re-runs the atom layout (title: tidy atom layout).
+- **Graph layout** — compact orphan parking and post-relax term re-park on neighbor rays so leftover wikilink chords cross the nucleus less often.
+
+### Fixed
+
+- **Maximum update depth / blank tab** when Graph is open and the user types in Chat — `GraphView` viewport `setVp` and `MentionInput` chip/position maps bail out when measurements are unchanged.
+
+### Behaviour that did NOT change
+
+- Chat prompts, proposed-edit JSON schema, Apply waterfall, JSON backup, OCR, session-only API key.
+- Graph compile rules. `@` mention sentinels are still not treated as wikilinks.
+
+### Internal
+
+- `src/utils/graph/parseWikilinks.ts` — capture alias; `wikilinkDisplayLabel` / `formatWikilinksForPreview`.
+- `src/utils/markdown.ts` — sanitize allows `span` + `className` (and `mark` + `className`) for Preview injects.
+- `src/components/Editor.tsx` — Preview pipeline: PE `<mark>` inject, then wikilink spans.
+- `src/index.css` — `.wiki-link` purple (light / dark).
+- `src/components/FuncSpecDocs.tsx`, `src/docs/funcSpecCatalog.ts`, `func_spec/` — developer guide.
+- `src/App.tsx` — `{ }` button, hotkey, `mvp:open-func-spec`.
+- `src/components/GraphView.tsx` / `MentionInput.tsx` — equality bailouts.
+- `src/utils/graph/layoutWorkspaceGraph.ts` — layout polish.
+- `package.json` version bumped to `0.5.5`.
+
+### Verification
+
+- `npm run test:graph` — clean (15 cases).
+- `npm run typecheck` — clean.
+- `npm run build` — clean.
+- Manual: Write `[[Ideas]]` → Preview shows purple **Ideas** without brackets; Graph Reset tidy; open Graph + type in Chat without blanking; open **`{ }`** Functional Specification.
+
+---
+
 ## v0.5.4 — Graph view with `[[wikilink]]` term nodes
 
 User-visible release on top of [v0.5.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.3). Adds a fourth editor view that compiles the workspace into a local knowledge graph. No LLM call, no new npm dependencies, no store-schema migration, and no change to chat / proposed-edit contracts.

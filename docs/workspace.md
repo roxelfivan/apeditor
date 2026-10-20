@@ -9,12 +9,13 @@ The top bar shows the ApEditor logo, version, and the title of the open document
 | Control | What it does |
 | --- | --- |
 | **?** | Opens this [user guide](README.md) as in-app Help (same Light / Dark theme). The sidebar includes [What's new](whats-new.md). |
+| **{ }** | Opens the **Functional Specification** — a developer guide to the codebase, with architecture, contracts, and maintenance notes. Groups pages into Parts. Not part of this user guide. |
 | Clock | Opens [Revision history](revisions.md) |
 | Bookmark | Opens the [Prompt library](prompt-library.md) |
 | **☀ Light** / **☾ Dark** | Toggles theme (also restyles Help) |
 | Gear | Opens [Settings](settings.md) |
 
-Press `Ctrl+/` / `⌘/` (or `Ctrl+Shift+/` / `⌘Shift+/` for `?` on some keyboards) when you are not typing in a field to open Help. Press **Esc** to close it.
+Press `Ctrl+/` / `⌘/` (or `Ctrl+Shift+/` / `⌘Shift+/` for `?` on some keyboards) when you are not typing in a field to open Help. Press `Ctrl+Shift+E` / `⌘Shift+E` to open the Functional Specification. Press **Esc** to close either.
 
 If you have not saved an API key for Minimax or OpenAI, the gear shows a small amber reminder.
 

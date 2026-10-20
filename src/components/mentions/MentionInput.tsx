@@ -152,6 +152,27 @@ function positionMapEqual(
   return true;
 }
 
+function chipRectsEqual(
+  a: Map<string, { left: number; top: number; width: number; height: number }>,
+  b: Map<string, { left: number; top: number; width: number; height: number }>
+): boolean {
+  if (a === b) return true;
+  if (a.size !== b.size) return false;
+  for (const [id, p] of a) {
+    const q = b.get(id);
+    if (
+      !q ||
+      q.left !== p.left ||
+      q.top !== p.top ||
+      q.width !== p.width ||
+      q.height !== p.height
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function hydrateDisplayCaptions(
   plain: string,
   mentions: MentionToken[],
@@ -300,6 +321,7 @@ export function MentionInput({
       // range shifts by the net delta (insertion length minus
       // deletion length) when the diff starts before the range.
       setPositions((prev) => {
+        if (prev.size === 0) return prev;
         const next = new Map<string, MentionPosition>();
         for (const [id, p] of prev.entries()) {
           const zwspAt = p.plainEnd - 1;
@@ -330,17 +352,19 @@ export function MentionInput({
             next.set(id, p);
           }
         }
-        return next;
+        return positionMapEqual(prev, next) ? prev : next;
       });
       // Drop mentions whose ZWSP was inside the deleted range from
       // the visible list too (mirror the positions update above).
-      setMentions((prev) =>
-        prev.filter((m) => {
+      setMentions((prev) => {
+        if (prev.length === 0) return prev;
+        const next = prev.filter((m) => {
           const p = positions.get(m.id);
           if (!p) return false;
           return !(oldEnd > p.plainEnd - 1);
-        })
-      );
+        });
+        return mentionListEqual(prev, next) ? prev : next;
+      });
       setPlainText(nextPlain);
 
       // @-trigger detection: did the user just type `@`?
@@ -635,7 +659,7 @@ export function MentionInput({
   useLayoutEffect(() => {
     const ta = taRef.current;
     if (!ta) {
-      setChipRects(new Map());
+      setChipRects((prev) => (prev.size === 0 ? prev : new Map()));
       return;
     }
     const next = new Map<
@@ -653,7 +677,7 @@ export function MentionInput({
       const rect = measureRange(ta, pos.plainStart, captionEnd);
       if (rect && rect.width > 0) next.set(m.id, rect);
     }
-    setChipRects(next);
+    setChipRects((prev) => (chipRectsEqual(prev, next) ? prev : next));
   }, [plainText, positions, mentions]);
 
   // Reposition the chip overlay when the window resizes or the
@@ -676,7 +700,7 @@ export function MentionInput({
         const rect = measureRange(ta, pos.plainStart, captionEnd);
         if (rect && rect.width > 0) next.set(m.id, rect);
       }
-      setChipRects(next);
+      setChipRects((prev) => (chipRectsEqual(prev, next) ? prev : next));
     };
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);

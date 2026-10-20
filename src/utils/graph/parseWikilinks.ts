@@ -13,9 +13,10 @@ import type { HeadingSection } from '@/hooks/useDocumentMentions';
  * Capture groups:
  *   1 — page / term target (stops at `|`, `#`, or `]`)
  *   2 — optional heading fragment after `#`
- * Alias after `|` is accepted and discarded (display-only).
+ *   3 — optional display alias after `|`
  */
-const WIKILINK_RE = /\[\[([^\]|#]+?)(?:#([^\]|]+?))?(?:\|[^\]]+?)?\]\]/g;
+const WIKILINK_RE =
+  /\[\[([^\]|#]+?)(?:#([^\]|]+?))?(?:\|([^\]]+?))?\]\]/g;
 
 export interface WikilinkMatch {
   /** Full `[[…]]` including brackets. */
@@ -24,6 +25,8 @@ export interface WikilinkMatch {
   target: string;
   /** Heading fragment after `#`, if present. */
   heading: string | null;
+  /** Display alias after `|`, if present. */
+  alias: string | null;
   /** Inclusive start offset of `raw` in the source string. */
   start: number;
   /** Exclusive end offset of `raw` in the source string. */
@@ -67,13 +70,49 @@ export function extractWikilinks(content: string): WikilinkMatch[] {
     const target = (m[1] ?? '').trim();
     if (!target || /^mention:/i.test(target)) continue;
     const headingRaw = (m[2] ?? '').trim();
+    const aliasRaw = (m[3] ?? '').trim();
     out.push({
       raw: m[0],
       target,
       heading: headingRaw.length > 0 ? headingRaw : null,
+      alias: aliasRaw.length > 0 ? aliasRaw : null,
       start: m.index,
       end: m.index + m[0].length,
     });
+  }
+  return out;
+}
+
+/** Visible label for Preview: alias → heading → target. */
+export function wikilinkDisplayLabel(match: WikilinkMatch): string {
+  if (match.alias) return match.alias;
+  if (match.heading) return match.heading;
+  return match.target;
+}
+
+function escapeHtmlText(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * Replace `[[…]]` with a purple-styled `<span class="wiki-link">…</span>`
+ * (no brackets). Mention sentinels are skipped. Safe for rehype-raw.
+ */
+export function formatWikilinksForPreview(markdown: string): string {
+  const matches = extractWikilinks(markdown);
+  if (matches.length === 0) return markdown;
+  let out = markdown;
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const match = matches[i]!;
+    const label = escapeHtmlText(wikilinkDisplayLabel(match));
+    out =
+      out.slice(0, match.start) +
+      `<span class="wiki-link">${label}</span>` +
+      out.slice(match.end);
   }
   return out;
 }
