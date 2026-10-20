@@ -3,127 +3,11 @@ import { useStore, useCurrentDocument } from '@/store/useStore';
 import {
   buildWorkspaceGraph,
   type GraphEdge,
-  type GraphNode,
 } from '@/utils/graph/buildWorkspaceGraph';
-
-interface LaidOutNode extends GraphNode {
-  x: number;
-  y: number;
-  r: number;
-}
-
-const CX = 0;
-const CY = 0;
-const INNER_R = 140;
-const OUTER_R = 300;
-const CHILD_R = 78;
-
-function nodeRadius(kind: GraphNode['kind'], isHub: boolean): number {
-  if (kind === 'document') return 18;
-  if (kind === 'heading') return isHub ? 13 : 10;
-  return 8;
-}
-
-function placeRing(
-  count: number,
-  radius: number,
-  startAngle = -Math.PI / 2
-): { x: number; y: number }[] {
-  if (count <= 0) return [];
-  if (count === 1) {
-    return [{ x: CX + radius, y: CY }];
-  }
-  return Array.from({ length: count }, (_, i) => {
-    const a = startAngle + (i * 2 * Math.PI) / count;
-    return { x: CX + Math.cos(a) * radius, y: CY + Math.sin(a) * radius };
-  });
-}
-
-function headingChildren(id: string, edges: GraphEdge[]): string[] {
-  return edges
-    .filter((e) => e.kind === 'heading' && e.source === id)
-    .map((e) => e.target);
-}
-
-function layoutChildrenArc(
-  parentId: string,
-  parentPos: { x: number; y: number },
-  parentAngle: number,
-  edges: GraphEdge[],
-  pos: Map<string, { x: number; y: number }>,
-  radius: number
-) {
-  const kids = headingChildren(parentId, edges).filter((id) => !pos.has(id));
-  if (kids.length === 0) return;
-  const sweep = Math.min(Math.PI * 0.95, 0.5 * kids.length);
-  const start = parentAngle - sweep / 2;
-  kids.forEach((id, i) => {
-    const a =
-      kids.length === 1
-        ? parentAngle
-        : start + (sweep * i) / Math.max(kids.length - 1, 1);
-    const p = {
-      x: parentPos.x + Math.cos(a) * radius,
-      y: parentPos.y + Math.sin(a) * radius,
-    };
-    pos.set(id, p);
-    layoutChildrenArc(id, p, a, edges, pos, Math.max(56, radius * 0.82));
-  });
-}
-
-function layoutGraph(
-  nodes: GraphNode[],
-  edges: GraphEdge[],
-  currentDocumentId: string | null
-): LaidOutNode[] {
-  const docs = nodes.filter((n) => n.kind === 'document');
-  const current =
-    docs.find((n) => n.documentId === currentDocumentId) ?? docs[0] ?? null;
-  const others = docs.filter((n) => n.id !== current?.id);
-  const pos = new Map<string, { x: number; y: number }>();
-  const nodeIds = new Set(nodes.map((n) => n.id));
-
-  if (current) pos.set(current.id, { x: CX, y: CY });
-
-  const otherPts = placeRing(others.length, OUTER_R);
-  others.forEach((n, i) => pos.set(n.id, otherPts[i]));
-
-  for (const doc of docs) {
-    const origin = pos.get(doc.id) ?? { x: CX, y: CY };
-    const top = headingChildren(doc.id, edges).filter((id) => nodeIds.has(id));
-    const radius = doc.id === current?.id ? INNER_R : 88;
-    const pts = placeRing(top.length, radius, -Math.PI / 2);
-    top.forEach((id, i) => {
-      const p = {
-        x: origin.x + pts[i].x - CX,
-        y: origin.y + pts[i].y - CY,
-      };
-      pos.set(id, p);
-      const angle = Math.atan2(p.y - origin.y, p.x - origin.x);
-      layoutChildrenArc(id, p, angle, edges, pos, CHILD_R);
-    });
-  }
-
-  const terms = nodes.filter((n) => n.kind === 'term' && !pos.has(n.id));
-  const termPts = placeRing(terms.length, (INNER_R + OUTER_R) / 2, Math.PI / 7);
-  terms.forEach((n, i) => pos.set(n.id, termPts[i]));
-
-  const childCount = new Map<string, number>();
-  for (const e of edges) {
-    if (e.kind !== 'heading') continue;
-    childCount.set(e.source, (childCount.get(e.source) ?? 0) + 1);
-  }
-
-  return nodes.map((n) => {
-    const p = pos.get(n.id) ?? { x: CX, y: CY };
-    return {
-      ...n,
-      x: p.x,
-      y: p.y,
-      r: nodeRadius(n.kind, (childCount.get(n.id) ?? 0) > 0),
-    };
-  });
-}
+import {
+  layoutWorkspaceGraph,
+  type LaidOutNode,
+} from '@/utils/graph/layoutWorkspaceGraph';
 
 function neighborsOf(id: string, edges: GraphEdge[]): Set<string> {
   const next = new Set<string>([id]);
@@ -181,7 +65,7 @@ export function GraphView() {
   );
 
   const laidOut = useMemo(
-    () => layoutGraph(graph.nodes, graph.edges, current?.id ?? null),
+    () => layoutWorkspaceGraph(graph.nodes, graph.edges, current?.id ?? null),
     [graph.nodes, graph.edges, current?.id]
   );
 
@@ -197,7 +81,7 @@ export function GraphView() {
 
   const xs = laidOut.map((n) => n.x);
   const ys = laidOut.map((n) => n.y);
-  const pad = 72;
+  const pad = 140;
   const minX = (xs.length ? Math.min(...xs) : -100) - pad;
   const maxX = (xs.length ? Math.max(...xs) : 100) + pad;
   const minY = (ys.length ? Math.min(...ys) : -100) - pad;
@@ -333,13 +217,14 @@ export function GraphView() {
                   }}
                 />
                 <text
-                  y={node.r + 11}
-                  textAnchor="middle"
+                  x={node.labelDx}
+                  y={node.labelDy}
+                  textAnchor={node.labelAnchor}
                   className="fill-paper-ink dark:fill-cyber-primary text-[10px] cursor-pointer"
                   onClick={() => onNodeClick(node)}
                 >
                   {lines.map((line, i) => (
-                    <tspan key={i} x={0} dy={i === 0 ? 0 : 11}>
+                    <tspan key={i} x={node.labelDx} dy={i === 0 ? 0 : 11}>
                       {line}
                     </tspan>
                   ))}
