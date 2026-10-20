@@ -81,7 +81,7 @@ export function GraphView() {
 
   const xs = laidOut.map((n) => n.x);
   const ys = laidOut.map((n) => n.y);
-  const pad = 96;
+  const pad = 140;
   const minX = (xs.length ? Math.min(...xs) : -100) - pad;
   const maxX = (xs.length ? Math.max(...xs) : 100) + pad;
   const minY = (ys.length ? Math.min(...ys) : -100) - pad;

@@ -308,4 +308,37 @@ test('layout: document clusters stay apart', () => {
   assert.ok(dist > 280, `expected document hubs far apart, got ${dist}`);
 });
 
+test('layout: Welcome H1/H2 ring does not collapse', () => {
+  const sections = Array.from({ length: 10 }, (_, i) => {
+    const n = i + 1;
+    return `## ${n}. Section title number ${n}\n\nbody\n`;
+  }).join('\n');
+  const welcome = doc(
+    'welcome',
+    'Welcome',
+    `# Welcome to ApEditor\n\nintro\n\n${sections}`
+  );
+  const ideas = doc('ideas', 'Ideas', '# Ideas\n\n- note\n');
+  const g = buildWorkspaceGraph([welcome, ideas], {});
+  const laid = layoutWorkspaceGraph(g.nodes, g.edges, 'welcome');
+  const minPair = 150;
+  for (let i = 0; i < laid.length; i++) {
+    for (let j = i + 1; j < laid.length; j++) {
+      const a = laid[i];
+      const b = laid[j];
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      assert.ok(
+        dist >= minPair,
+        `overlap ${a.label} ↔ ${b.label}: ${dist.toFixed(1)} < ${minPair}`
+      );
+    }
+  }
+  const h1 = laid.find((n) => n.label === 'Welcome to ApEditor');
+  const kids = laid.filter((n) => /^\d+\.\s/.test(n.label));
+  assert.ok(h1 && kids.length === 10, `expected H1 + 10 H2s, got h1=${!!h1} kids=${kids.length}`);
+  const radii = kids.map((n) => Math.hypot(n.x - h1.x, n.y - h1.y));
+  const minR = Math.min(...radii);
+  assert.ok(minR > 180, `H2s too close to H1: ${minR}`);
+});
+
 console.log(`${passed} passed`);

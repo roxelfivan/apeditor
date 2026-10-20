@@ -1,5 +1,6 @@
 // Deterministic graph layout: hierarchical seed, then push clusters
-// and overlapping nodes apart so wikilink edges and labels stay readable.
+// and overlapping nodes (including label halos) apart. Heading edges
+// never attract — that was crushing Welcome's H2 ring back onto the H1.
 
 import type { GraphEdge, GraphNode } from '@/utils/graph/buildWorkspaceGraph';
 
@@ -15,9 +16,14 @@ export interface LaidOutNode extends GraphNode {
 
 const CX = 0;
 const CY = 0;
-const MIN_NODE_GAP = 36;
-const CLUSTER_GAP = 180;
-const RELAX_ITERS = 90;
+/** Extra space between occupy-circles (node + wrapped label). */
+const MIN_NODE_GAP = 20;
+const CLUSTER_GAP = 300;
+const RELAX_ITERS = 180;
+/** Chord length between sibling heading centers (covers ~16-char labels). */
+const CHILD_SEP = 190;
+/** Approx half-width/height of a wrapped GraphView label. */
+const LABEL_HALO = 72;
 
 export function nodeRadius(kind: GraphNode['kind'], isHub: boolean): number {
   if (kind === 'document') return 18;
@@ -51,7 +57,25 @@ function placeOnCircle(
   });
 }
 
-function layoutChildrenArc(
+function subtreeWidth(id: string, edges: GraphEdge[]): number {
+  const kids = headingChildren(id, edges);
+  if (kids.length === 0) return 1;
+  return kids.reduce((sum, k) => sum + subtreeWidth(k, edges), 0);
+}
+
+function childRingRadius(
+  parentId: string,
+  edges: GraphEdge[],
+  minSep: number
+): number {
+  const kids = headingChildren(parentId, edges);
+  if (kids.length === 0) return 0;
+  const total = kids.reduce((s, id) => s + subtreeWidth(id, edges), 0);
+  const full = kids.length >= 3;
+  return ringRadius(total, minSep, full ? 260 : 170);
+}
+
+function layoutChildrenCircle(
   parentId: string,
   parentPos: { x: number; y: number },
   parentAngle: number,
@@ -61,20 +85,28 @@ function layoutChildrenArc(
 ) {
   const kids = headingChildren(parentId, edges).filter((id) => !pos.has(id));
   if (kids.length === 0) return;
-  const sweep = Math.min(Math.PI * 1.35, Math.max(0.7, kids.length * 0.55));
-  const radius = Math.max(88, (kids.length * minSep) / Math.max(sweep, 0.4));
-  const start = parentAngle - sweep / 2;
+  const weights = kids.map((id) => subtreeWidth(id, edges));
+  const total = weights.reduce((s, w) => s + w, 0);
+  // Many siblings: full circle so they do not stack in a wedge next
+  // to the document hub (Welcome's ## list).
+  const full = kids.length >= 3;
+  const sweep = full ? Math.PI * 2 : Math.max(1.1, kids.length * 0.9);
+  const radius = childRingRadius(parentId, edges, minSep);
+  let acc = 0;
   kids.forEach((id, i) => {
-    const a =
-      kids.length === 1
+    const slice = (weights[i] / total) * sweep;
+    const a = full
+      ? parentAngle + acc + slice / 2
+      : kids.length === 1
         ? parentAngle
-        : start + (sweep * i) / Math.max(kids.length - 1, 1);
+        : parentAngle - sweep / 2 + acc + slice / 2;
+    acc += slice;
     const p = {
       x: parentPos.x + Math.cos(a) * radius,
       y: parentPos.y + Math.sin(a) * radius,
     };
     pos.set(id, p);
-    layoutChildrenArc(id, p, a, edges, pos, minSep);
+    layoutChildrenCircle(id, p, a, edges, pos, minSep);
   });
 }
 
@@ -88,13 +120,19 @@ function seedSubtree(
   startAngle = -Math.PI / 2
 ) {
   const top = headingChildren(docId, edges).filter((id) => nodeIds.has(id));
-  const radius = ringRadius(top.length, minSep, 130);
+  // Park each top-level heading far enough that its own child ring
+  // cannot swallow the document node.
+  const extents = top.map((id) => 110 + childRingRadius(id, edges, minSep));
+  const radius = Math.max(
+    ringRadius(top.length, minSep, 180),
+    extents.length ? Math.max(...extents) : 180
+  );
   const pts = placeOnCircle(top.length, radius, startAngle);
   top.forEach((id, i) => {
     const p = { x: origin.x + pts[i].x, y: origin.y + pts[i].y };
     pos.set(id, p);
     const angle = Math.atan2(p.y - origin.y, p.x - origin.x);
-    layoutChildrenArc(id, p, angle, edges, pos, minSep);
+    layoutChildrenCircle(id, p, angle, edges, pos, minSep);
   });
 }
 
@@ -110,13 +148,13 @@ function clusterExtent(
     const d = Math.hypot(p.x - origin.x, p.y - origin.y);
     if (d > max) max = d;
   }
-  return max + 48;
+  return max + LABEL_HALO + 24;
 }
 
 function separatePairs(
   ids: string[],
   pos: Map<string, { x: number; y: number }>,
-  radiusOf: (id: string) => number,
+  occupyOf: (id: string) => number,
   pinned: Set<string>,
   extraGap: number
 ) {
@@ -130,7 +168,7 @@ function separatePairs(
       let dx = pb.x - pa.x;
       let dy = pb.y - pa.y;
       let dist = Math.hypot(dx, dy);
-      const minD = radiusOf(a) + radiusOf(b) + MIN_NODE_GAP + extraGap;
+      const minD = occupyOf(a) + occupyOf(b) + MIN_NODE_GAP + extraGap;
       if (dist >= minD) continue;
       if (dist < 0.001) {
         dx = 0.7;
@@ -163,7 +201,7 @@ function relaxLayout(
   edges: GraphEdge[],
   pos: Map<string, { x: number; y: number }>,
   pinned: Set<string>,
-  radiusOf: (id: string) => number
+  occupyOf: (id: string) => number
 ) {
   const ids = nodes.map((n) => n.id);
   const byDoc = new Map<string, string[]>();
@@ -176,9 +214,9 @@ function relaxLayout(
 
   for (let iter = 0; iter < RELAX_ITERS; iter++) {
     for (const members of byDoc.values()) {
-      separatePairs(members, pos, radiusOf, pinned, 8);
+      separatePairs(members, pos, occupyOf, pinned, 12);
     }
-    separatePairs(ids, pos, radiusOf, pinned, 4);
+    separatePairs(ids, pos, occupyOf, pinned, 8);
 
     for (const e of edges) {
       const pa = pos.get(e.source);
@@ -187,34 +225,21 @@ function relaxLayout(
       const dx = pb.x - pa.x;
       const dy = pb.y - pa.y;
       const dist = Math.hypot(dx, dy) || 0.001;
-      const rest = e.kind === 'heading' ? 100 : 220;
-      const slack = dist - rest;
-      // Only shorten runaway wikilinks / mentions; do not crush heading trees.
-      if (e.kind === 'heading') {
-        if (Math.abs(slack) < 18) continue;
-        const pull = slack * 0.04;
-        const ux = dx / dist;
-        const uy = dy / dist;
-        if (!pinned.has(e.source)) {
-          pa.x += ux * pull;
-          pa.y += uy * pull;
-        }
-        if (!pinned.has(e.target)) {
-          pb.x -= ux * pull;
-          pb.y -= uy * pull;
-        }
-      } else if (dist < rest * 0.55) {
-        const push = (rest * 0.55 - dist) * 0.08;
-        const ux = dx / dist;
-        const uy = dy / dist;
-        if (!pinned.has(e.source)) {
-          pa.x -= ux * push;
-          pa.y -= uy * push;
-        }
-        if (!pinned.has(e.target)) {
-          pb.x += ux * push;
-          pb.y += uy * push;
-        }
+      const minLen =
+        occupyOf(e.source) +
+        occupyOf(e.target) +
+        (e.kind === 'heading' ? 36 : 80);
+      if (dist >= minLen) continue;
+      const push = (minLen - dist) * 0.12;
+      const ux = dx / dist;
+      const uy = dy / dist;
+      if (!pinned.has(e.source)) {
+        pa.x -= ux * push;
+        pa.y -= uy * push;
+      }
+      if (!pinned.has(e.target)) {
+        pb.x += ux * push;
+        pb.y += uy * push;
       }
     }
   }
@@ -244,7 +269,7 @@ function labelPlacement(
 
 /**
  * Place nodes so each document is a spaced cluster, children sit on
- * wide arcs, and a short relax pass pushes leftover overlaps apart.
+ * wide rings, and a relax pass only pushes leftover overlaps apart.
  */
 export function layoutWorkspaceGraph(
   nodes: GraphNode[],
@@ -257,12 +282,11 @@ export function layoutWorkspaceGraph(
   const others = docs.filter((n) => n.id !== current?.id);
   const pos = new Map<string, { x: number; y: number }>();
   const nodeIds = new Set(nodes.map((n) => n.id));
-  const minSep = 78;
 
   if (current) pos.set(current.id, { x: CX, y: CY });
 
   if (current) {
-    seedSubtree(current.id, { x: CX, y: CY }, edges, nodeIds, pos, minSep);
+    seedSubtree(current.id, { x: CX, y: CY }, edges, nodeIds, pos, CHILD_SEP);
   }
 
   const membersOf = (docId: string) =>
@@ -275,11 +299,10 @@ export function layoutWorkspaceGraph(
   others.forEach((doc, i) => {
     const startAngle =
       others.length === 1 ? 0 : -Math.PI / 2 + (i * 2 * Math.PI) / others.length;
-    // Temporary origin; we'll push it out after measuring the subtree.
     const scratch = { x: 0, y: 0 };
     const local = new Map<string, { x: number; y: number }>();
     local.set(doc.id, scratch);
-    seedSubtree(doc.id, scratch, edges, nodeIds, local, Math.max(64, minSep * 0.85));
+    seedSubtree(doc.id, scratch, edges, nodeIds, local, Math.max(150, CHILD_SEP * 0.9));
     const extent = clusterExtent(scratch, [...local.keys()], local);
     const dist = currentExtent + extent + CLUSTER_GAP;
     const origin = {
@@ -292,7 +315,7 @@ export function layoutWorkspaceGraph(
   });
 
   const terms = nodes.filter((n) => n.kind === 'term' && !pos.has(n.id));
-  const termR = currentExtent + 90;
+  const termR = currentExtent + 120;
   const termPts = placeOnCircle(terms.length, termR, Math.PI / 6);
   terms.forEach((n, i) => {
     pos.set(n.id, { x: CX + termPts[i].x, y: CY + termPts[i].y });
@@ -307,16 +330,17 @@ export function layoutWorkspaceGraph(
     if (e.kind !== 'heading') continue;
     childCount.set(e.source, (childCount.get(e.source) ?? 0) + 1);
   }
-  const radiusOf = (id: string) => {
-    const n = nodes.find((x) => x.id === id);
-    if (!n) return 10;
-    return nodeRadius(n.kind, (childCount.get(id) ?? 0) > 0);
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const occupyOf = (id: string) => {
+    const n = byId.get(id);
+    if (!n) return 10 + LABEL_HALO;
+    return nodeRadius(n.kind, (childCount.get(id) ?? 0) > 0) + LABEL_HALO;
   };
 
   const pinned = new Set<string>();
   if (current) pinned.add(current.id);
 
-  relaxLayout(nodes, edges, pos, pinned, radiusOf);
+  relaxLayout(nodes, edges, pos, pinned, occupyOf);
 
   const hubOf = (n: GraphNode) => {
     if (!n.documentId) return { x: CX, y: CY };
@@ -325,7 +349,7 @@ export function layoutWorkspaceGraph(
 
   return nodes.map((n) => {
     const p = pos.get(n.id) ?? { x: CX, y: CY };
-    const r = radiusOf(n.id);
+    const r = nodeRadius(n.kind, (childCount.get(n.id) ?? 0) > 0);
     const label = labelPlacement(p.x, p.y, r, hubOf(n));
     return { ...n, x: p.x, y: p.y, r, ...label };
   });
