@@ -21,14 +21,14 @@ const MIN_NODE_GAP = 20;
 const CLUSTER_GAP = 300;
 const RELAX_ITERS = 180;
 /** Chord length between sibling heading centers (covers ~16-char labels). */
-const CHILD_SEP = 190;
+const CHILD_SEP = 230;
 /** Approx half-width/height of a wrapped GraphView label. */
-const LABEL_HALO = 72;
+const LABEL_HALO = 110;
 
 export function nodeRadius(kind: GraphNode['kind'], isHub: boolean): number {
-  if (kind === 'document') return 18;
-  if (kind === 'heading') return isHub ? 13 : 10;
-  return 8;
+  if (kind === 'document') return 36;
+  if (kind === 'heading') return isHub ? 26 : 20;
+  return 16;
 }
 
 function headingChildren(id: string, edges: GraphEdge[]): string[] {
@@ -256,7 +256,7 @@ function labelPlacement(
   const dist = Math.hypot(dx, dy);
   const ux = dist < 0.001 ? 0 : dx / dist;
   const uy = dist < 0.001 ? 1 : dy / dist;
-  const reach = r + 16;
+  const reach = r + 22;
   let anchor: LaidOutNode['labelAnchor'] = 'middle';
   if (ux > 0.35) anchor = 'start';
   else if (ux < -0.35) anchor = 'end';
