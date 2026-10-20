@@ -8,7 +8,7 @@ The top bar shows the ApEditor logo, version, and the title of the open document
 
 | Control | What it does |
 | --- | --- |
-| **?** | Opens this [user guide](README.md) as in-app Help (same Light / Dark theme) |
+| **?** | Opens this [user guide](README.md) as in-app Help (same Light / Dark theme). The sidebar includes [What's new](whats-new.md). |
 | Clock | Opens [Revision history](revisions.md) |
 | Bookmark | Opens the [Prompt library](prompt-library.md) |
 | **☀ Light** / **☾ Dark** | Toggles theme (also restyles Help) |

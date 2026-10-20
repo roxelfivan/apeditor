@@ -63,6 +63,7 @@ Click **?** in the top bar (or press `Ctrl+/` / `⌘/`) to open this user guide 
 ## Next steps
 
 - [Your workspace](workspace.md) — hide panels, change theme, resize columns
-- [Writing](writing.md) — Write / Preview / Split, bold/italic/underline, Predict
+- [What's new](whats-new.md) — current release
+- [Writing](writing.md) — Write / Preview / Split / Graph, bold/italic/underline, Predict
 - [Reference other documents (`@`)](reference-other-documents.md) — attach other docs to a turn
 - [Settings](settings.md) — system message, temperature, UI font size

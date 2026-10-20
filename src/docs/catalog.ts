@@ -9,6 +9,7 @@
 
 export type HelpPageId =
   | 'home'
+  | 'whats-new'
   | 'getting-started'
   | 'workspace'
   | 'documents'
@@ -36,6 +37,7 @@ export interface HelpPageMeta {
 /** Sidebar order — mirrors docs/README.md "Start here". */
 export const HELP_PAGES: HelpPageMeta[] = [
   { id: 'home', title: 'User guide', file: 'README.md' },
+  { id: 'whats-new', title: "What's new", file: 'whats-new.md' },
   { id: 'getting-started', title: 'Getting started', file: 'getting-started.md' },
   { id: 'workspace', title: 'Your workspace', file: 'workspace.md' },
   { id: 'documents', title: 'Documents', file: 'documents.md' },
