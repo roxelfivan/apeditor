@@ -233,24 +233,54 @@ export function FuncSpecDocs({ open, onClose, initialPage }: Props) {
         </button>
       </header>
 
-      <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+      <div className="flex-1 flex flex-col md:flex-row min-h-0">
         <nav
-          className="lg:w-72 shrink-0 border-b lg:border-b-0 lg:border-r border-paper-hairline dark:border-cyber-border overflow-x-auto lg:overflow-y-auto bg-paper-elevated/40 dark:bg-ape-elevated/40 max-h-44 lg:max-h-none"
+          className="md:w-72 shrink-0 border-b md:border-b-0 md:border-r border-paper-hairline dark:border-cyber-border overflow-x-auto md:overflow-y-auto bg-paper-elevated/40 dark:bg-ape-elevated/40 max-h-40 md:max-h-none"
           aria-label="Functional Specification sections"
         >
-          <div className="p-3 lg:p-2 flex lg:block gap-2 lg:gap-0">
+          {/* Narrow: flat horizontal strip — same pattern as HelpDocs.
+              Grouped-by-part + nested flex was crushing labels on top of
+              each other when the viewport could not fit every Part. */}
+          <ul className="py-2 flex md:hidden gap-1 px-2">
+            {FUNC_SPEC_PAGES.map((page) => {
+              const active = page.id === pageId;
+              return (
+                <li key={page.id} className="shrink-0">
+                  <button
+                    type="button"
+                    title={page.blurb}
+                    aria-current={active ? 'page' : undefined}
+                    onClick={() => {
+                      setPageId(page.id);
+                      setAnchor(null);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm whitespace-nowrap border-b-2 transition-colors ${
+                      active
+                        ? 'border-cyber-clay dark:border-cyber-cyan bg-paper-surface dark:bg-ape-panel text-cyber-clay dark:text-cyber-cyan font-semibold'
+                        : 'border-transparent text-paper-ink dark:text-cyber-primary hover:bg-paper-elevated/80 dark:hover:bg-ape-elevated/80'
+                    }`}
+                  >
+                    {page.title}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* md+: vertical sidebar grouped by Part. */}
+          <div className="hidden md:block p-2">
             {FUNC_SPEC_PARTS.map((part) => {
               const pages = FUNC_SPEC_PAGES_BY_PART[part.id] ?? [];
               return (
-                <section key={part.id} className="mb-1 min-w-0">
-                  <h2 className="px-3 py-1.5 text-[10px] uppercase tracking-wider font-semibold text-paper-inkSoft dark:text-cyber-muted whitespace-nowrap lg:whitespace-normal">
+                <section key={part.id} className="mb-1">
+                  <h2 className="px-3 py-1.5 text-[10px] uppercase tracking-wider font-semibold text-paper-inkSoft dark:text-cyber-muted">
                     {part.title}
                   </h2>
-                  <ul className="flex lg:block gap-1">
+                  <ul>
                     {pages.map((page) => {
                       const active = page.id === pageId;
                       return (
-                        <li key={page.id} className="shrink-0">
+                        <li key={page.id}>
                           <button
                             type="button"
                             title={page.blurb}
@@ -259,7 +289,7 @@ export function FuncSpecDocs({ open, onClose, initialPage }: Props) {
                               setPageId(page.id);
                               setAnchor(null);
                             }}
-                            className={`w-full text-left px-3 py-1.5 text-sm whitespace-nowrap lg:whitespace-normal border-b-2 lg:border-b-0 lg:border-l-2 transition-colors ${
+                            className={`w-full text-left px-3 py-1.5 text-sm border-l-2 transition-colors ${
                               active
                                 ? 'border-cyber-clay dark:border-cyber-cyan bg-paper-surface dark:bg-ape-panel text-cyber-clay dark:text-cyber-cyan font-semibold'
                                 : 'border-transparent text-paper-ink dark:text-cyber-primary hover:bg-paper-surface/70 dark:hover:bg-ape-panel/70'
