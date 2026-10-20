@@ -1,6 +1,7 @@
-// Deterministic graph layout: hierarchical seed, then push clusters
-// and overlapping nodes (including label halos) apart. Heading edges
-// never attract — that was crushing Welcome's H2 ring back onto the H1.
+// Atomic radial layout: the open document is the nucleus, headings
+// sit on concentric shells in non-overlapping angular sectors, and
+// wikilink / @ / other-doc satellites park on the same ray as their
+// source so the initial view stays as radial as a Bohr atom.
 
 import type { GraphEdge, GraphNode } from '@/utils/graph/buildWorkspaceGraph';
 
@@ -16,14 +17,14 @@ export interface LaidOutNode extends GraphNode {
 
 const CX = 0;
 const CY = 0;
-/** Extra space between occupy-circles (node + wrapped label). */
 const MIN_NODE_GAP = 20;
-const CLUSTER_GAP = 300;
-const RELAX_ITERS = 180;
-/** Chord length between sibling heading centers (covers ~16-char labels). */
-const CHILD_SEP = 230;
-/** Approx half-width/height of a wrapped GraphView label. */
+const CLUSTER_GAP = 340;
+const RELAX_ITERS = 80;
+const CHILD_SEP = 240;
 const LABEL_HALO = 110;
+/** Unary page title (Welcome's H1) sits just outside the nucleus. */
+const NUCLEUS_RING = 88;
+const SHELL_GAP = 280;
 
 export function nodeRadius(kind: GraphNode['kind'], isHub: boolean): number {
   if (kind === 'document') return 36;
@@ -42,75 +43,152 @@ function ringRadius(count: number, minSep: number, floor: number): number {
   return Math.max(floor, (count * minSep) / (2 * Math.PI));
 }
 
-function placeOnCircle(
-  count: number,
-  radius: number,
-  startAngle = -Math.PI / 2
-): { x: number; y: number }[] {
-  if (count <= 0) return [];
-  if (count === 1) {
-    return [{ x: Math.cos(startAngle) * radius, y: Math.sin(startAngle) * radius }];
-  }
-  return Array.from({ length: count }, (_, i) => {
-    const a = startAngle + (i * 2 * Math.PI) / count;
-    return { x: Math.cos(a) * radius, y: Math.sin(a) * radius };
-  });
-}
-
 function subtreeWidth(id: string, edges: GraphEdge[]): number {
   const kids = headingChildren(id, edges);
   if (kids.length === 0) return 1;
   return kids.reduce((sum, k) => sum + subtreeWidth(k, edges), 0);
 }
 
-function childRingRadius(
-  parentId: string,
-  edges: GraphEdge[],
-  minSep: number
-): number {
-  const kids = headingChildren(parentId, edges);
-  if (kids.length === 0) return 0;
-  const total = kids.reduce((s, id) => s + subtreeWidth(id, edges), 0);
-  const full = kids.length >= 3;
-  return ringRadius(total, minSep, full ? 260 : 170);
+function circularMean(angles: number[]): number {
+  if (angles.length === 0) return 0;
+  let x = 0;
+  let y = 0;
+  for (const a of angles) {
+    x += Math.cos(a);
+    y += Math.sin(a);
+  }
+  if (Math.hypot(x, y) < 1e-6) return angles[0];
+  return Math.atan2(y, x);
 }
 
-function layoutChildrenCircle(
-  parentId: string,
-  parentPos: { x: number; y: number },
-  parentAngle: number,
+function orient(ax: number, ay: number, bx: number, by: number, cx: number, cy: number) {
+  return (by - ay) * (cx - bx) - (bx - ax) * (cy - by);
+}
+
+/** True when AB and CD cross in their interiors (shared endpoints do not count). */
+export function segmentsCrossProper(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number,
+  dx: number,
+  dy: number
+): boolean {
+  const o1 = orient(ax, ay, bx, by, cx, cy);
+  const o2 = orient(ax, ay, bx, by, dx, dy);
+  const o3 = orient(cx, cy, dx, dy, ax, ay);
+  const o4 = orient(cx, cy, dx, dy, bx, by);
+  if (o1 === 0 && o2 === 0 && o3 === 0 && o4 === 0) return false;
+  const proper =
+    Math.sign(o1) !== Math.sign(o2) &&
+    Math.sign(o3) !== Math.sign(o4) &&
+    o1 !== 0 &&
+    o2 !== 0 &&
+    o3 !== 0 &&
+    o4 !== 0;
+  if (proper) return true;
+  return false;
+}
+
+export function countProperEdgeCrossings(
+  nodes: { id: string; x: number; y: number }[],
+  edges: { source: string; target: string }[]
+): number {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const segs = edges
+    .map((e) => {
+      const a = byId.get(e.source);
+      const b = byId.get(e.target);
+      if (!a || !b) return null;
+      return { id: `${e.source}->${e.target}`, a, b };
+    })
+    .filter((s): s is { id: string; a: { id: string; x: number; y: number }; b: { id: string; x: number; y: number } } =>
+      s != null
+    );
+  let n = 0;
+  for (let i = 0; i < segs.length; i++) {
+    for (let j = i + 1; j < segs.length; j++) {
+      const A = segs[i];
+      const B = segs[j];
+      const ids = new Set([A.a.id, A.b.id, B.a.id, B.b.id]);
+      if (ids.size < 4) continue;
+      if (
+        segmentsCrossProper(A.a.x, A.a.y, A.b.x, A.b.y, B.a.x, B.a.y, B.b.x, B.b.y)
+      ) {
+        n += 1;
+      }
+    }
+  }
+  return n;
+}
+
+function assignAngles(
+  id: string,
+  a0: number,
+  a1: number,
   edges: GraphEdge[],
-  pos: Map<string, { x: number; y: number }>,
-  minSep: number
+  angle: Map<string, number>
 ) {
-  const kids = headingChildren(parentId, edges).filter((id) => !pos.has(id));
+  const kids = headingChildren(id, edges);
+  angle.set(id, (a0 + a1) / 2);
   if (kids.length === 0) return;
-  const weights = kids.map((id) => subtreeWidth(id, edges));
+  const weights = kids.map((k) => subtreeWidth(k, edges));
   const total = weights.reduce((s, w) => s + w, 0);
-  // Many siblings: full circle so they do not stack in a wedge next
-  // to the document hub (Welcome's ## list).
-  const full = kids.length >= 3;
-  const sweep = full ? Math.PI * 2 : Math.max(1.1, kids.length * 0.9);
-  const radius = childRingRadius(parentId, edges, minSep);
-  let acc = 0;
-  kids.forEach((id, i) => {
-    const slice = (weights[i] / total) * sweep;
-    const a = full
-      ? parentAngle + acc + slice / 2
-      : kids.length === 1
-        ? parentAngle
-        : parentAngle - sweep / 2 + acc + slice / 2;
-    acc += slice;
-    const p = {
-      x: parentPos.x + Math.cos(a) * radius,
-      y: parentPos.y + Math.sin(a) * radius,
-    };
-    pos.set(id, p);
-    layoutChildrenCircle(id, p, a, edges, pos, minSep);
+  let acc = a0;
+  kids.forEach((kid, i) => {
+    const span = (weights[i] / total) * (a1 - a0);
+    assignAngles(kid, acc, acc + span, edges, angle);
+    acc += span;
   });
 }
 
-function seedSubtree(
+/**
+ * Depth from the document. A single title heading under the document
+ * stays on the nucleus ring so its children can occupy the first
+ * full electron shell (Welcome's H1 + ten ##).
+ */
+function assignShells(
+  docId: string,
+  edges: GraphEdge[],
+  shell: Map<string, number>
+) {
+  const top = headingChildren(docId, edges);
+  const collapse =
+    top.length === 1 && headingChildren(top[0], edges).length > 0;
+  const walk = (id: string, depth: number) => {
+    shell.set(id, depth);
+    for (const kid of headingChildren(id, edges)) {
+      walk(kid, depth + 1);
+    }
+  };
+  if (collapse) {
+    shell.set(top[0], 0);
+    for (const kid of headingChildren(top[0], edges)) walk(kid, 1);
+  } else {
+    for (const id of top) walk(id, 1);
+  }
+}
+
+function shellRadii(shell: Map<string, number>, minSep: number): number[] {
+  const counts = new Map<number, number>();
+  for (const d of shell.values()) {
+    const k = Math.round(d);
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+  const maxD = counts.size ? Math.max(...counts.keys()) : 0;
+  const radii = [0];
+  radii[0] = NUCLEUS_RING;
+  for (let d = 1; d <= Math.max(maxD, 1); d++) {
+    const n = counts.get(d) ?? 1;
+    const need = ringRadius(n, minSep, SHELL_GAP);
+    radii[d] = (radii[d - 1] ?? NUCLEUS_RING) + need;
+  }
+  return radii;
+}
+
+function seedAtom(
   docId: string,
   origin: { x: number; y: number },
   edges: GraphEdge[],
@@ -119,21 +197,23 @@ function seedSubtree(
   minSep: number,
   startAngle = -Math.PI / 2
 ) {
+  pos.set(docId, { x: origin.x, y: origin.y });
   const top = headingChildren(docId, edges).filter((id) => nodeIds.has(id));
-  // Park each top-level heading far enough that its own child ring
-  // cannot swallow the document node.
-  const extents = top.map((id) => 110 + childRingRadius(id, edges, minSep));
-  const radius = Math.max(
-    ringRadius(top.length, minSep, 180),
-    extents.length ? Math.max(...extents) : 180
-  );
-  const pts = placeOnCircle(top.length, radius, startAngle);
-  top.forEach((id, i) => {
-    const p = { x: origin.x + pts[i].x, y: origin.y + pts[i].y };
-    pos.set(id, p);
-    const angle = Math.atan2(p.y - origin.y, p.x - origin.x);
-    layoutChildrenCircle(id, p, angle, edges, pos, minSep);
-  });
+  if (top.length === 0) return;
+  const angle = new Map<string, number>();
+  assignAngles(docId, startAngle, startAngle + Math.PI * 2, edges, angle);
+  const shell = new Map<string, number>();
+  assignShells(docId, edges, shell);
+  const radii = shellRadii(shell, minSep);
+  for (const [id, d] of shell) {
+    if (!nodeIds.has(id) || pos.has(id)) continue;
+    const a = angle.get(id) ?? startAngle;
+    const R = radii[Math.round(d)] ?? NUCLEUS_RING + SHELL_GAP * Math.max(d, 1);
+    pos.set(id, {
+      x: origin.x + Math.cos(a) * R,
+      y: origin.y + Math.sin(a) * R,
+    });
+  }
 }
 
 function clusterExtent(
@@ -151,12 +231,48 @@ function clusterExtent(
   return max + LABEL_HALO + 24;
 }
 
-function separatePairs(
+function rayOf(
+  origin: { x: number; y: number },
+  p: { x: number; y: number }
+): number {
+  return Math.atan2(p.y - origin.y, p.x - origin.x);
+}
+
+function placeOnRay(
+  origin: { x: number; y: number },
+  angle: number,
+  radius: number
+): { x: number; y: number } {
+  return {
+    x: origin.x + Math.cos(angle) * radius,
+    y: origin.y + Math.sin(angle) * radius,
+  };
+}
+
+function neighborAngles(
+  id: string,
+  edges: GraphEdge[],
+  pos: Map<string, { x: number; y: number }>,
+  origin: { x: number; y: number }
+): number[] {
+  const out: number[] = [];
+  for (const e of edges) {
+    const other =
+      e.source === id ? e.target : e.target === id ? e.source : null;
+    if (!other) continue;
+    const p = pos.get(other);
+    if (!p) continue;
+    out.push(rayOf(origin, p));
+  }
+  return out;
+}
+
+function separateAlongRays(
   ids: string[],
   pos: Map<string, { x: number; y: number }>,
+  origin: { x: number; y: number },
   occupyOf: (id: string) => number,
-  pinned: Set<string>,
-  extraGap: number
+  pinned: Set<string>
 ) {
   for (let i = 0; i < ids.length; i++) {
     for (let j = i + 1; j < ids.length; j++) {
@@ -168,79 +284,25 @@ function separatePairs(
       let dx = pb.x - pa.x;
       let dy = pb.y - pa.y;
       let dist = Math.hypot(dx, dy);
-      const minD = occupyOf(a) + occupyOf(b) + MIN_NODE_GAP + extraGap;
+      const minD = occupyOf(a) + occupyOf(b) + MIN_NODE_GAP;
       if (dist >= minD) continue;
       if (dist < 0.001) {
         dx = 0.7;
         dy = 0.4;
         dist = Math.hypot(dx, dy);
       }
-      const push = (minD - dist) / 2;
-      const ux = dx / dist;
-      const uy = dy / dist;
-      const pinA = pinned.has(a);
-      const pinB = pinned.has(b);
-      if (!pinA && !pinB) {
-        pa.x -= ux * push;
-        pa.y -= uy * push;
-        pb.x += ux * push;
-        pb.y += uy * push;
-      } else if (pinA && !pinB) {
-        pb.x += ux * push * 2;
-        pb.y += uy * push * 2;
-      } else if (!pinA && pinB) {
-        pa.x -= ux * push * 2;
-        pa.y -= uy * push * 2;
-      }
-    }
-  }
-}
-
-function relaxLayout(
-  nodes: GraphNode[],
-  edges: GraphEdge[],
-  pos: Map<string, { x: number; y: number }>,
-  pinned: Set<string>,
-  occupyOf: (id: string) => number
-) {
-  const ids = nodes.map((n) => n.id);
-  const byDoc = new Map<string, string[]>();
-  for (const n of nodes) {
-    const key = n.documentId ?? n.id;
-    const list = byDoc.get(key) ?? [];
-    list.push(n.id);
-    byDoc.set(key, list);
-  }
-
-  for (let iter = 0; iter < RELAX_ITERS; iter++) {
-    for (const members of byDoc.values()) {
-      separatePairs(members, pos, occupyOf, pinned, 12);
-    }
-    separatePairs(ids, pos, occupyOf, pinned, 8);
-
-    for (const e of edges) {
-      const pa = pos.get(e.source);
-      const pb = pos.get(e.target);
-      if (!pa || !pb) continue;
-      const dx = pb.x - pa.x;
-      const dy = pb.y - pa.y;
-      const dist = Math.hypot(dx, dy) || 0.001;
-      const minLen =
-        occupyOf(e.source) +
-        occupyOf(e.target) +
-        (e.kind === 'heading' ? 36 : 80);
-      if (dist >= minLen) continue;
-      const push = (minLen - dist) * 0.12;
-      const ux = dx / dist;
-      const uy = dy / dist;
-      if (!pinned.has(e.source)) {
-        pa.x -= ux * push;
-        pa.y -= uy * push;
-      }
-      if (!pinned.has(e.target)) {
-        pb.x += ux * push;
-        pb.y += uy * push;
-      }
+      const da = Math.hypot(pa.x - origin.x, pa.y - origin.y);
+      const db = Math.hypot(pb.x - origin.x, pb.y - origin.y);
+      const push = minD - dist + 8;
+      const moveOut = (id: string, p: { x: number; y: number }, d: number) => {
+        if (pinned.has(id)) return;
+        const ang = d < 0.001 ? 0 : Math.atan2(p.y - origin.y, p.x - origin.x);
+        const next = d + push;
+        p.x = origin.x + Math.cos(ang) * next;
+        p.y = origin.y + Math.sin(ang) * next;
+      };
+      if (da <= db) moveOut(b, pb, db);
+      else moveOut(a, pa, da);
     }
   }
 }
@@ -268,8 +330,9 @@ function labelPlacement(
 }
 
 /**
- * Place nodes so each document is a spaced cluster, children sit on
- * wide rings, and a relax pass only pushes leftover overlaps apart.
+ * Place the open document as a nucleus with concentric heading shells.
+ * Satellites (terms, other documents) sit on the same rays as their
+ * links so the initial drawing stays atomic.
  */
 export function layoutWorkspaceGraph(
   nodes: GraphNode[],
@@ -282,44 +345,124 @@ export function layoutWorkspaceGraph(
   const others = docs.filter((n) => n.id !== current?.id);
   const pos = new Map<string, { x: number; y: number }>();
   const nodeIds = new Set(nodes.map((n) => n.id));
-
-  if (current) pos.set(current.id, { x: CX, y: CY });
+  const origin = { x: CX, y: CY };
 
   if (current) {
-    seedSubtree(current.id, { x: CX, y: CY }, edges, nodeIds, pos, CHILD_SEP);
+    seedAtom(current.id, origin, edges, nodeIds, pos, CHILD_SEP);
   }
 
   const membersOf = (docId: string) =>
-    nodes.filter((n) => n.documentId === docId || n.id === `doc:${docId}`).map((n) => n.id);
+    nodes
+      .filter((n) => n.documentId === docId || n.id === `doc:${docId}`)
+      .map((n) => n.id);
 
   const currentExtent = current
-    ? clusterExtent({ x: CX, y: CY }, membersOf(current.documentId ?? ''), pos)
+    ? clusterExtent(origin, membersOf(current.documentId ?? ''), pos)
     : 160;
 
-  others.forEach((doc, i) => {
-    const startAngle =
-      others.length === 1 ? 0 : -Math.PI / 2 + (i * 2 * Math.PI) / others.length;
+  const terms = nodes.filter((n) => n.kind === 'term');
+  const termR = currentExtent + 90;
+  const usedTermAngles: number[] = [];
+  for (const t of terms) {
+    const raw = neighborAngles(t.id, edges, pos, origin);
+    let a = raw.length ? circularMean(raw) : Math.PI / 6;
+    for (const used of usedTermAngles) {
+      if (Math.abs(Math.atan2(Math.sin(a - used), Math.cos(a - used))) < 0.18) {
+        a += 0.22;
+      }
+    }
+    usedTermAngles.push(a);
+    pos.set(t.id, placeOnRay(origin, a, termR));
+  }
+
+  const placedAngles = (): number[] => {
+    const out: number[] = [];
+    for (const [id, p] of pos) {
+      if (current && id === current.id) continue;
+      out.push(rayOf(origin, p));
+    }
+    return out;
+  };
+
+  const largestGapAngle = (taken: number[]): number => {
+    if (taken.length === 0) return 0;
+    const sorted = [...taken].sort((a, b) => a - b);
+    let bestSpan = -1;
+    let bestMid = sorted[0] + Math.PI;
+    for (let i = 0; i < sorted.length; i++) {
+      const a = sorted[i];
+      const b = sorted[(i + 1) % sorted.length] + (i + 1 === sorted.length ? Math.PI * 2 : 0);
+      const span = b - a;
+      if (span > bestSpan) {
+        bestSpan = span;
+        bestMid = a + span / 2;
+      }
+    }
+    return Math.atan2(Math.sin(bestMid), Math.cos(bestMid));
+  };
+
+  others.forEach((doc) => {
+    const memberSet = new Set(membersOf(doc.documentId ?? ''));
+    const incoming: number[] = [];
+    for (const e of edges) {
+      if (e.kind === 'heading') continue;
+      const aIn = memberSet.has(e.source);
+      const bIn = memberSet.has(e.target);
+      if (aIn === bIn) continue;
+      const otherId = aIn ? e.target : e.source;
+      const p = pos.get(otherId);
+      if (p) incoming.push(rayOf(origin, p));
+    }
     const scratch = { x: 0, y: 0 };
     const local = new Map<string, { x: number; y: number }>();
-    local.set(doc.id, scratch);
-    seedSubtree(doc.id, scratch, edges, nodeIds, local, Math.max(150, CHILD_SEP * 0.9));
+    seedAtom(doc.id, scratch, edges, nodeIds, local, Math.max(160, CHILD_SEP * 0.85));
     const extent = clusterExtent(scratch, [...local.keys()], local);
+    const θ = incoming.length
+      ? circularMean(incoming)
+      : largestGapAngle(placedAngles());
     const dist = currentExtent + extent + CLUSTER_GAP;
-    const origin = {
-      x: CX + Math.cos(startAngle) * dist,
-      y: CY + Math.sin(startAngle) * dist,
-    };
+    const hub = placeOnRay(origin, θ, dist);
     for (const [id, p] of local) {
-      pos.set(id, { x: origin.x + p.x, y: origin.y + p.y });
+      pos.set(id, { x: hub.x + p.x, y: hub.y + p.y });
     }
   });
 
-  const terms = nodes.filter((n) => n.kind === 'term' && !pos.has(n.id));
-  const termR = currentExtent + 120;
-  const termPts = placeOnCircle(terms.length, termR, Math.PI / 6);
-  terms.forEach((n, i) => {
-    pos.set(n.id, { x: CX + termPts[i].x, y: CY + termPts[i].y });
-  });
+  // Slide each satellite atom around the nucleus toward the circular
+  // mean of its non-heading neighbors so leftover wikilink chords
+  // stay on one side of the ring.
+  for (let pass = 0; pass < 6; pass++) {
+    for (const doc of others) {
+      const members = membersOf(doc.documentId ?? '');
+      const memberSet = new Set(members);
+      const incoming: number[] = [];
+      for (const e of edges) {
+        if (e.kind === 'heading') continue;
+        const aIn = memberSet.has(e.source);
+        const bIn = memberSet.has(e.target);
+        if (aIn === bIn) continue;
+        const otherId = aIn ? e.target : e.source;
+        const p = pos.get(otherId);
+        if (p) incoming.push(rayOf(origin, p));
+      }
+      if (incoming.length === 0) continue;
+      const hub = pos.get(doc.id);
+      if (!hub) continue;
+      const dist = Math.max(
+        currentExtent + 200,
+        Math.hypot(hub.x - origin.x, hub.y - origin.y)
+      );
+      const next = placeOnRay(origin, circularMean(incoming), dist);
+      const dx = next.x - hub.x;
+      const dy = next.y - hub.y;
+      if (Math.hypot(dx, dy) < 1) continue;
+      for (const id of members) {
+        const p = pos.get(id);
+        if (!p) continue;
+        p.x += dx;
+        p.y += dy;
+      }
+    }
+  }
 
   for (const n of nodes) {
     if (!pos.has(n.id)) pos.set(n.id, { x: CX + 40, y: CY + 40 });
@@ -339,16 +482,18 @@ export function layoutWorkspaceGraph(
 
   const pinned = new Set<string>();
   if (current) pinned.add(current.id);
-
-  relaxLayout(nodes, edges, pos, pinned, occupyOf);
+  const ids = nodes.map((n) => n.id);
+  for (let iter = 0; iter < RELAX_ITERS; iter++) {
+    separateAlongRays(ids, pos, origin, occupyOf, pinned);
+  }
 
   const hubOf = (n: GraphNode) => {
-    if (!n.documentId) return { x: CX, y: CY };
-    return pos.get(`doc:${n.documentId}`) ?? { x: CX, y: CY };
+    if (!n.documentId) return origin;
+    return pos.get(`doc:${n.documentId}`) ?? origin;
   };
 
   return nodes.map((n) => {
-    const p = pos.get(n.id) ?? { x: CX, y: CY };
+    const p = pos.get(n.id) ?? origin;
     const r = nodeRadius(n.kind, (childCount.get(n.id) ?? 0) > 0);
     const label = labelPlacement(p.x, p.y, r, hubOf(n));
     return { ...n, x: p.x, y: p.y, r, ...label };
