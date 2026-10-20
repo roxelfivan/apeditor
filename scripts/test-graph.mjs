@@ -34,9 +34,9 @@ await fs.writeFile(
   `
 import { extractWikilinks, resolveWikilink, normalizeWikiSlug } from '${path.join(ROOT, 'src/utils/graph/parseWikilinks.ts').replace(/\\/g, '/')}';
 import { buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath } from '${path.join(ROOT, 'src/utils/graph/buildWorkspaceGraph.ts').replace(/\\/g, '/')}';
-import { layoutWorkspaceGraph, nodeRadius } from '${path.join(ROOT, 'src/utils/graph/layoutWorkspaceGraph.ts').replace(/\\/g, '/')}';
+import { layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings } from '${path.join(ROOT, 'src/utils/graph/layoutWorkspaceGraph.ts').replace(/\\/g, '/')}';
 import { clampGraphZoom, stepGraphZoom, zoomedViewBox } from '${path.join(ROOT, 'src/utils/graph/graphCamera.ts').replace(/\\/g, '/')}';
-export { extractWikilinks, resolveWikilink, normalizeWikiSlug, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, nodeRadius, clampGraphZoom, stepGraphZoom, zoomedViewBox };
+export { extractWikilinks, resolveWikilink, normalizeWikiSlug, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, clampGraphZoom, stepGraphZoom, zoomedViewBox };
 `
 );
 
@@ -65,6 +65,7 @@ const {
   splitHeadingPath,
   layoutWorkspaceGraph,
   nodeRadius,
+  countProperEdgeCrossings,
   clampGraphZoom,
   stepGraphZoom,
   zoomedViewBox,
@@ -363,6 +364,38 @@ test('layout: Welcome H1/H2 ring does not collapse', () => {
   const radii = kids.map((n) => Math.hypot(n.x - h1.x, n.y - h1.y));
   const minR = Math.min(...radii);
   assert.ok(minR > 180, `H2s too close to H1: ${minR}`);
+  const headingEdges = g.edges.filter((e) => e.kind === 'heading');
+  const crosses = countProperEdgeCrossings(laid, headingEdges);
+  assert.equal(crosses, 0, `heading edges should not cross, got ${crosses}`);
+});
+
+test('layout: wikilink satellites stay on heading rays', () => {
+  const welcome = doc(
+    'welcome',
+    'Welcome',
+    `# Hub\n\n## Alpha\n\nSee [[Ideas]] and [[photon]].\n\n## Beta\n\nSee [[quark]].\n`
+  );
+  const ideas = doc('ideas', 'Ideas', '# Ideas\n\nnote\n');
+  const comment = doc(
+    'comment',
+    'Comment',
+    '# Comment > annotate\n\nx\n\n# Comment > feedback\n\ny\n'
+  );
+  const g = buildWorkspaceGraph([welcome, ideas, comment], {});
+  const laid = layoutWorkspaceGraph(g.nodes, g.edges, 'welcome');
+  const headingEdges = g.edges.filter((e) => e.kind === 'heading');
+  assert.equal(
+    countProperEdgeCrossings(laid, headingEdges),
+    0,
+    'heading tree of a 3-doc workspace should stay planar-radial'
+  );
+  const hub = laid.find((n) => n.kind === 'document' && n.documentId === 'welcome');
+  const ideasDoc = laid.find((n) => n.kind === 'document' && n.documentId === 'ideas');
+  assert.ok(hub && ideasDoc);
+  assert.ok(
+    Math.hypot(hub.x - ideasDoc.x, hub.y - ideasDoc.y) > 280,
+    'satellite document should sit outside the nucleus'
+  );
 });
 
 console.log(`${passed} passed`);
