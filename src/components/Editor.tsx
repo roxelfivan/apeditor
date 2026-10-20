@@ -30,7 +30,11 @@ import {
   type ReanchorPick,
 } from '@/components/ReanchorPicker';
 import { ResizeHandle } from '@/components/ResizeHandle';
-import { GraphView } from '@/components/GraphView';
+import {
+  DEFAULT_GRAPH_LABEL_PX,
+  GraphView,
+  GraphViewControls,
+} from '@/components/GraphView';
 import { SUGGESTION_HEIGHT_KEY } from '@/utils/storage';
 import { useIsCommentSheet, useIsNarrow } from '@/hooks/useMediaQuery';
 
@@ -95,6 +99,8 @@ export function Editor() {
   const viewMode = useStore((s) => s.viewMode);
   const setViewMode = useStore((s) => s.setViewMode);
   const editorFontSize = useStore((s) => s.editorFontSize);
+  const [graphLabelPx, setGraphLabelPx] = useState(DEFAULT_GRAPH_LABEL_PX);
+  const [graphEpoch, setGraphEpoch] = useState(0);
   const rawEditorSplitPct = useStore((s) => s.layout.editorSplitPct);
   const editorSplitPct = clamp(
     typeof rawEditorSplitPct === 'number'
@@ -1232,6 +1238,16 @@ export function Editor() {
             <path d="M2 4 L5 7 L8 4" />
           </svg>
         </div>
+        {showGraph && (
+          <GraphViewControls
+            labelPx={graphLabelPx}
+            onLabelPx={setGraphLabelPx}
+            onReset={() => {
+              setGraphLabelPx(DEFAULT_GRAPH_LABEL_PX);
+              setGraphEpoch((n) => n + 1);
+            }}
+          />
+        )}
         {showWriteTools && (
         <>
         {/* Unified "Format" dropdown. Replaces the previous font-size
@@ -1975,7 +1991,9 @@ export function Editor() {
             </ReactMarkdown>
           </div>
         )}
-        {showGraph && <GraphView />}
+        {showGraph && (
+          <GraphView key={graphEpoch} labelPx={graphLabelPx} />
+        )}
       </div>
     </div>
   );

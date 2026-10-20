@@ -34,8 +34,8 @@ await fs.writeFile(
   `
 import { extractWikilinks, resolveWikilink, normalizeWikiSlug } from '${path.join(ROOT, 'src/utils/graph/parseWikilinks.ts').replace(/\\/g, '/')}';
 import { buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath } from '${path.join(ROOT, 'src/utils/graph/buildWorkspaceGraph.ts').replace(/\\/g, '/')}';
-import { layoutWorkspaceGraph } from '${path.join(ROOT, 'src/utils/graph/layoutWorkspaceGraph.ts').replace(/\\/g, '/')}';
-export { extractWikilinks, resolveWikilink, normalizeWikiSlug, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph };
+import { layoutWorkspaceGraph, nodeRadius } from '${path.join(ROOT, 'src/utils/graph/layoutWorkspaceGraph.ts').replace(/\\/g, '/')}';
+export { extractWikilinks, resolveWikilink, normalizeWikiSlug, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, nodeRadius };
 `
 );
 
@@ -63,6 +63,7 @@ const {
   termNodeId,
   splitHeadingPath,
   layoutWorkspaceGraph,
+  nodeRadius,
 } = await import(pathToFileURL(path.join(TMP_DIR, 'bundle.mjs')).href);
 
 let passed = 0;
@@ -286,6 +287,13 @@ test('graph: path titles nest under a shared parent', () => {
         e.source === documentNodeId('ideas') && e.target === annotate.id
     )
   );
+});
+
+test('layout: node bullets are at least double the original size', () => {
+  assert.equal(nodeRadius('document', false), 36);
+  assert.equal(nodeRadius('heading', true), 26);
+  assert.equal(nodeRadius('heading', false), 20);
+  assert.equal(nodeRadius('term', false), 16);
 });
 
 test('layout: document clusters stay apart', () => {
