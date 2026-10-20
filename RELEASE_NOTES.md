@@ -1,3 +1,32 @@
+## v0.5.7 — Graph navigation: pan, orbit, Globe
+
+Patch release on top of [v0.5.6](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.6). The Graph view can finally be moved around — drag empty space to pan the flat map; flip the toolbar's new **Globe** toggle to spin the same nodes onto a sphere. Three new pure modules in `src/utils/graph/` and two in `src/hooks/`; zero new dependencies, no store-schema change, no `viewMode` change.
+
+### Added
+
+- **Pan in the flat map.** Background drag now moves the camera. At any zoom, content follows the pointer in world units (`dx / scale`). Wrapped in `useGraphCamera`, alongside the existing zoom controls. The auto-fit re-centres only when the layout bounds or the pane actually resize, and never mid-drag.
+- **`Graph` / `Globe` toggle.** A segmented control in the existing `GraphViewControls` row, after the zoom buttons. Switching re-projects the same nodes through `toSphere` → `rotateSphere` → `toScreen` from `src/utils/graph/sphereProject.ts`. Default is flat. **Reset** returns to flat.
+- **Spherical navigation.** Dragging in Globe mode spins the sphere, not the camera. Yaw rotates about Y — so dragging horizontally actually rolls the visible cap, the way users expect from a globe (rotating about Z would spin the visible cap toward the camera and visually do nothing). Rotation gain is `viewport.w / π`; a full-pane drag is one half revolution regardless of zoom level. Sphere radius is `SPHERE_RADIUS = 2600` layout units.
+- **Back-hemisphere culling.** Nodes on the far side of the sphere (`z < 0` after rotation) are not drawn rather than mirrored onto the screen. Edges are dropped unless both endpoints are front-facing, so a single culled node does not strand its edges across the viewport. Depth ramp `0.55 + 0.45·d` applied to opacity, where `d = (z/R + 1) / 2`.
+- **Graphical fisheye lens.** `src/utils/graph/fisheyeLens.ts` implements Sarkar & Brown's graphical fisheye, Eq. (1) of Wang et al. Infovis 2018: `β' = (m + 1)β / (mβ + 1)`. `m = 0` returns the input object and array by identity, so an inactive lens is free. Not yet UI-exposed — `useGraphLens` is wired in but inert until a focal point can be set.
+
+### Fixed
+
+- **Dark-mode Graph labels were invisible.** `dark:text-cyber-primary` sets the CSS `color` property, which SVG `<text>` ignores. Swapped to `dark:fill-cyber-primary`, the matching SVG fill token from the same `--cyber-primary` custom property; verified by reading the computed `fill` in dark mode (`rgb(244, 241, 234)` — the warm cream already used by other `--cyber-primary` consumers). Light mode (`fill-paper-ink`) is unchanged.
+
+### Internal
+
+- `src/utils/graph/graphCamera.ts` — `GraphCamera { cx, cy, scale }`, `fitCameraTo`, `panCamera`, `screenToWorld`, `worldToScreen`, `zoomCameraAt`, `cameraBounds`, `cameraViewBox`. `zoomedViewBox` retained for the existing test.
+- `src/utils/graph/sphereProject.ts` — `toSphere` (inverse stereographic, exact `|P| = R`), `toScreen` (forward stereographic, requires `z > 0`), `rotateSphere` (yaw about Y, pitch about X), `isFrontFacing`, `dragToOrientation`, `clampPitch`, `angularDistance`, `IDENTITY_ORIENTATION`.
+- `src/utils/graph/fisheyeLens.ts` — `applyFisheye`, `fisheyeRatio`, `boundaryPointOnRay`, `clampMagnification`, `applyFisheyeToNodes`. `m = 0` is an exact identity.
+- `src/hooks/useGraphCamera.ts` — owns viewport measurement, fit, pan, orbit, zoom, anchored zoom. Zoom is a *multiplier* on top of the fit scale; fits adjust independently of zoom.
+- `src/hooks/useGraphLens.ts` — owns the lens state; off when `focal == null` or `m == 0`.
+- `src/components/GraphView.tsx` — props now `labelPx`, `zoom`, `onZoomChange`, `projection`. Render pipeline: layout → manual drag overrides → fisheye lens → sphere projection → camera. The `placed.find()` inside `edges.map()` is replaced by a `Map`.
+- `src/components/Editor.tsx` — `graphProjection` is local `useState` (not persisted), default `'flat'`. `Reset` returns to `'flat'`.
+- `scripts/test-graph.mjs` — 21 new test cases (`npm run test:graph`: 15 → 36).
+
+---
+
 ## v0.5.6 — Round-trip JSON backups
 
 Patch release on top of [v0.5.5](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.5). Round-trips the v1 `DocumentBackup` shape introduced in v0.5.3: a backup produced today can be re-imported with comments, chat history, and revisions intact.

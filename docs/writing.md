@@ -38,13 +38,17 @@ Graph compiles what is already in the workspace. It does not ask an AI to invent
 - Each sidebar document is a node. The open document is marked.
 - Each Markdown heading (`#` / Setext) is a node under its document. Titles with `>` nest: `# Comment > annotate` and `# Comment > feedback` share a **Comment** node that links to **annotate** and **feedback**. Subheadings (`##`) nest the same way.
 - Hover a node or its label to read the **full title** in the bar at the top of Graph (labels wrap on the canvas; long lines still get a tooltip). The initial map is atomic: the open document is the nucleus, headings sit on concentric shells, and `[[wikilink]]` / other-doc satellites park on the same ray as their source so lines do not cross through the ring.
-- **−** / **+** on the Graph toolbar change only Graph label size (12–28 px, default 16 — the same range as the rest of the app). **Zoom −** / **Zoom +** scale the whole map (50–400%). **Reset** restores label size, zoom, and node positions, then redraws the map.
+- **−** / **+** on the Graph toolbar change only Graph label size (12–28 px, default 16 — the same range as the rest of the app). **Zoom −** / **Zoom +** scale the whole map (50–400%). **Reset** restores label size, zoom, projection, and node positions, then redraws the map.
+- **Graph / Globe** on the Graph toolbar switches how the same map is seen. **Graph** is the flat map. **Globe** wraps it onto a sphere so you can drag to spin it and browse from any side.
 - Drag a node (or its label) to rearrange it. A short click still opens the document or selects the heading / `[[term]]`. Positions last until **Reset** or you leave Graph.
+- Drag **empty space** to navigate: in **Graph** it pans the map (at any zoom), in **Globe** it turns the globe. Dragging across the whole pane in Globe turns it a half revolution.
 - Write `[[Name]]` (optional `[[Name|label]]` or `[[Name#Heading]]`) to add a wikilink, the same syntax as Obsidian / LLM wiki.
 - If `Name` matches another document title, Graph draws a line to that document (or heading). If it does not, Graph adds a **term** node. Click it to select that `[[…]]` span.
 - `@` mentions on comments also draw lines to the referenced document or heading.
 
 Hover a node to dim everything that is not a neighbor. Click a document to open it. Click a heading or term to open its document and select the passage. Graph does not create a new document when you click a term.
+
+**About Globe.** Only the near half of the sphere is drawn — the far side would otherwise render mirrored onto the screen. So a node on the far side is not shown at all rather than shown wrong; keep turning the globe, or press **Reset** to return to the flat map. This is the standard trade-off for globe views, and it is why the flat map remains the default.
 
 ## Bold, italic, underline
 

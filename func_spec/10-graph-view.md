@@ -1,6 +1,6 @@
 # Graph view
 
-> A local knowledge graph of the workspace, compiled entirely in the browser from documents, headings, `[[wikilinks]]`, and `@` mentions. No LLM call, no new dependency, no store-schema change. Added in v0.5.4.
+> A local knowledge graph of the workspace, compiled entirely in the browser from documents, headings, `[[wikilinks]]`, and `@` mentions. No LLM call, no new dependency, no store-schema change. Added in v0.5.4. Pan / orbit navigation and the Globe projection added in v0.5.7.
 
 ---
 
@@ -16,6 +16,14 @@ Graph replaces the text panes in the editor's view dropdown. It is a **symbolic*
 | Persistence | **None.** It is a pure derivation of store state, recomputed on render |
 
 In `graph` mode, Format / Comment / Predict hide because they need the textarea. File actions and Save revision stay.
+
+**`viewMode` is unchanged by the Globe work.** It remains `'write' | 'preview' | 'split' | 'graph'`. A projection is a navigation aid *within* the Graph view, not a fifth pane:
+
+| Why not a fifth `viewMode` |
+|---|
+| Graph and Globe are the same data with a different camera; a sibling pane would imply different capabilities |
+| `viewMode` is persisted via `partialize`, so a new default would silently change what the app opens to between sessions |
+| Keeping both reachable preserves the paper's own comparison — same nodes, undistorted vs. wrapped |
 
 ## 2. Data model
 
@@ -278,13 +286,30 @@ DEFAULT_GRAPH_ZOOM = 1
 MIN_GRAPH_ZOOM     = 0.5
 MAX_GRAPH_ZOOM     = 4
 GRAPH_ZOOM_FACTOR  = 1.25
+
+interface GraphCamera { cx: number; cy: number; scale: number }
+interface Bounds { minX: number; minY: number; width: number; height: number }
 ```
 
 | Function | Behaviour |
 |---|---|
 | `clampGraphZoom(z)` | Non-finite → `1`; otherwise clamped to `[0.5, 4]` |
 | `stepGraphZoom(zoom, direction)` | `zoom * 1.25` or `zoom / 1.25`, then clamped |
-| `zoomedViewBox(minX, minY, width, height, zoom)` | `w = width / z`, `h = height / z`, keeping the **centre** fixed: `x = (minX + width/2) - w/2`, `y = (minY + height/2) - h/2` |
+| `fitCameraTo(bounds, viewport)` | "Meet" fit: `scale = min(vp.w / w, vp.h / h)`, centre at the bounds centre |
+| `panCamera(camera, dx, dy)` | Moves the world **against** the drag: `cx -= dx / scale`, `cy -= dy / scale`. Scale is untouched |
+| `screenToWorld(camera, ox, oy)` | `ox`/`oy` are **screen pixel offsets from the viewport centre** |
+| `worldToScreen(camera, x, y)` | Exact inverse of the above |
+| `zoomCameraAt(camera, scale, ax, ay)` | Zooms so the world point under the screen anchor `(ax, ay)` stays pinned |
+| `zoomedViewBox(minX, minY, width, height, zoom)` | Legacy `viewBox`-shaped helper, retained for tests |
+| `cameraBounds` / `cameraViewBox` | Visible world rectangle, and the matching SVG `viewBox` |
+
+### Zoom is a multiplier, not an absolute scale
+
+`useGraphCamera` stores the **fitted** scale and the zoom *multiplier* separately, composing them into `camera.scale`. This is deliberate: the fit scale changes whenever the layout or the pane resizes, so persisting one absolute scale would let the two fight and either one lose. The multiplier is what `GraphViewControls` displays as a percentage.
+
+### Auto-fit contract
+
+`useGraphCamera` re-centres **only when the layout bounds or the viewport actually change** — keyed by a rounded signature string — and **never while a pointer drag is in flight**. Nudging a node changes the bounds, and re-fitting mid-drag would yank the viewport out from under the pointer. The pre-refactor code handled this with a `frozenBox` ref; the hook makes the same guarantee without a second source of truth.
 
 ## 7. Rendering
 
@@ -292,24 +317,32 @@ GRAPH_ZOOM_FACTOR  = 1.25
 
 ### Fit to content
 
-A `ResizeObserver` on `div[data-graph-view]` tracks the viewport `{ w, h }`.
+A `ResizeObserver` on `div[data-graph-view]` tracks the viewport `{ w, h }` inside `useGraphCamera`. The label font is derived from the camera scale rather than a separately computed fit:
 
 ```
-fitScale      = min(vp.w / 800, vp.h / 600)
-userFontGuess = labelPx / max(fitScale, 0.15)
-pad           = 80 + userFontGuess * 3
-box           = { width, height }, each floored at 240
-fitMeet       = min(vp.w / box.width, vp.h / box.height) || 1
-userFont      = labelPx / fitMeet           // world-units font size
-maxChars      = max(10, min(22, round((18 * 16) / labelPx)))
+userFont = labelPx / max(camera.scale, 1e-6)   // world-units font size
+maxChars = max(10, min(22, round((18 * 16) / labelPx)))
 ```
 
-`frozenBox` freezes the box **while dragging** so the camera does not jitter under the dragged node.
+### Projection pipeline
+
+Nodes pass through three pure transforms, in this order:
+
+```
+layoutWorkspaceGraph
+  → manual drag overrides              (layout space)
+  → applyFisheyeToNodes                (layout space; m = 0 is an exact identity)
+  → toSphere → rotateSphere → toScreen (sphere space; flat mode skips this)
+```
+
+The fisheye lens runs **before** the projection because edge orientation is only well defined on the plane — the refinement solve assumes a planar target.
+
+`projection: 'flat'` returns the layout coordinates unchanged and is the default. That is an invariant the test suite asserts, not merely a convention.
 
 ### SVG structure
 
 ```
-<svg viewBox={zoomedViewBox(...)} role="img" aria-label="Workspace knowledge graph">
+<svg viewBox={cameraViewBox(...)} role="img" aria-label="Workspace knowledge graph">
   <line /> × N          ← edges, drawn first so nodes sit on top
   <text />              ← edge captions, hover only
   <g transform="translate(x,y)">  × N   ← nodes
@@ -353,6 +386,8 @@ A `role="status"` `div[data-graph-label-tooltip]` pinned top-centre showing `hov
 | Coordinate conversion | `svg.getScreenCTM()` + `createSVGPoint().matrixTransform(ctm.inverse())`, so the handler works off-node too |
 | Storage | `overrides` is a plain `useState` map applied over `laidOut` in a `useMemo` |
 
+> **Overrides live in layout space, not screen space.** They are recorded in the coordinate system the layout produced, *before* the fisheye lens and the sphere projection. Recording a projected position would make manual drags drift as the globe turns. This is also why the label notes the origin is recovered from `placed`, not from the projected node.
+
 > **Drag overrides are ephemeral.** They are lost on re-layout or remount. That is why `GraphViewControls`'s **Reset** bumps `graphEpoch`, which is used as `key={graphEpoch}` on `<GraphView>` — the remount is what clears the map.
 
 ### Clicking
@@ -366,11 +401,22 @@ A `role="status"` `div[data-graph-label-tooltip]` pinned top-centre showing `hov
 
 Click and drag are disambiguated in `endDrag`: `if (!session.moved && node) onNodeClick(node)`.
 
+### Background drag
+
+Dragging empty SVG space starts a **navigation** session (`useGraphCamera`), distinct from node dragging:
+
+| Projection | `kind` | Effect |
+|---|---|---|
+| `flat` | `pan` | `panCamera` — content follows the pointer at any zoom |
+| `sphere` | `orbit` | `dragToOrientation` — the globe rotates |
+
+Both start at `DRAG_THRESHOLD_PX = 3`. The node drag threshold stays at `5`; they are separate sessions with separate refs, so a node drag never rotates the globe.
+
 ### Keyboard
 
 Each `<circle>` has `role="button"` and `tabIndex={0}`, with an `onKeyDown` that fires `onNodeClick` on `Enter` or `' '` (both `preventDefault()`).
 
-**There are no arrow-key panning, wheel zoom, or pan handlers.** Zoom is buttons-only.
+**There are no arrow-key panning, wheel zoom, or wheel handlers.** Zoom is buttons-only. The globe can still be explored with a pointer.
 
 ## 9. `GraphViewControls`
 
@@ -378,13 +424,75 @@ Each `<circle>` has `role="button"` and `tabIndex={0}`, with an `onKeyDown` that
 |---|---|---|
 | `−` | `labelPx -= GRAPH_LABEL_STEP` | `labelPx <= 12` |
 | `+` | `labelPx += GRAPH_LABEL_STEP` | `labelPx >= 28` |
-| Readout | The raw `labelPx`, `tabular-nums`, `aria-live="polite"` | — |
-| **Zoom −** | `stepGraphZoom(zoom, -1)` | `zoom <= MIN + 0.001` |
-| **Zoom +** | `stepGraphZoom(zoom, 1)` | `zoom >= MAX - 0.001` |
-| Zoom readout | `{Math.round(zoom * 100)}%`, `aria-live="polite"` | — |
-| **Reset** | `labelPx → 16`, `zoom → 1`, `graphEpoch++` | Never |
+| Readout | The raw `labelPx`, `tabular-nums` | — |
+| **Zoom −** | `zoom /= 1.25`, clamped | `zoom <= MIN + 0.001` |
+| **Zoom +** | `zoom *= 1.25`, clamped | `zoom >= MAX - 0.001` |
+| Zoom readout | `{Math.round(zoom * 100)}%` | — |
+| **Graph / Globe** | Segmented `role="group"` toggle, `aria-pressed` on each | Never |
+| **Reset** | `labelPx → 16`, `zoom → 1`, `projection → 'flat'`, `graphEpoch++` | Never |
 
-`graphLabelPx`, `graphZoom`, and `graphEpoch` are **`useState` in `Editor.tsx`, not store state.** They are intentionally not persisted.
+`graphLabelPx`, `graphZoom`, `graphProjection`, and `graphEpoch` are **`useState` in `Editor.tsx`, not store state.** They are intentionally not persisted.
+
+## 9b. Globe projection
+
+[`utils/graph/sphereProject.ts`](../src/utils/graph/sphereProject.ts)
+
+The layout plane is treated as tangent to a sphere at the **near** pole, so the layout origin `(0, 0)` maps to `(0, 0, +R)` and is visible on load. `SPHERE_RADIUS = 2600` layout units.
+
+| Function | Behaviour |
+|---|---|
+| `toSphere(x, y, R)` | Inverse stereographic. `z = R(R² − x² − y²) / S` — the `R² − …` ordering is what puts the origin at `+R`. `\|P\| = R` exactly |
+| `toScreen(p, R)` | Forward stereographic, `(R·x)/(R + z)`. Valid only for `z > 0` |
+| `isFrontFacing(p)` | `z > 0`; the visible cap |
+| `rotateSphere(p, {yaw, pitch})` | **Yaw spins about Y**, pitch about X |
+| `clampPitch(p)` | `±0.92·(π/2)`, short of the degenerate pole |
+| `dragToOrientation(base, dx, dy, pixelsPerRadian)` | `yaw += dx / gain`, `pitch += dy / gain`, pitch clamped |
+| `angularDistance(a, b)` | Great-circle angle in radians, via `acos` of the clamped dot product |
+
+### Why yaw rotates about Y
+
+The near pole sits on the **+Z** axis, and Z is also the viewing axis. Rotating about Z would spin the globe *toward the camera*, which is visually a no-op. Yaw therefore rotates about Y, which rolls the visible cap horizontally. This is asserted directly by `sphere: yaw carries the near pole off the visible cap`.
+
+### Rotation gain
+
+`pixelsPerRadian = max(viewport.w, 320) / π`, so dragging across the full pane turns the globe a half revolution — one drag, one hemisphere.
+
+The gain is deliberately derived from the **viewport**, not from `camera.scale`. A world-derived gain shrinks as you zoom in, which makes the globe spin wildly when zoomed out and barely move when zoomed in.
+
+### Culling and depth
+
+| Detail | Rule |
+|---|---|
+| Back hemisphere | `isFrontFacing` false → node is not rendered. Projecting it would place it behind the eye and render it mirrored |
+| Edges | An edge is dropped unless **both** endpoints survive; otherwise it would stretch across the viewport to an undrawn node |
+| Depth ramp | `depthScale(d) = 0.55 + 0.45·d` where `d = (z/R + 1) / 2`, applied to node and edge `opacity` |
+| Lookup | `byId` is a `Map`, replacing the previous `placed.find()` scan inside `edges.map()` — that was O(E·N) and became the hot loop once every node re-projects on each `pointermove` |
+
+> **The horizon loses context.** Culling the back hemisphere is what makes the globe readable, but it also means a far node can be entirely off-screen. The 2018 paper's own participants reported this of iSphere (*"the other far-way node is often lost"*). `Reset` returns to the fitted flat view as the escape hatch.
+
+## 9c. Fisheye lens
+
+[`utils/graph/fisheyeLens.ts`](../src/utils/graph/fisheyeLens.ts)
+
+Graphical fisheye (Sarkar & Brown 1992), Eq. (1) of Wang et al. 2018:
+
+```
+β  = ‖x − c‖ / ‖b − c‖
+β' = (m + 1)·β / (m·β + 1)
+x' = c + (b − c)·β'
+```
+
+`b` is the ray-intersection of `c → x` with the boundary (`boundaryPointOnRay`, taking the smallest positive `t` against all four edges).
+
+| Detail | Rule |
+|---|---|
+| Identity | `m = 0` returns the input **object**, and `applyFisheyeToNodes` returns the input **array**, so an inactive lens costs nothing |
+| Clamp | `MAX_FISHEYE_MAGNIFICATION = 40`. Above that `β' → 1 + 1/(mβ)` and the far field piles onto the boundary as a wall of overlapping nodes |
+| Direction | Every `β` is lifted, but by a decreasing factor — that relative squeeze *is* the effect. Near nodes gain ~7× at `m = 10`, far nodes ~1.1× |
+| Focus | `applyFisheye(c, c, …)` returns `c`; the focus never moves |
+| State | `useGraphLens` — `focal` starts `null` and `magnification` starts `0`, so the lens is inert until both exist |
+
+**The lens is currently not exposed in the UI.** `useGraphLens` is wired into the pipeline and gated on `projection === 'sphere'`, but nothing sets a focal point yet; it activates when focal-point placement lands.
 
 ## 10. Invariants and gotchas
 

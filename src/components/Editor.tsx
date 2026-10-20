@@ -36,7 +36,8 @@ import {
   GraphView,
   GraphViewControls,
 } from '@/components/GraphView';
-import { DEFAULT_GRAPH_ZOOM } from '@/utils/graph/graphCamera';
+import type { GraphProjection } from '@/hooks/useGraphCamera';
+import { clampGraphZoom, DEFAULT_GRAPH_ZOOM } from '@/utils/graph/graphCamera';
 import { SUGGESTION_HEIGHT_KEY } from '@/utils/storage';
 import { useIsCommentSheet, useIsNarrow } from '@/hooks/useMediaQuery';
 
@@ -103,6 +104,10 @@ export function Editor() {
   const editorFontSize = useStore((s) => s.editorFontSize);
   const [graphLabelPx, setGraphLabelPx] = useState(DEFAULT_GRAPH_LABEL_PX);
   const [graphZoom, setGraphZoom] = useState(DEFAULT_GRAPH_ZOOM);
+  // Flat map or globe. Deliberately local state, not a store field: a
+  // projection is a navigation aid within the Graph view, not a view mode,
+  // and persisting it would change what the app opens to between sessions.
+  const [graphProjection, setGraphProjection] = useState<GraphProjection>('flat');
   const [graphEpoch, setGraphEpoch] = useState(0);
   const rawEditorSplitPct = useStore((s) => s.layout.editorSplitPct);
   const editorSplitPct = clamp(
@@ -1247,10 +1252,13 @@ export function Editor() {
             labelPx={graphLabelPx}
             onLabelPx={setGraphLabelPx}
             zoom={graphZoom}
-            onZoom={setGraphZoom}
+            onZoom={(next) => setGraphZoom(clampGraphZoom(next))}
+            projection={graphProjection}
+            onProjection={setGraphProjection}
             onReset={() => {
               setGraphLabelPx(DEFAULT_GRAPH_LABEL_PX);
               setGraphZoom(DEFAULT_GRAPH_ZOOM);
+              setGraphProjection('flat');
               setGraphEpoch((n) => n + 1);
             }}
           />
@@ -2003,6 +2011,8 @@ export function Editor() {
             key={graphEpoch}
             labelPx={graphLabelPx}
             zoom={graphZoom}
+            onZoomChange={setGraphZoom}
+            projection={graphProjection}
           />
         )}
       </div>

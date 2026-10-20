@@ -2,6 +2,19 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## v0.5.7 — Graph navigation: pan, zoom, and Globe
+
+**Graph can finally be moved around.**
+
+- **Drag empty space to pan** in the flat map. At any zoom, content follows the pointer.
+- **`Graph` and `Globe` are now one toggle.** Click **Globe** in the Graph toolbar to wrap the map onto a sphere; drag to spin it. Yaw rotates about the visible axis (so dragging horizontally actually rolls the globe, instead of spinning toward the camera). A pane-wide drag is one half revolution, regardless of zoom.
+- **Back-hemisphere culling**: nodes on the far side of the sphere are not drawn rather than mirrored onto the screen. Press **Reset** any time to return to the flat map.
+- **Graph / Globe / Reset** all sit in the same toolbar row. The projection is a navigation aid, not a separate view — the editor view dropdown is unchanged.
+
+Accessibility, the node drag, and the existing label / zoom controls are unchanged.
+
+---
+
 ## v0.5.6 — Round-trip JSON backups
 
 **Import full backup (JSON)** ships. A new **Import .json** button sits one popover section below the existing **Export .json** and restores a document plus its comments, chat history, and revisions from a backup file.

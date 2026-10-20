@@ -35,8 +35,10 @@ await fs.writeFile(
 import { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview } from '${path.join(ROOT, 'src/utils/graph/parseWikilinks.ts').replace(/\\/g, '/')}';
 import { buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath } from '${path.join(ROOT, 'src/utils/graph/buildWorkspaceGraph.ts').replace(/\\/g, '/')}';
 import { layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings } from '${path.join(ROOT, 'src/utils/graph/layoutWorkspaceGraph.ts').replace(/\\/g, '/')}';
-import { clampGraphZoom, stepGraphZoom, zoomedViewBox } from '${path.join(ROOT, 'src/utils/graph/graphCamera.ts').replace(/\\/g, '/')}';
-export { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, clampGraphZoom, stepGraphZoom, zoomedViewBox };
+import { clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds } from '${path.join(ROOT, 'src/utils/graph/graphCamera.ts').replace(/\\/g, '/')}';
+import { toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION } from '${path.join(ROOT, 'src/utils/graph/sphereProject.ts').replace(/\\/g, '/')}';
+import { applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes } from '${path.join(ROOT, 'src/utils/graph/fisheyeLens.ts').replace(/\\/g, '/')}';
+export { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION, applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes };
 `
 );
 
@@ -70,6 +72,24 @@ const {
   clampGraphZoom,
   stepGraphZoom,
   zoomedViewBox,
+  fitCameraTo,
+  panCamera,
+  screenToWorld,
+  worldToScreen,
+  zoomCameraAt,
+  cameraBounds,
+  toSphere,
+  toScreen,
+  rotateSphere,
+  isFrontFacing,
+  dragToOrientation,
+  angularDistance,
+  IDENTITY_ORIENTATION,
+  applyFisheye,
+  fisheyeRatio,
+  boundaryPointOnRay,
+  clampMagnification,
+  applyFisheyeToNodes,
 } = await import(pathToFileURL(path.join(TMP_DIR, 'bundle.mjs')).href);
 
 let passed = 0;
@@ -418,6 +438,228 @@ test('layout: wikilink satellites stay on heading rays', () => {
     Math.hypot(hub.x - ideasDoc.x, hub.y - ideasDoc.y) > 280,
     'satellite document should sit outside the nucleus'
   );
+});
+
+// --- camera ---------------------------------------------------------------
+
+test('camera: fit places the bounds centre at the viewport centre', () => {
+  const cam = fitCameraTo(
+    { minX: -400, minY: -200, width: 800, height: 400 },
+    { w: 800, h: 400 }
+  );
+  assert.equal(cam.cx, 0);
+  assert.equal(cam.cy, 0);
+  assert.ok(Math.abs(cam.scale - 1) < 1e-9);
+});
+
+test('camera: fit uses "meet" so the whole bounds stay visible', () => {
+  const cam = fitCameraTo(
+    { minX: 0, minY: 0, width: 1000, height: 200 },
+    { w: 500, h: 500 }
+  );
+  const b = cameraBounds(cam, { w: 500, h: 500 });
+  assert.ok(b.width >= 1000, 'fitted bounds must cover the data width');
+  assert.ok(b.height >= 200, 'fitted bounds must cover the data height');
+});
+
+test('camera: pan moves content with the pointer at any zoom', () => {
+  for (const scale of [0.25, 1, 4]) {
+    const start = { cx: 100, cy: 50, scale };
+    const moved = panCamera(start, 30, -20);
+    // Dragging right must move the world left, by exactly dx / scale.
+    assert.ok(Math.abs(moved.cx - (100 - 30 / scale)) < 1e-9);
+    assert.ok(Math.abs(moved.cy - (50 + 20 / scale)) < 1e-9);
+    assert.equal(moved.scale, scale, 'pan must not change zoom');
+  }
+});
+
+test('camera: screenToWorld and worldToScreen round-trip', () => {
+  const cam = { cx: 120, cy: -40, scale: 2.5 };
+  const s = worldToScreen(cam, 300, -90);
+  const w = screenToWorld(cam, s.x, s.y);
+  assert.ok(Math.abs(w.x - 300) < 1e-9);
+  assert.ok(Math.abs(w.y - -90) < 1e-9);
+});
+
+test('camera: zoom keeps the anchored point under the cursor', () => {
+  const cam = { cx: 0, cy: 0, scale: 1 };
+  // Anchor at screen offset (80, -40).
+  const worldBefore = screenToWorld(cam, 80, -40);
+  const zoomed = zoomCameraAt(cam, 4, 80, -40);
+  const after = worldToScreen(zoomed, worldBefore.x, worldBefore.y);
+  assert.ok(Math.abs(after.x - 80) < 1e-9, `x drifted to ${after.x}`);
+  assert.ok(Math.abs(after.y - -40) < 1e-9, `y drifted to ${after.y}`);
+});
+
+// --- sphere ---------------------------------------------------------------
+
+test('sphere: layout maps onto a sphere of exactly R', () => {
+  const R = 2600;
+  for (const [x, y] of [[0, 0], [100, 0], [-900, 450], [2600, 0], [5000, -3000]]) {
+    const p = toSphere(x, y, R);
+    assert.ok(
+      Math.abs(Math.hypot(p.x, p.y, p.z) - R) < 1e-6,
+      `point ${x},${y} left the sphere: |P| = ${Math.hypot(p.x, p.y, p.z)}`
+    );
+  }
+});
+
+test('sphere: projection is an exact round-trip at identity orientation', () => {
+  const R = 2600;
+  for (const [x, y] of [[0, 0], [250, -125], [-1200, 800]]) {
+    const back = toScreen(toSphere(x, y, R), R);
+    assert.ok(Math.abs(back.x - x) < 1e-6, `x drift ${back.x - x}`);
+    assert.ok(Math.abs(back.y - y) < 1e-6, `y drift ${back.y - y}`);
+  }
+});
+
+test('sphere: the origin faces the viewer', () => {
+  assert.ok(toSphere(0, 0, 2600).z > 0);
+  assert.ok(isFrontFacing(toSphere(0, 0, 2600)));
+});
+
+test('sphere: rotation preserves the radius', () => {
+  const R = 2600;
+  const p = toSphere(400, -300, R);
+  for (const orient of [
+    { yaw: 0.7, pitch: 0.3 },
+    { yaw: -2.1, pitch: -1.0 },
+    IDENTITY_ORIENTATION,
+  ]) {
+    const q = rotateSphere(p, orient);
+    assert.ok(
+      Math.abs(Math.hypot(q.x, q.y, q.z) - R) < 1e-6,
+      'rotation must be a pure rotation, not a rescaling'
+    );
+  }
+});
+
+test('sphere: identity rotation is a no-op', () => {
+  const p = toSphere(123, -456, 2600);
+  const q = rotateSphere(p, IDENTITY_ORIENTATION);
+  assert.ok(Math.abs(q.x - p.x) < 1e-12);
+  assert.ok(Math.abs(q.y - p.y) < 1e-12);
+  assert.ok(Math.abs(q.z - p.z) < 1e-12);
+});
+
+test('sphere: yaw carries the near pole off the visible cap', () => {
+  const R = 2600;
+  const origin = toSphere(0, 0, R);
+  const turned = rotateSphere(origin, { yaw: Math.PI / 2, pitch: 0 });
+  // Yaw spins about Y, so a quarter turn moves the near pole onto the
+  // horizon, where it sits exactly on the cap boundary.
+  assert.ok(Math.abs(turned.z) < 1e-6, 'a quarter turn lands on the horizon');
+  assert.ok(
+    angularDistance(origin, turned) > 1.5,
+    'the near pole must actually travel a quarter circumference'
+  );
+  // Past the quarter turn it is genuinely behind the viewer.
+  assert.ok(
+    !isFrontFacing(rotateSphere(origin, { yaw: Math.PI, pitch: 0 })),
+    'a half turn must hide the near pole'
+  );
+});
+
+test('sphere: drag maps horizontal travel to yaw', () => {
+  // Gain is pixels-per-radian; a drag of exactly that many pixels is 1 rad.
+  const gain = 400 / Math.PI;
+  const o = dragToOrientation(IDENTITY_ORIENTATION, gain, 0, gain);
+  assert.ok(Math.abs(o.yaw - 1) < 1e-9, `yaw ${o.yaw} should be 1 radian`);
+  const back = dragToOrientation(IDENTITY_ORIENTATION, 0, gain, gain);
+  assert.ok(Math.abs(back.pitch - 1) < 1e-9);
+});
+
+test('sphere: a pane-wide drag turns roughly a half revolution', () => {
+  const pane = 900;
+  const gain = pane / Math.PI;
+  const o = dragToOrientation(IDENTITY_ORIENTATION, pane, 0, gain);
+  assert.ok(
+    Math.abs(o.yaw - Math.PI) < 1e-9,
+    `pane-wide drag should be pi radians, got ${o.yaw}`
+  );
+});
+
+test('sphere: pitch is clamped away from the poles', () => {
+  const o = dragToOrientation(IDENTITY_ORIENTATION, 0, 1e9, 1);
+  assert.ok(o.pitch <= Math.PI / 2, 'pitch must not reach the pole');
+  assert.ok(o.pitch > 1.4, 'but must still allow a useful tilt');
+});
+
+// --- fisheye lens ---------------------------------------------------------
+
+test('fisheye: m = 0 is an exact identity', () => {
+  const bounds = { minX: -500, minY: -500, width: 1000, height: 1000 };
+  const focal = { x: 0, y: 0 };
+  for (const p of [{ x: 0, y: 0 }, { x: 300, y: -120 }, { x: -800, y: 450 }]) {
+    const out = applyFisheye(p, focal, 0, bounds);
+    assert.deepEqual(out, p, 'a zero magnification lens must not move anything');
+  }
+});
+
+test('fisheye: ratio curve magnifies near and compresses far', () => {
+  assert.equal(fisheyeRatio(0.4, 0), 0.4, 'm = 0 leaves beta alone');
+  const m = 10;
+  // The curve lifts every beta, but by a *decreasing* factor: that relative
+  // squeeze is what compresses the far field toward the boundary while
+  // leaving the focal region large. Check the ratios fall monotonically.
+  const nearRatio = fisheyeRatio(0.05, m) / 0.05;
+  const midRatio = fisheyeRatio(0.5, m) / 0.5;
+  const farRatio = fisheyeRatio(0.95, m) / 0.95;
+  assert.ok(nearRatio > midRatio, `${nearRatio} > ${midRatio}`);
+  assert.ok(midRatio > farRatio, `${midRatio} > ${farRatio}`);
+  assert.ok(nearRatio > 2, 'the focal region is meaningfully magnified');
+  assert.ok(farRatio > 1, 'but nothing is pushed inward');
+  for (const mm of [1, 10, 40]) {
+    assert.ok(fisheyeRatio(1, mm) < 2, 'ratio must approach (m+1)/m, bounded');
+  }
+});
+
+test('fisheye: boundary point lies on the bounds and on the ray', () => {
+  const bounds = { minX: -500, minY: -300, width: 1000, height: 600 };
+  const focal = { x: -100, y: 50 };
+  const p = { x: 400, y: 200 };
+  const b = boundaryPointOnRay(focal, p, bounds);
+  const onRight = Math.abs(b.x - (bounds.minX + bounds.width)) < 1e-6;
+  const onTop = Math.abs(b.y - bounds.minY) < 1e-6;
+  assert.ok(onRight || onTop, 'boundary point must sit on an edge');
+  // Collinear with focal → p.
+  const cross =
+    (p.x - focal.x) * (b.y - focal.y) - (p.y - focal.y) * (b.x - focal.x);
+  assert.ok(Math.abs(cross) < 1e-6, 'boundary point must lie on the ray');
+});
+
+test('fisheye: magnification pushes nodes away from the focus', () => {
+  const bounds = { minX: -1000, minY: -1000, width: 2000, height: 2000 };
+  const focal = { x: 0, y: 0 };
+  const p = { x: 600, y: 0 };
+  const out = applyFisheye(p, focal, 10, bounds);
+  const before = Math.hypot(p.x - focal.x, p.y - focal.y);
+  const after = Math.hypot(out.x - focal.x, out.y - focal.y);
+  assert.ok(after > before, 'the far field compresses outward, not inward');
+});
+
+test('fisheye: lens does not move the focus itself', () => {
+  const bounds = { minX: -500, minY: -500, width: 1000, height: 1000 };
+  const focal = { x: 120, y: -80 };
+  const out = applyFisheye(focal, focal, 12, bounds);
+  assert.ok(Math.hypot(out.x - focal.x, out.y - focal.y) < 1e-6);
+});
+
+test('fisheye: lens is skipped wholesale at m = 0', () => {
+  const nodes = [{ id: 'a', x: 1, y: 2 }, { id: 'b', x: -3, y: 4 }];
+  const bounds = { minX: -500, minY: -500, width: 1000, height: 1000 };
+  assert.equal(
+    applyFisheyeToNodes(nodes, { x: 0, y: 0 }, 0, bounds),
+    nodes,
+    'identity lens must return the same array, not a copy'
+  );
+});
+
+test('fisheye: magnification is clamped to a usable range', () => {
+  assert.equal(clampMagnification(-5), 0);
+  assert.equal(clampMagnification(0), 0);
+  assert.ok(clampMagnification(1e9) <= 40);
+  assert.ok(clampMagnification(NaN) === 0);
 });
 
 console.log(`${passed} passed`);

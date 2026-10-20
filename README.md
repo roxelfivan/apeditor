@@ -12,23 +12,25 @@
 > See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.5.6](https://img.shields.io/badge/version-0.5.6-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.6)
+[![v0.5.7](https://img.shields.io/badge/version-0.5.7-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.7)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
 
 ---
 
-## What's new in v0.5.6
+## What's new in v0.5.7
 
-> Round-trips the v1 `DocumentBackup` shape introduced in v0.5.3: a backup produced by **Export .json** can now be re-imported with comments, chat history, and revisions intact, and the editor switches to the imported document. Patch on top of [v0.5.5](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.5); nothing else moved.
+> Graph can finally be moved around. Drag empty space to pan in the flat map; switch to **Globe** in the Graph toolbar to spin the same nodes onto a sphere. Adopted from the iSphere focus+context technique (Du et al., CHI 2017), with the plane→sphere and screen→plane math implemented in pure TypeScript. Patch on top of [v0.5.6](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.6).
 
-1. **Import full backup (JSON).** A new **Import .json** button (one popover section below the existing **Export .json**) restores a document plus its comments, chat history, and revisions from a backup file. The clean case (no id collisions) imports in one tap without any modal; colliding ids open a per-row modal with **Replace / Skip / Keep both** so imports never silently overwrite.
-2. **Bidirectional `DocumentBackup` v1.** `parseDocumentBackup` is the inverse of `serialiseDocumentBackup`. Round-tripping a populated backup produces a deep-equal document state, including comment rounds, mention tokens, and revisions. Backups produced by v0.5.3+ can be re-imported unchanged.
+1. **Pan, orbit, and zoom are now a single camera.** `GraphView` lost its bound-derived viewBox; the camera is an explicit `{ cx, cy, scale }` with a zoom *multiplier* on top of the fit-to-pane scale. Zooming keeps the world point under the cursor pinned.
+2. **Spherical navigation.** A new `Globe` projection wraps the layout onto a sphere of radius 2600 layout units and projects it back through `toSphere` / `rotateSphere` / `toScreen`. Yaw rotates about Y so dragging horizontally rolls the globe instead of spinning toward the camera. Rotation gain derives from the viewport (`viewport.w / π`); a pane-wide drag is one half revolution.
+3. **`Graph` / `Globe` is one toggle, not a fifth viewMode.** A new segmented control in the Graph toolbar row. Reset returns to the flat map.
+4. **Graphical fisheye lens (Eq. 1 of Wang et al. 2018).** `fisheyeLens.ts` implements `β' = (m + 1)β / (mβ + 1)` exactly. Wired through the pipeline but not yet UI-exposed — no focal point yet, so it's inert.
 
-The Preview wikilinks / Functional Specification / Graph Reset / blank-tab stability fixes from [v0.5.5](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.5), and the existing Export .json / Export .md / OCR Import flows, all stay as before.
+The Edit / Import / Comment / Chat / Prompt / Config surfaces stay; the editor view dropdown is unchanged. Backups from v0.5.3 onward still round-trip unchanged, and v0.5.5's Preview wikilinks, Functional Specification, and Graph Reset polish are still in place.
 
-See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.5.6 entry and prior changelogs.
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.5.7 entry and prior changelogs.
 
 ---
 
@@ -786,6 +788,7 @@ per-release notes also ship on the GitHub release pages.
 
 | Version | Highlights |
 | --- | --- |
+| [v0.5.7](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.7) | **Graph navigation: pan, orbit, Globe.** Background drag pans the flat map at any zoom. New `Graph` / `Globe` toggle wraps the layout onto a sphere (iSphere). Existing node drag, label size, zoom, and Reset kept. Zero new dependencies. |
 | [v0.5.6](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.6) | **Import full backup (JSON).** Round-trips the v1 `DocumentBackup` shipped in v0.5.3 — Export `.json` and Import `.json` are now a single round-trip. Per-row modal for id collisions; never overwrites silently. |
 | [v0.5.5](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.5) | **Preview wikilinks** (purple, no brackets); Graph Reset tidy layout; in-app **Functional Specification**; Graph+Chat blank-tab fix. |
 | [v0.5.4](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.4) | **Graph view.** Documents, headings, `[[wikilinks]]`, and `@` mentions as a local knowledge graph. Help **What's new** page. |

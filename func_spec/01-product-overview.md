@@ -151,6 +151,7 @@ Full changelogs are in [`RELEASE_NOTES.md`](../RELEASE_NOTES.md). The shape of t
 
 | Version | What changed |
 |---|---|
+| v0.5.7 | **Graph navigation: pan, orbit, and Globe.** The view can finally be moved: drag empty space to pan in flat mode, drag to spin the sphere in globe mode. Sphere projection (iSphere, CHI 2017): layout plane → Riemann sphere → viewport, with back-hemisphere culling. The `Graph` / `Globe` control is a navigation toggle, not a fifth `viewMode`. |
 | v0.5.6 | **Import full backup (JSON).** Round-trips the v1 `DocumentBackup` shipped in v0.5.3: backups can be re-imported with comments, chat history, and revisions intact. Per-row modal for id collisions; never overwrites silently. |
 | v0.5.5 | **Preview wikilinks** without brackets (purple); Graph Reset tidy atom layout; in-app **Functional Specification**; Graph+Chat blank-tab fix. |
 | v0.5.4 | **Graph view.** Documents, headings, `[[wikilinks]]`, and `@` mentions compiled into a local knowledge graph. Drag nodes, zoom the map. |
