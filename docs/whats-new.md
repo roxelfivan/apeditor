@@ -15,7 +15,9 @@ The editor dropdown is now **Write · Preview · Split · Graph**.
   - If it does not, Graph adds a **term** node. Click it to select that `[[…]]` span. Graph does not create a new document.
 - `@` mentions on comments also draw lines to the referenced document or heading.
 
-Hover a node to dim everything that is not a neighbor. Click a document to open it. Click a heading or term to open its document and select the passage.
+Hover a node to dim everything that is not a neighbor and to read the **full label** in the bar at the top of Graph. Click a document to open it. Click a heading or term to open its document and select the passage.
+
+Headings written as `Comment > annotate` share a **Comment** parent node. The same happens with Markdown subheadings (`##`).
 
 In Graph, **Format**, **Comment**, and **Predict** hide because there is no textarea. File actions and Save stay.
 

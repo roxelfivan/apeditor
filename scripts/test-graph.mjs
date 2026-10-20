@@ -33,8 +33,8 @@ await fs.writeFile(
   TMP_SRC,
   `
 import { extractWikilinks, resolveWikilink, normalizeWikiSlug } from '${path.join(ROOT, 'src/utils/graph/parseWikilinks.ts').replace(/\\/g, '/')}';
-import { buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId } from '${path.join(ROOT, 'src/utils/graph/buildWorkspaceGraph.ts').replace(/\\/g, '/')}';
-export { extractWikilinks, resolveWikilink, normalizeWikiSlug, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId };
+import { buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath } from '${path.join(ROOT, 'src/utils/graph/buildWorkspaceGraph.ts').replace(/\\/g, '/')}';
+export { extractWikilinks, resolveWikilink, normalizeWikiSlug, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath };
 `
 );
 
@@ -60,6 +60,7 @@ const {
   documentNodeId,
   headingNodeId,
   termNodeId,
+  splitHeadingPath,
 } = await import(pathToFileURL(path.join(TMP_DIR, 'bundle.mjs')).href);
 
 let passed = 0;
@@ -200,6 +201,87 @@ test('graph: comment @ mention becomes an edge', () => {
         e.kind === '@' &&
         e.source === documentNodeId('welcome') &&
         e.target === documentNodeId('ideas')
+    )
+  );
+});
+
+test('splitHeadingPath on Comment > annotate', () => {
+  assert.deepEqual(splitHeadingPath('Comment > annotate'), [
+    'Comment',
+    'annotate',
+  ]);
+  assert.deepEqual(splitHeadingPath('Predict → sentence suggestion'), [
+    'Predict',
+    'sentence suggestion',
+  ]);
+});
+
+test('graph: path titles nest under a shared parent', () => {
+  const ideas = doc(
+    'ideas',
+    'Ideas',
+    '# Comment > annotate\n\na\n\n# Comment > feedback\n\nb\n\n# Predict > ghost text\n\nc\n\n# Predict > sentence suggestion\n\nd\n'
+  );
+  const { nodes, edges } = buildWorkspaceGraph([ideas], {});
+  const comment = nodes.find(
+    (n) => n.kind === 'heading' && n.label === 'Comment'
+  );
+  const predict = nodes.find(
+    (n) => n.kind === 'heading' && n.label === 'Predict'
+  );
+  const annotate = nodes.find(
+    (n) => n.kind === 'heading' && n.label === 'annotate'
+  );
+  const feedback = nodes.find(
+    (n) => n.kind === 'heading' && n.label === 'feedback'
+  );
+  const ghost = nodes.find(
+    (n) => n.kind === 'heading' && n.label === 'ghost text'
+  );
+  const sentence = nodes.find(
+    (n) => n.kind === 'heading' && n.label === 'sentence suggestion'
+  );
+  assert.ok(comment && predict && annotate && feedback && ghost && sentence);
+  assert.equal(
+    nodes.filter((n) => n.label === 'Comment').length,
+    1
+  );
+  assert.ok(
+    edges.some(
+      (e) =>
+        e.kind === 'heading' &&
+        e.source === comment.id &&
+        e.target === annotate.id
+    )
+  );
+  assert.ok(
+    edges.some(
+      (e) =>
+        e.kind === 'heading' &&
+        e.source === comment.id &&
+        e.target === feedback.id
+    )
+  );
+  assert.ok(
+    edges.some(
+      (e) =>
+        e.kind === 'heading' &&
+        e.source === predict.id &&
+        e.target === ghost.id
+    )
+  );
+  assert.ok(
+    edges.some(
+      (e) =>
+        e.kind === 'heading' &&
+        e.source === predict.id &&
+        e.target === sentence.id
+    )
+  );
+  assert.ok(
+    !edges.some(
+      (e) =>
+        e.source === documentNodeId('ideas') && e.target === annotate.id
     )
   );
 });

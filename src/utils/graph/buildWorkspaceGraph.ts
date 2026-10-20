@@ -6,7 +6,11 @@ import {
   buildHeadingSections,
   type HeadingSection,
 } from '@/hooks/useDocumentMentions';
-import { extractWikilinks, resolveWikilink } from '@/utils/graph/parseWikilinks';
+import {
+  extractWikilinks,
+  normalizeWikiSlug,
+  resolveWikilink,
+} from '@/utils/graph/parseWikilinks';
 
 export type GraphNodeKind = 'document' | 'heading' | 'term';
 export type GraphEdgeKind = 'heading' | '@' | 'wikilink';
@@ -14,7 +18,13 @@ export type GraphEdgeKind = 'heading' | '@' | 'wikilink';
 export interface GraphNode {
   id: string;
   kind: GraphNodeKind;
+  /** Short label shown on the canvas (last path segment). */
   label: string;
+  /**
+   * Full heading / path for hover. Same as `label` unless the source
+   * title was a nested path (`Comment > annotate`).
+   */
+  fullLabel: string;
   documentId: string | null;
   start: number | null;
   end: number | null;
@@ -42,6 +52,26 @@ export function headingNodeId(documentId: string, start: number): string {
 
 export function termNodeId(slug: string): string {
   return `term:${slug}`;
+}
+
+export function headingPathNodeId(documentId: string, pathSlug: string): string {
+  return `heading-path:${documentId}:${pathSlug}`;
+}
+
+/**
+ * Split a heading title on path separators so
+ * `Comment > annotate` becomes `["Comment", "annotate"]`.
+ * Markdown heading *level* still wins when titles have no separator.
+ */
+export function splitHeadingPath(title: string): string[] {
+  return title
+    .split(/\s*(?:>|›|→)\s*/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+
+function pathSlugKey(documentId: string, segments: string[]): string {
+  return `${documentId}:${segments.map((s) => normalizeWikiSlug(s)).join('/')}`;
 }
 
 function parentHeading(
@@ -124,6 +154,7 @@ export function buildWorkspaceGraph(
       id: documentNodeId(doc.id),
       kind: 'document',
       label: doc.title,
+      fullLabel: doc.title,
       documentId: doc.id,
       start: null,
       end: null,
@@ -133,23 +164,69 @@ export function buildWorkspaceGraph(
   for (const doc of documents) {
     const sections = sectionsByDocId[doc.id] ?? [];
     const real = sections.filter((s) => s.level > 0);
-    for (let i = 0; i < real.length; i++) {
-      const s = real[i];
-      const id = headingNodeId(doc.id, s.start);
+    const alias = new Map<string, string>();
+
+    const ensurePathPrefix = (segments: string[]): string => {
+      let parentId = documentNodeId(doc.id);
+      const acc: string[] = [];
+      for (const seg of segments) {
+        acc.push(seg);
+        const key = pathSlugKey(doc.id, acc);
+        let id = alias.get(key);
+        if (!id) {
+          id = headingPathNodeId(doc.id, acc.map((s) => normalizeWikiSlug(s)).join('/'));
+          addNode({
+            id,
+            kind: 'heading',
+            label: seg,
+            fullLabel: acc.join(' > '),
+            documentId: doc.id,
+            start: null,
+            end: null,
+          });
+          addEdge({ source: parentId, target: id, kind: 'heading' });
+          alias.set(key, id);
+        }
+        parentId = id;
+      }
+      return parentId;
+    };
+
+    for (const s of real) {
+      const segs = splitHeadingPath(s.title);
+      const label = segs[segs.length - 1] ?? s.title;
       addNode({
-        id,
+        id: headingNodeId(doc.id, s.start),
         kind: 'heading',
-        label: s.title,
+        label,
+        fullLabel: s.title,
         documentId: doc.id,
         start: s.start,
         end: s.end,
       });
-      const parent = parentHeading(real, i);
-      addEdge({
-        source: parent ? headingNodeId(doc.id, parent.start) : documentNodeId(doc.id),
-        target: id,
-        kind: 'heading',
-      });
+    }
+
+    for (const s of real) {
+      const segs = splitHeadingPath(s.title);
+      if (segs.length === 1) {
+        alias.set(pathSlugKey(doc.id, segs), headingNodeId(doc.id, s.start));
+      }
+    }
+
+    for (let i = 0; i < real.length; i++) {
+      const s = real[i];
+      const id = headingNodeId(doc.id, s.start);
+      const segs = splitHeadingPath(s.title);
+      const mdParent = parentHeading(real, i);
+      let parentId: string;
+      if (segs.length > 1) {
+        parentId = ensurePathPrefix(segs.slice(0, -1));
+      } else if (mdParent) {
+        parentId = headingNodeId(doc.id, mdParent.start);
+      } else {
+        parentId = documentNodeId(doc.id);
+      }
+      addEdge({ source: parentId, target: id, kind: 'heading' });
     }
   }
 
@@ -186,6 +263,7 @@ export function buildWorkspaceGraph(
           id: tid,
           kind: 'term',
           label: match.target,
+          fullLabel: match.target,
           documentId: doc.id,
           start: match.start,
           end: match.end,
