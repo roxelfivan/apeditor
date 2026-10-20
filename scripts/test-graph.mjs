@@ -34,7 +34,8 @@ await fs.writeFile(
   `
 import { extractWikilinks, resolveWikilink, normalizeWikiSlug } from '${path.join(ROOT, 'src/utils/graph/parseWikilinks.ts').replace(/\\/g, '/')}';
 import { buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath } from '${path.join(ROOT, 'src/utils/graph/buildWorkspaceGraph.ts').replace(/\\/g, '/')}';
-export { extractWikilinks, resolveWikilink, normalizeWikiSlug, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath };
+import { layoutWorkspaceGraph } from '${path.join(ROOT, 'src/utils/graph/layoutWorkspaceGraph.ts').replace(/\\/g, '/')}';
+export { extractWikilinks, resolveWikilink, normalizeWikiSlug, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph };
 `
 );
 
@@ -61,6 +62,7 @@ const {
   headingNodeId,
   termNodeId,
   splitHeadingPath,
+  layoutWorkspaceGraph,
 } = await import(pathToFileURL(path.join(TMP_DIR, 'bundle.mjs')).href);
 
 let passed = 0;
@@ -284,6 +286,26 @@ test('graph: path titles nest under a shared parent', () => {
         e.source === documentNodeId('ideas') && e.target === annotate.id
     )
   );
+});
+
+test('layout: document clusters stay apart', () => {
+  const welcome = doc(
+    'welcome',
+    'Welcome',
+    '# One\n\na\n\n# Two\n\nb\n\n# Three\n\nc\n\nSee [[Ideas]].\n'
+  );
+  const ideas = doc(
+    'ideas',
+    'Ideas',
+    '# Alpha\n\nx\n\n# Beta\n\ny\n\n# Gamma\n\nz\n'
+  );
+  const g = buildWorkspaceGraph([welcome, ideas], {});
+  const laid = layoutWorkspaceGraph(g.nodes, g.edges, 'welcome');
+  const w = laid.find((n) => n.kind === 'document' && n.documentId === 'welcome');
+  const i = laid.find((n) => n.kind === 'document' && n.documentId === 'ideas');
+  assert.ok(w && i);
+  const dist = Math.hypot(w.x - i.x, w.y - i.y);
+  assert.ok(dist > 280, `expected document hubs far apart, got ${dist}`);
 });
 
 console.log(`${passed} passed`);
