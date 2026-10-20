@@ -30,6 +30,7 @@ import {
   type ReanchorPick,
 } from '@/components/ReanchorPicker';
 import { ResizeHandle } from '@/components/ResizeHandle';
+import { GraphView } from '@/components/GraphView';
 import { SUGGESTION_HEIGHT_KEY } from '@/utils/storage';
 import { useIsCommentSheet, useIsNarrow } from '@/hooks/useMediaQuery';
 
@@ -83,8 +84,9 @@ function restoreCaret(
 
 /**
  * Editor: plain textarea (write) + react-markdown preview (preview),
- * with a split mode. Selection in the textarea is exposed via a global
- * window event so the ChatPanel can pick it up.
+ * with a split mode and a compiled workspace Graph. Selection in the
+ * textarea is exposed via a global window event so the ChatPanel can
+ * pick it up.
  */
 export function Editor() {
   const doc = useCurrentDocument();
@@ -1184,6 +1186,8 @@ export function Editor() {
 
   const showWrite = viewMode === 'write' || viewMode === 'split';
   const showPreview = viewMode === 'preview' || viewMode === 'split';
+  const showGraph = viewMode === 'graph';
+  const showWriteTools = !showGraph;
 
   const isSplit = showWrite && showPreview;
 
@@ -1204,13 +1208,16 @@ export function Editor() {
         <div className="relative inline-block">
           <select
             value={viewMode}
-            onChange={(e) => setViewMode(e.target.value as 'write' | 'preview' | 'split')}
+            onChange={(e) =>
+              setViewMode(e.target.value as 'write' | 'preview' | 'split' | 'graph')
+            }
             aria-label="Editor view mode"
             className="appearance-none cursor-pointer pl-2 pr-6 h-9 text-[15px] leading-none rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-panel text-paper-ink dark:text-cyber-primary hover:border-cyber-clay dark:hover:border-cyber-cyan focus:outline-none focus:border-cyber-clay dark:focus:border-cyber-cyan transition-colors"
           >
             <option value="write">Write</option>
             <option value="preview">Preview</option>
             <option value="split">Split</option>
+            <option value="graph">Graph</option>
           </select>
           <svg
             aria-hidden="true"
@@ -1225,6 +1232,8 @@ export function Editor() {
             <path d="M2 4 L5 7 L8 4" />
           </svg>
         </div>
+        {showWriteTools && (
+        <>
         {/* Unified "Format" dropdown. Replaces the previous font-size
             (+ / −) pill and the B/I/U inline-formatting pill. The
             trigger is the same height/shape as the neighbouring
@@ -1482,6 +1491,8 @@ export function Editor() {
           </svg>
           Predict
         </button>
+        </>
+        )}
         {/* Spacer pushes Import / Save to the trailing edge without
             forcing a full-row wrap (`basis-full` used to drop them
             onto a second line). All toolbar controls stay on one
@@ -1964,6 +1975,7 @@ export function Editor() {
             </ReactMarkdown>
           </div>
         )}
+        {showGraph && <GraphView />}
       </div>
     </div>
   );
