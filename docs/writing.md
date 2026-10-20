@@ -24,7 +24,8 @@ Graph compiles what is already in the workspace. It does not ask an AI to invent
 - Each sidebar document is a node. The open document is marked.
 - Each Markdown heading (`#` / Setext) is a node under its document. Titles with `>` nest: `# Comment > annotate` and `# Comment > feedback` share a **Comment** node that links to **annotate** and **feedback**. Subheadings (`##`) nest the same way.
 - Hover a node or its label to read the **full title** in the bar at the top of Graph (labels wrap on the canvas; long lines still get a tooltip). Each document is a spaced cluster so wikilink lines do not pile on top of each other.
-- **−** / **+** on the Graph toolbar change only Graph label size (12–28 px, default 16 — the same range as the rest of the app). **Reset** restores the default size and redraws the map.
+- **−** / **+** on the Graph toolbar change only Graph label size (12–28 px, default 16 — the same range as the rest of the app). **Zoom −** / **Zoom +** scale the whole map (50–400%). **Reset** restores label size, zoom, and node positions, then redraws the map.
+- Drag a node (or its label) to rearrange it. A short click still opens the document or selects the heading / `[[term]]`. Positions last until **Reset** or you leave Graph.
 - Write `[[Name]]` (optional `[[Name|label]]` or `[[Name#Heading]]`) to add a wikilink, the same syntax as Obsidian / LLM wiki.
 - If `Name` matches another document title, Graph draws a line to that document (or heading). If it does not, Graph adds a **term** node. Click it to select that `[[…]]` span.
 - `@` mentions on comments also draw lines to the referenced document or heading.
