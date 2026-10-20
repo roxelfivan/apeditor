@@ -192,7 +192,7 @@ This is the only state container. Single source of truth for everything except: 
 | `chats` | `documentId` | yes | Per-doc chat history |
 | `revisions` | `documentId` | yes | Per-doc saved snapshots |
 | `prompts` | — | yes | User-saved prompt library |
-| `viewMode` | — | yes | `'write' \| 'preview' \| 'split'` |
+| `viewMode` | — | yes | `'write' \| 'preview' \| 'split' \| 'graph'` |
 | `editorFontSize`, `uiFontSize` | — | yes | 10–24px and 12–20px, both clamped |
 | `chatOpen`, `sidebarCollapsed`, `chatCollapsed`, `topbarCollapsed` | — | yes | Two flags for chat (intentional — see `useStore.ts:140-160` comment) |
 | `includeSelection`, `sendSelectionOnly`, `persistApiKey`, `debugMode` | — | yes | Toggles |

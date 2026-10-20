@@ -8,7 +8,8 @@ This guide is for people using the app. It covers every screen and everyday task
 
 ## What you can do
 
-- Write Markdown in **Write**, **Preview**, or **Split** view
+- Write Markdown in **Write**, **Preview**, **Split**, or **Graph** view
+- See [What's new](whats-new.md) for the current release
 - Keep many documents in the sidebar
 - Comment on a passage, then **Send to AI** in one batch
 - Chat with MiniMax, OpenAI, or **Google AI Mode (no key)**
@@ -20,21 +21,22 @@ This guide is for people using the app. It covers every screen and everyday task
 
 ## Start here
 
-1. [Getting started](getting-started.md) — first launch, connect AI, first document
-2. [Your workspace](workspace.md) — layout, theme, panels, Help
-3. [Documents](documents.md) — create, rename, switch, delete
-4. [Writing](writing.md) — editor, formatting, Predict
-5. [Comments](comments.md) — highlights, badges, Send to AI
-6. [Chat](chat.md) — messages, selection, Google AI Mode
-7. [Proposed edits](proposed-edits.md) — Apply, Reject, Highlight Apply
-8. [Prompt library](prompt-library.md) — saved prompts
-9. [Revision history](revisions.md) — snapshots and restore
-10. [Import from photos or PDFs](import.md)
-11. [Reference other documents (`@`)](reference-other-documents.md) — attach a doc or heading sections
-12. [Settings](settings.md)
-13. [Keyboard shortcuts](keyboard-shortcuts.md)
-14. [Privacy and your data](privacy.md)
-15. [Troubleshooting](troubleshooting.md)
+1. [What's new](whats-new.md) — current release (Graph in v0.5.4)
+2. [Getting started](getting-started.md) — first launch, connect AI, first document
+3. [Your workspace](workspace.md) — layout, theme, panels, Help
+4. [Documents](documents.md) — create, rename, switch, delete
+5. [Writing](writing.md) — editor, formatting, Predict, Graph
+6. [Comments](comments.md) — highlights, badges, Send to AI
+7. [Chat](chat.md) — messages, selection, Google AI Mode
+8. [Proposed edits](proposed-edits.md) — Apply, Reject, Highlight Apply
+9. [Prompt library](prompt-library.md) — saved prompts
+10. [Revision history](revisions.md) — snapshots and restore
+11. [Import from photos or PDFs](import.md)
+12. [Reference other documents (`@`)](reference-other-documents.md) — attach a doc or heading sections
+13. [Settings](settings.md)
+14. [Keyboard shortcuts](keyboard-shortcuts.md)
+15. [Privacy and your data](privacy.md)
+16. [Troubleshooting](troubleshooting.md)
 
 ## How ApEditor feels different
 

@@ -12,10 +12,27 @@
 > See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.5.3](https://img.shields.io/badge/version-0.5.3-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.3)
+[![v0.5.4](https://img.shields.io/badge/version-0.5.4-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.4)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-**Using the app?** Start with the [user guide](./docs/README.md), or click **?** in the top bar (in-app Help renders the same pages and follows Light / Dark mode).
+**Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode).
+
+---
+
+## What's new in v0.5.4
+
+> Fourth editor view: a **local knowledge graph** compiled from documents, headings, `[[wikilinks]]`, and comment `@` mentions. No LLM call, no new dependencies, no store-schema or prompt-contract changes. Built on [v0.5.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.3).
+
+1. **Graph in the view dropdown.** Next to **Write**, **Preview**, and **Split**. Graph replaces the text panes. Format, Comment, and Predict hide (they need the textarea). File actions and Save stay.
+2. **Document and heading nodes.** Every sidebar document is a node. Every Markdown heading is a child node (same heading split as the `@` picker).
+3. **`[[wikilink]]` terms.** Write `[[Name]]`, `[[Name|label]]`, or `[[Name#Heading]]` (Obsidian / LLM wiki syntax). A matching document title or heading becomes an edge. An unresolved name becomes a **term** node; click it to select that span. Graph does not create a new document.
+4. **`@` mention edges.** Comment-round `@` references draw lines to the target document or heading. Internal `@` sentinels (`[[mention:…]]`) are ignored.
+5. **Explore UX.** Hover dims non-neighbors and labels the edge (`heading`, `@`, or `[[wikilink]]`). Click a document to open it. Click a heading or term to open its document and select the passage.
+6. **Help → What's new.** In-app Help now has a [What's new](./docs/whats-new.md) page for the current release.
+
+JSON backup, comment Re-link / Dismiss, and the proposed-edit Apply waterfall stay as they were in v0.5.3.
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.5.4 entry and prior changelogs.
 
 ---
 
@@ -155,8 +172,8 @@ v0.5.1, and v0.5.0 changelogs.
 │          │                                      │                   │
 │ ▾ My     │   # Welcome to ApEditor              │   Chat            │
 │   docs   │                                      │   ┌─────────────┐ │
-│  • Notes │   Pick **Write**, **Preview**, or    │   │ system:     │ │
-│  • Blog  │   **Split**.                         │   │ You are...  │ │
+│  • Notes │   Pick **Write**, **Preview**,       │   │ system:     │ │
+│  • Blog  │   **Split**, or **Graph**.           │   │ You are...  │ │
 │  + New   │                                      │   │             │ │
 │          │   Select a passage → **Comment** →   │   │ [▢ include  │ │
 │          │   write your note. When you're       │   │  selection] │ │
@@ -187,7 +204,9 @@ toggles in the topbar.
 
 - **Documents** — sidebar with create / rename / delete / switch.
 - **Markdown editor** — plain `<textarea>` in **Write**, live
-  `react-markdown` **Preview**, or side-by-side **Split**.
+  `react-markdown` **Preview**, side-by-side **Split**, or **Graph**
+  (workspace map of documents, headings, `[[wikilinks]]`, and `@`
+  mentions).
 - **Format menu** — **Bold** / **Italic** / **Underline** plus
   **Size +** / **Size −** (10–24 px, document text only). Also
   `⌘/Ctrl + B/I/U` while the editor is focused.
@@ -619,6 +638,7 @@ A longer, task-oriented walkthrough of every screen lives under
 `⌘/Ctrl + /`) to open the same pages as a themed Help site — Light /
 Dark matches the editor. Start at the [table of contents](docs/README.md):
 
+- [What's new](docs/whats-new.md) — current release (in-app Help)
 - [Getting started](docs/getting-started.md) — first launch, connect AI, first document
 - [Your workspace](docs/workspace.md) — layout, theme, panels, Help
 - [Documents](docs/documents.md) — create, rename, switch, delete
@@ -665,6 +685,7 @@ src/
 │   ├── comments.ts          # Re-anchor, batch format, selection rect.
 │   ├── diff.ts              # Line-diff helper for revisions / rationales.
 │   ├── googleAiMode.ts      # Google AI Mode deep-link builder.
+│   ├── graph/               # Wikilink parse + workspace graph compile (v0.5.4).
 │   ├── ocr.ts               # PaddleOCR pipeline for image import.
 │   ├── pdf.ts               # pdfjs-dist wrapper.
 │   ├── proposedEdit.ts      # Parse / apply proposed-edit fences.
@@ -680,6 +701,7 @@ src/
     ├── CommentComposer.tsx  # Floating composer after **Comment**.
     ├── CommentPopover.tsx   # Edit / Delete + multi-round Rationale UI.
     ├── CommentTray.tsx      # **Send to AI** tray under the editor.
+    ├── GraphView.tsx        # SVG workspace graph (v0.5.4).
     ├── HelpDocs.tsx         # Themed Help overlay (renders docs/*.md).
     ├── PromptLibrary.tsx
     ├── ProposedEditCard.tsx # Apply / Reject cards for AI diffs.
@@ -735,6 +757,7 @@ residual risks.
 | `npm run build` | Type-check and build for production (`dist/`). |
 | `npm run preview` | Serve the production build locally. |
 | `npm run typecheck` | Type-check only (no emit). |
+| `npm run test:graph` | Wikilink parse + workspace graph fixtures. |
 
 ---
 
@@ -745,6 +768,7 @@ per-release notes also ship on the GitHub release pages.
 
 | Version | Highlights |
 | --- | --- |
+| [v0.5.4](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.4) | **Graph view.** Documents, headings, `[[wikilinks]]`, and `@` mentions as a local knowledge graph. Help **What's new** page. |
 | [v0.5.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.3) | **First user-visible release on top of v0.5.2's refactor.** Full JSON backup export; per-comment **Re-link** / **Dismiss**; gated-state copy polish; proposed-edit **Apply waterfall** (Exact → Best Effort → Highlight) with form-safer matching. |
 | [v0.5.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.2) | **Internal / sustainability.** Removed four hardcoded debug POSTs from the chat pipeline (production-leak fix). Split the 1,485-line `useStore` into 5 single-responsibility files. Moved the `@`-mention parser to `utils/`. No UI or store-schema changes; no migration. |
 | [v0.5.1](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.1) | **Phase 1 + 2 UX.** Format-menu font-size docs, gated-state tooltips, ⌘Z comment-ops toast; Chat **selection only**, outbound secret redaction, outdated **Dismiss** / **Re-attach**, session-only API key. |

@@ -1,3 +1,42 @@
+## v0.5.4 — Graph view with `[[wikilink]]` term nodes
+
+User-visible release on top of [v0.5.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.3). Adds a fourth editor view that compiles the workspace into a local knowledge graph. No LLM call, no new npm dependencies, no store-schema migration, and no change to chat / proposed-edit contracts.
+
+### Added
+
+- **Graph editor view.** The Write / Preview / Split dropdown now includes **Graph**. It replaces the write and preview panes. Format, Comment, and Predict hide (they need the textarea). File actions and Save stay.
+- **Document and heading nodes.** Every sidebar document is a node. Every Markdown heading (`#` / Setext, `level > 0`) is a child node, using the same `buildHeadingSections` algorithm as the `@` picker.
+- **`[[wikilink]]` term nodes.** Write `[[Name]]`, `[[Name|label]]`, or `[[Name#Heading]]` in a document (Obsidian / LLM wiki syntax). A matching document title (or heading) becomes an edge to that node. An unresolved name becomes a **term** node; the same slug in two docs is one node with two edges.
+- **`@` mention edges.** Comment-round `@` references draw edges to the target document or heading.
+- **Explore UX.** Hover a node to dim non-neighbors and show the edge reason (`heading`, `@`, or `[[wikilink]]`). Click a document to open it. Click a heading or term to open its document and select that span (`mvp:select-range` + `editorFocus`). Graph does not auto-create a document when you click a term.
+- **Help — What's new.** In-app Help (`?`) now has a **What's new** page for the current release, kept in sync with `docs/whats-new.md`.
+
+### Behaviour that did NOT change
+
+- Chat prompts, proposed-edit JSON schema, Apply waterfall, JSON backup, OCR, and session-only API key.
+- `@` mention sentinels (`\u200B[[mention:…]]\u200B`) are not treated as wikilinks.
+- No wiki ingest, Louvain communities, Graph Insights, or embeddings.
+
+### Internal
+
+- `src/utils/graph/parseWikilinks.ts` — extract / resolve wikilinks; skip `mention:` sentinels.
+- `src/utils/graph/buildWorkspaceGraph.ts` — pure compile of documents, headings, `@` mentions, and wikilinks.
+- `src/components/GraphView.tsx` — SVG radial layout, hover dim, click to open / select.
+- `src/store/types.ts` — `viewMode` union includes `'graph'` (already persisted).
+- `src/components/Editor.tsx` — Graph option, hide write-only toolbar, mount `GraphView`.
+- `src/docs/catalog.ts` + `docs/whats-new.md` — Help catalog entry.
+- `scripts/test-graph.mjs` + `npm run test:graph`.
+- `package.json` version bumped to `0.5.4`.
+
+### Verification
+
+- `npm run test:graph` — clean (6 cases).
+- `npm run typecheck` — clean.
+- `npm run build` — clean.
+- Manual: Write → Graph → Preview; hover dim; click a document node; `[[Ideas]]` and a dangling `[[orphan-term]]` appear as a doc edge and a term node.
+
+---
+
 ## v0.5.3 — JSON backup, comment Re-link / Dismiss, gated-state polish, Apply waterfall
 
 User-visible release on top of [v0.5.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.2) (the internal-only refactor + debug-POST strip). v0.5.2 itself did not ship any of these features, and the session-only API key feature shipped earlier under the name `persistApiKey` ([`src/store/types.ts`](src/store/types.ts), default `true`). The two custom-install branches `feat/v0.5.2-slice-b` and `feat/v0.5.3-slice-c` that previously attempted to ship this code were closed without merging; v0.5.3 is the canonical home for everything in them.
