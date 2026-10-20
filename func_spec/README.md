@@ -2,7 +2,7 @@
 
 > The developer-facing manual for this repository. It describes **what ApEditor does, how it is built, and the contracts you must respect when you change it.**
 
-**Applies to:** `release/v0.5.5` @ `8f28529` · package version **0.5.5** · MIT licensed
+**Applies to:** `release/v0.5.5` @ `753ac22` · package version **0.5.5** · MIT licensed
 **Audience:** engineers new to the repo, and anyone returning to it after a few months.
 
 ---
