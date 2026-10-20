@@ -34,7 +34,7 @@ await fs.writeFile(STORE_STUB, `export const useStore = () => ({ documents: [], 
 await fs.writeFile(TYPES_STUB, `export {};`);
 
 const TMP_SRC = path.join(TMP_DIR, 'entry.ts');
-const PARSE_MENTIONS = path.join(ROOT, 'src/components/mentions/parseMentions.ts');
+const PARSE_MENTIONS = path.join(ROOT, 'src/utils/mentions/parseMentions.ts');
 const ENTRY = `
 import {
   buildParagraphs,

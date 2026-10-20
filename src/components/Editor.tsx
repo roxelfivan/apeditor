@@ -13,6 +13,7 @@ import {
   DEFAULT_EDITOR_SPLIT_PCT,
 } from '@/hooks/useDragResize';
 import { remarkPlugins, rehypePlugins } from '@/utils/markdown';
+import { formatWikilinksForPreview } from '@/utils/graph/parseWikilinks';
 import { requiresApiKey } from '@/config/providers';
 import {
   getSelectionRect,
@@ -1009,25 +1010,26 @@ export function Editor() {
   );
   const previewMarkdown = useMemo(() => {
     const raw = doc?.content || '';
-    if (!raw || peExtraHighlights.length === 0) {
-      return raw || '*Nothing to preview yet.*';
-    }
-    // Inject HTML <mark> wrappers at source offsets. rehype-raw is
-    // already enabled, so Preview/Split render the temporary band.
-    // Process from the end so earlier offsets stay valid.
-    const sorted = [...peExtraHighlights].sort((a, b) => b.start - a.start);
+    if (!raw) return '*Nothing to preview yet.*';
+    // Inject HTML <mark> wrappers at source offsets first (offsets are
+    // relative to the raw document). Then resolve `[[wikilinks]]` into
+    // bracket-free `<span class="wiki-link">` labels for Preview/Split.
     let out = raw;
-    for (const h of sorted) {
-      const start = Math.max(0, Math.min(h.start, out.length));
-      const end = Math.max(start, Math.min(h.end, out.length));
-      if (start === end) continue;
-      out =
-        out.slice(0, start) +
-        '<mark class="pe-doc-highlight">' +
-        out.slice(start, end) +
-        '</mark>' +
-        out.slice(end);
+    if (peExtraHighlights.length > 0) {
+      const sorted = [...peExtraHighlights].sort((a, b) => b.start - a.start);
+      for (const h of sorted) {
+        const start = Math.max(0, Math.min(h.start, out.length));
+        const end = Math.max(start, Math.min(h.end, out.length));
+        if (start === end) continue;
+        out =
+          out.slice(0, start) +
+          '<mark class="pe-doc-highlight">' +
+          out.slice(start, end) +
+          '</mark>' +
+          out.slice(end);
+      }
     }
+    out = formatWikilinksForPreview(out);
     return out || '*Nothing to preview yet.*';
   }, [doc?.content, peExtraHighlights]);
 

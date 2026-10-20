@@ -12,7 +12,8 @@ Global shortcuts are ignored while you are typing in a text field, so they do no
 | `Ctrl+,` / `⌘,` | Open Prompt library |
 | `Ctrl+H` / `⌘H` | Open Revision history |
 | `Ctrl+/` / `⌘/` (or `?`) | Open Help — user guide |
-| `Esc` | Close Help (when Help is open) |
+| `Ctrl+Shift+E` / `⌘Shift+E` | Open the Functional Specification — developer guide |
+| `Esc` | Close Help or the Functional Specification (when one is open) |
 | `Ctrl+B` / `⌘B` | Show or hide the Documents sidebar (not while the editor is focused) |
 | `Ctrl+Shift+C` / `⌘Shift+C` | Show or hide Chat |
 

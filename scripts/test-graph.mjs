@@ -32,11 +32,11 @@ const TMP_SRC = path.join(TMP_DIR, 'entry.ts');
 await fs.writeFile(
   TMP_SRC,
   `
-import { extractWikilinks, resolveWikilink, normalizeWikiSlug } from '${path.join(ROOT, 'src/utils/graph/parseWikilinks.ts').replace(/\\/g, '/')}';
+import { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview } from '${path.join(ROOT, 'src/utils/graph/parseWikilinks.ts').replace(/\\/g, '/')}';
 import { buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath } from '${path.join(ROOT, 'src/utils/graph/buildWorkspaceGraph.ts').replace(/\\/g, '/')}';
 import { layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings } from '${path.join(ROOT, 'src/utils/graph/layoutWorkspaceGraph.ts').replace(/\\/g, '/')}';
 import { clampGraphZoom, stepGraphZoom, zoomedViewBox } from '${path.join(ROOT, 'src/utils/graph/graphCamera.ts').replace(/\\/g, '/')}';
-export { extractWikilinks, resolveWikilink, normalizeWikiSlug, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, clampGraphZoom, stepGraphZoom, zoomedViewBox };
+export { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, clampGraphZoom, stepGraphZoom, zoomedViewBox };
 `
 );
 
@@ -58,6 +58,7 @@ const {
   extractWikilinks,
   resolveWikilink,
   normalizeWikiSlug,
+  formatWikilinksForPreview,
   buildWorkspaceGraph,
   documentNodeId,
   headingNodeId,
@@ -101,6 +102,27 @@ test('parses alias and heading fragment', () => {
   assert.equal(links.length, 1);
   assert.equal(links[0].target, 'Ideas');
   assert.equal(links[0].heading, 'Just write');
+  assert.equal(links[0].alias, 'the ideas page');
+});
+
+test('preview formats wikilinks without brackets', () => {
+  const out = formatWikilinksForPreview(
+    'See [[Ideas]] and [[Page#Heading|label]] plus [[orphan]].'
+  );
+  assert.equal(
+    out,
+    'See <span class="wiki-link">Ideas</span> and <span class="wiki-link">label</span> plus <span class="wiki-link">orphan</span>.'
+  );
+  assert.ok(!out.includes('[['));
+  assert.ok(!out.includes(']]'));
+});
+
+test('preview skips mention sentinels', () => {
+  const content =
+    'Hi \u200B[[mention:abc|doc|Ideas||ideas-id|context|]]\u200B and [[term]].';
+  const out = formatWikilinksForPreview(content);
+  assert.ok(out.includes('[[mention:abc|doc|Ideas||ideas-id|context|]]'));
+  assert.ok(out.includes('<span class="wiki-link">term</span>'));
 });
 
 test('resolves matching document title', () => {

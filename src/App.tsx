@@ -7,10 +7,12 @@ import { PromptLibrary } from '@/components/PromptLibrary';
 import { RevisionHistory } from '@/components/RevisionHistory';
 import { SettingsModal } from '@/components/SettingsModal';
 import { HelpDocs } from '@/components/HelpDocs';
+import { FuncSpecDocs } from '@/components/FuncSpecDocs';
 import { EdgeAnchor } from '@/components/EdgeAnchor';
 import { applyThemeClass } from '@/utils/theme';
 import { requiresApiKey } from '@/config/providers';
 import { isHelpPageId, type HelpPageId } from '@/docs/catalog';
+import { isFuncSpecPageId } from '@/docs/funcSpecCatalog';
 import { ONBOARDED_KEY } from '@/utils/storage';
 import { NARROW_QUERY, useIsNarrow } from '@/hooks/useMediaQuery';
 
@@ -33,11 +35,13 @@ function Topbar({
   onOpenPrompts,
   onOpenRevisions,
   onOpenHelp,
+  onOpenFuncSpec,
 }: {
   onOpenSettings: () => void;
   onOpenPrompts: () => void;
   onOpenRevisions: () => void;
   onOpenHelp: () => void;
+  onOpenFuncSpec: () => void;
 }) {
   const theme = useStore((s) => s.theme);
   const toggleTheme = useStore((s) => s.toggleTheme);
@@ -76,6 +80,29 @@ function Topbar({
         <span className="text-base font-semibold leading-none" aria-hidden>
           ?
         </span>
+      </button>
+      <button
+        type="button"
+        className="btn-icon-square shrink-0"
+        onClick={onOpenFuncSpec}
+        title="Functional Specification — developer guide (⌘/Ctrl + Shift + E)"
+        aria-label="Functional Specification — developer guide"
+      >
+        {/* Braces: developer-facing specification, as opposed to the
+            `?` above it which is the end-user help site. */}
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 16 16"
+          className="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M6 2.5H4.5a1 1 0 0 0-1 1V6a1 1 0 0 1-1 1 1 1 0 0 1 1 1v2.5a1 1 0 0 0 1 1H6" />
+          <path d="M10 2.5h1.5a1 1 0 0 1 1 1V6a1 1 0 0 0 1 1 1 1 0 0 0-1 1v2.5a1 1 0 0 1-1 1H10" />
+        </svg>
       </button>
       <button
         type="button"
@@ -169,6 +196,8 @@ export default function App() {
   const [revisionsOpen, setRevisionsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpPage, setHelpPage] = useState<HelpPageId>('home');
+  const [funcSpecOpen, setFuncSpecOpen] = useState(false);
+  const [funcSpecPage, setFuncSpecPage] = useState<string | undefined>(undefined);
 
   const theme = useStore((s) => s.theme);
   const api = useStore((s) => s.api);
@@ -258,6 +287,14 @@ export default function App() {
         e.preventDefault();
         setHelpPage('home');
         setHelpOpen(true);
+      } else if (e.shiftKey && e.key.toLowerCase() === 'e') {
+        // Functional Specification (developer guide). Shift+E is chosen
+        // because it does not collide with any editor shortcut; the
+        // `editable` guard above already means it never fires while the
+        // user is typing.
+        e.preventDefault();
+        setFuncSpecPage(undefined);
+        setFuncSpecOpen(true);
       } else if (e.key.toLowerCase() === 'b') {
         e.preventDefault();
         const next = !useStore.getState().sidebarCollapsed;
@@ -295,6 +332,20 @@ export default function App() {
     return () => window.removeEventListener('mvp:open-help', onOpenHelp);
   }, []);
 
+  // Deep-link into the Functional Specification from other UI
+  // (e.g. `mvp:open-func-spec`).
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const detail = (e as CustomEvent<unknown>).detail;
+      setFuncSpecPage(
+        typeof detail === 'string' && isFuncSpecPageId(detail) ? detail : undefined,
+      );
+      setFuncSpecOpen(true);
+    };
+    window.addEventListener('mvp:open-func-spec', onOpen);
+    return () => window.removeEventListener('mvp:open-func-spec', onOpen);
+  }, []);
+
   return (
     <div className="h-full flex flex-col relative">
       {!topbarCollapsed && (
@@ -305,6 +356,10 @@ export default function App() {
           onOpenHelp={() => {
             setHelpPage('home');
             setHelpOpen(true);
+          }}
+          onOpenFuncSpec={() => {
+            setFuncSpecPage(undefined);
+            setFuncSpecOpen(true);
           }}
         />
       )}
@@ -372,6 +427,11 @@ export default function App() {
         open={helpOpen}
         initialPage={helpPage}
         onClose={() => setHelpOpen(false)}
+      />
+      <FuncSpecDocs
+        open={funcSpecOpen}
+        initialPage={funcSpecPage}
+        onClose={() => setFuncSpecOpen(false)}
       />
     </div>
   );

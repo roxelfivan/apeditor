@@ -4,7 +4,7 @@ ApEditor is a **local-first AI markdown editor**. You write in one window, comme
 
 This guide is for people using the app. It covers every screen and everyday task.
 
-**In the app:** click **?** in the top bar (or press `Ctrl+/` / `⌘/`) to open these same pages as a themed Help site. Help follows your Light / Dark theme.
+**In the app:** click **?** in the top bar (or press `Ctrl+/` / `⌘/`) to open these same pages as a themed Help site. Help follows your Light / Dark theme. Developers: click **`{ }`** (or `Ctrl+Shift+E` / `⌘Shift+E`) for the separate Functional Specification.
 
 ## What you can do
 
@@ -21,7 +21,7 @@ This guide is for people using the app. It covers every screen and everyday task
 
 ## Start here
 
-1. [What's new](whats-new.md) — current release (Graph in v0.5.4)
+1. [What's new](whats-new.md) — current release (Preview wikilinks + Functional Specification in v0.5.5)
 2. [Getting started](getting-started.md) — first launch, connect AI, first document
 3. [Your workspace](workspace.md) — layout, theme, panels, Help
 4. [Documents](documents.md) — create, rename, switch, delete

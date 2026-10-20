@@ -196,7 +196,7 @@ export function GraphViewControls({
         type="button"
         className={`${graphToolClass} px-3`}
         aria-label="Reset Graph view"
-        title="Reset Graph labels, zoom, and node positions"
+        title="Reset labels, zoom, and re-lay out nodes (tidy atom layout)"
         onClick={onReset}
       >
         Reset
@@ -273,7 +273,15 @@ export function GraphView({
   useLayoutEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const sync = () => setVp({ w: el.clientWidth || 1, h: el.clientHeight || 1 });
+    // Bail out when size is unchanged. A fresh `{ w, h }` on every
+    // ResizeObserver callback re-renders the SVG, which can retick the
+    // observer (chat panel keystrokes shift the flex layout) and blow
+    // the React update-depth limit — blanking the whole tab.
+    const sync = () => {
+      const w = el.clientWidth || 1;
+      const h = el.clientHeight || 1;
+      setVp((prev) => (prev.w === w && prev.h === h ? prev : { w, h }));
+    };
     sync();
     const ro = new ResizeObserver(sync);
     ro.observe(el);

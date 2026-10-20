@@ -9,11 +9,25 @@ Use the dropdown on the left of the editor toolbar:
 | Mode | What you see |
 | --- | --- |
 | **Write** | Editable text. Placeholder: *Start writing in Markdown…* |
-| **Preview** | Rendered Markdown (headings, lists, links, tables, and so on) |
+| **Preview** | Rendered Markdown (headings, lists, links, tables, and so on). `[[wikilinks]]` appear as purple labels without brackets. |
 | **Split** | Write on the left, Preview on the right. Drag the divider. |
 | **Graph** | A map of your documents, headings, `[[wikilinks]]`, and `@` mentions. Format, Comment, and Predict hide — there is no textarea. |
 
 An empty Preview shows *Nothing to preview yet.*
+
+### Wikilinks in Preview
+
+In **Write**, keep the Obsidian-style syntax: `[[Name]]`, `[[Name|label]]`, or `[[Name#Heading]]`.
+
+In **Preview** and the Preview side of **Split**, those links render as purple text without `[[` `]]`:
+
+| You write | Preview shows |
+| --- | --- |
+| `[[Ideas]]` | Ideas |
+| `[[Page\|label]]` | label |
+| `[[Page#Heading]]` | Heading |
+
+The same `[[…]]` still feeds the Graph (edges and term nodes). `@` mention chips in comments are unrelated and stay as chips.
 
 You can comment only in **Write** or on the Write side of **Split**. Select text there, then use **Comment**.
 
