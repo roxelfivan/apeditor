@@ -35,6 +35,7 @@ import {
   GraphView,
   GraphViewControls,
 } from '@/components/GraphView';
+import { DEFAULT_GRAPH_ZOOM } from '@/utils/graph/graphCamera';
 import { SUGGESTION_HEIGHT_KEY } from '@/utils/storage';
 import { useIsCommentSheet, useIsNarrow } from '@/hooks/useMediaQuery';
 
@@ -100,6 +101,7 @@ export function Editor() {
   const setViewMode = useStore((s) => s.setViewMode);
   const editorFontSize = useStore((s) => s.editorFontSize);
   const [graphLabelPx, setGraphLabelPx] = useState(DEFAULT_GRAPH_LABEL_PX);
+  const [graphZoom, setGraphZoom] = useState(DEFAULT_GRAPH_ZOOM);
   const [graphEpoch, setGraphEpoch] = useState(0);
   const rawEditorSplitPct = useStore((s) => s.layout.editorSplitPct);
   const editorSplitPct = clamp(
@@ -1242,8 +1244,11 @@ export function Editor() {
           <GraphViewControls
             labelPx={graphLabelPx}
             onLabelPx={setGraphLabelPx}
+            zoom={graphZoom}
+            onZoom={setGraphZoom}
             onReset={() => {
               setGraphLabelPx(DEFAULT_GRAPH_LABEL_PX);
+              setGraphZoom(DEFAULT_GRAPH_ZOOM);
               setGraphEpoch((n) => n + 1);
             }}
           />
@@ -1992,7 +1997,11 @@ export function Editor() {
           </div>
         )}
         {showGraph && (
-          <GraphView key={graphEpoch} labelPx={graphLabelPx} />
+          <GraphView
+            key={graphEpoch}
+            labelPx={graphLabelPx}
+            zoom={graphZoom}
+          />
         )}
       </div>
     </div>

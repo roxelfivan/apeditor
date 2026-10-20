@@ -35,7 +35,8 @@ await fs.writeFile(
 import { extractWikilinks, resolveWikilink, normalizeWikiSlug } from '${path.join(ROOT, 'src/utils/graph/parseWikilinks.ts').replace(/\\/g, '/')}';
 import { buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath } from '${path.join(ROOT, 'src/utils/graph/buildWorkspaceGraph.ts').replace(/\\/g, '/')}';
 import { layoutWorkspaceGraph, nodeRadius } from '${path.join(ROOT, 'src/utils/graph/layoutWorkspaceGraph.ts').replace(/\\/g, '/')}';
-export { extractWikilinks, resolveWikilink, normalizeWikiSlug, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, nodeRadius };
+import { clampGraphZoom, stepGraphZoom, zoomedViewBox } from '${path.join(ROOT, 'src/utils/graph/graphCamera.ts').replace(/\\/g, '/')}';
+export { extractWikilinks, resolveWikilink, normalizeWikiSlug, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, nodeRadius, clampGraphZoom, stepGraphZoom, zoomedViewBox };
 `
 );
 
@@ -64,6 +65,9 @@ const {
   splitHeadingPath,
   layoutWorkspaceGraph,
   nodeRadius,
+  clampGraphZoom,
+  stepGraphZoom,
+  zoomedViewBox,
 } = await import(pathToFileURL(path.join(TMP_DIR, 'bundle.mjs')).href);
 
 let passed = 0;
@@ -287,6 +291,18 @@ test('graph: path titles nest under a shared parent', () => {
         e.source === documentNodeId('ideas') && e.target === annotate.id
     )
   );
+});
+
+test('camera: zoom boxes shrink toward the center', () => {
+  const box = zoomedViewBox(-100, -50, 200, 100, 2);
+  assert.equal(box.w, 100);
+  assert.equal(box.h, 50);
+  assert.equal(box.x, -50);
+  assert.equal(box.y, -25);
+  assert.equal(clampGraphZoom(99), 4);
+  assert.equal(clampGraphZoom(0), 0.5);
+  assert.ok(stepGraphZoom(1, 1) > 1);
+  assert.ok(stepGraphZoom(1, -1) < 1);
 });
 
 test('layout: node bullets are at least double the original size', () => {
