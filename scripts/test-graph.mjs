@@ -38,8 +38,8 @@ import { layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, headingDept
 import { clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds } from '${path.join(ROOT, 'src/utils/graph/graphCamera.ts').replace(/\\/g, '/')}';
 import { toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION } from '${path.join(ROOT, 'src/utils/graph/sphereProject.ts').replace(/\\/g, '/')}';
 import { applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes } from '${path.join(ROOT, 'src/utils/graph/fisheyeLens.ts').replace(/\\/g, '/')}';
-import { conceptZForDepth, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE } from '${path.join(ROOT, 'src/utils/graph/conceptProject.ts').replace(/\\/g, '/')}';
-export { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, headingDepthByNode, clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION, applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes, conceptZForDepth, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE };
+import { conceptZForDepth, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE } from '${path.join(ROOT, 'src/utils/graph/conceptProject.ts').replace(/\\/g, '/')}';
+export { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, headingDepthByNode, clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION, applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes, conceptZForDepth, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE };
 `
 );
 
@@ -93,6 +93,8 @@ const {
   applyFisheyeToNodes,
   headingDepthByNode,
   conceptZForDepth,
+  conceptHeadingY,
+  siblingStoryCount,
   conceptTermSlot,
   conceptZoomBy,
   conceptCameraPosition,
@@ -111,6 +113,8 @@ const {
   CONCEPT_Z_STEP,
   CONCEPT_TERM_DEPTH,
   CONCEPT_TERM_RING_R,
+  CONCEPT_SIBLINGS_PER_STORY,
+  CONCEPT_SIBLING_STORIES_MAX,
   MIN_POLAR_ANGLE,
   MAX_POLAR_ANGLE,
 } = await import(pathToFileURL(path.join(TMP_DIR, 'bundle.mjs')).href);
@@ -972,6 +976,65 @@ test('concept: terms and headings land on opposite signs of y', () => {
       assert.equal(slot.y, 0, `document ${n.id} should be at y=0`);
     }
   }
+});
+
+test('concept: a wide sibling ring helixes onto several stories', () => {
+  const sections = Array.from({ length: 12 }, (_, i) => {
+    const n = i + 1;
+    return `## ${n}. Section title number ${n}\n\nbody\n`;
+  }).join('\n');
+  const welcome = doc(
+    'app-plan',
+    'App Plan',
+    `# App Plan\n\nintro\n\n${sections}`
+  );
+  const g = buildWorkspaceGraph([welcome], {});
+  const laid = layoutWorkspaceGraph(g.nodes, g.edges, welcome.id);
+  const slots = assignConceptHeights(laid, g.edges);
+  const kids = laid.filter((n) => n.kind === 'heading' && /^\d+\.\s/.test(n.label));
+  assert.equal(kids.length, 12);
+  const ys = new Set(kids.map((n) => slots.get(n.id).y));
+  assert.ok(
+    ys.size > 1,
+    `peer headings must occupy several stories, got one y=${[...ys][0]}`
+  );
+  assert.equal(ys.size, siblingStoryCount(12));
+  const expectedStories = Math.min(
+    CONCEPT_SIBLING_STORIES_MAX,
+    Math.ceil(12 / CONCEPT_SIBLINGS_PER_STORY)
+  );
+  assert.equal(siblingStoryCount(12), expectedStories);
+  // Nested ## sit above the H1 floor even after the helix opens extra bands.
+  const h1 = laid.find((n) => n.kind === 'heading' && n.label === 'App Plan');
+  assert.ok(h1);
+  const h1Y = slots.get(h1.id).y;
+  for (const kid of kids) {
+    assert.ok(
+      slots.get(kid.id).y > h1Y,
+      `${kid.label} should sit above the H1 story`
+    );
+  }
+});
+
+test('concept: a small sibling ring stays on one heading floor', () => {
+  const welcome = doc(
+    'welcome',
+    'Welcome',
+    '# Start\n\n## Detail\n\nmore\n'
+  );
+  const g = buildWorkspaceGraph([welcome], {});
+  const nodes = g.nodes.map((n) => ({
+    id: n.id,
+    kind: n.kind,
+    documentId: n.documentId,
+    x: 0,
+    y: 0,
+  }));
+  const slots = assignConceptHeights(nodes, g.edges);
+  const detail = g.nodes.find((n) => n.kind === 'heading' && n.label === 'Detail');
+  assert.ok(detail);
+  assert.equal(slots.get(detail.id)?.y, conceptZForDepth(1));
+  assert.equal(conceptHeadingY(1, 0, 1), conceptZForDepth(1));
 });
 
 test('concept: every node gets a ConceptSlot, none left undefined', () => {

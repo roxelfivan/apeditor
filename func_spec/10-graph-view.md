@@ -533,7 +533,7 @@ v0.5.8 split headings and terms onto opposite signs of the world Y axis. A tall 
 | Node | `slot.y` | Notes |
 |---|---|---|
 | `document` | `0` | The floor — `world.y = 0` |
-| `heading` | `conceptZForDepth(depth)` = `270 + depth · 135` | Spacing test asserts the gap is wider than `2 · nodeRadius('heading', false)` |
+| `heading` | `conceptHeadingY(depth, extra, bandStories)` | Base is `270 + depth · 135`. A parent with more than 5 heading children helixes extras onto up to 3 stories (`extra = index % stories`) so Graph 3D does not replay a 2D fan of overlapping labels. `bandStories` is the graph-wide max, so nested headings cannot land inside a shallower helix. Small outlines (`≤ 5` siblings) keep `bandStories = 1` and match `conceptZForDepth`. |
 | `term` | `-CONCEPT_TERM_DEPTH` = `-200` | On the underground ring at the term's `(world.x, world.z)` |
 
    520|`headingDepthByNode` reports **tree** depth, and the distinction from the radial shell is load-bearing. `assignShells` deliberately collapses a lone page H1 onto the nucleus ring (invariant 5) so its `##` children get a full shell — under that collapse Welcome's H1 and its ten `##` share one tier, and using shell depth would render the page one layer flat. The walk seeds the **children** of every root at `0`, not the roots themselves, because a root's parent is a document or a synthetic `heading-path:` node and neither is a heading.
@@ -618,7 +618,7 @@ The scene owns a `Raycaster`, but **not** the drag model. On every pointer event
 | Click | Resolved on `pointerup` from a fresh pick, then `onConceptNodeClick` routes through `byId`. `endNodeDrag(…, fireClick = false)` suppresses the SVG's own click so it cannot double-fire |
 | Node drag | The scene reports the pointer ray's intersection with `y = 0` in **layout** space (`floorPointFromRay`); the override is anchored at `floorAnchorRef` captured on pointer-down. Overrides stay layout-space, so a node dragged in 3D keeps its position when you switch back to Flat or Globe |
 | Orbit | Background press with no hovered node → `cam.beginDrag(e, 'conceptOrbit')` |
-| Label | A `position: absolute` div per node, projected each frame; `p.z > 1` hides nodes behind the camera |
+| Label | A `position: absolute` div per node. The anchor is the layout label offset (`labelDx` / `labelDy`) at `slot.y`, projected each frame, so wording rides the heading helix instead of a fixed screen-pixel nudge. `p.z > 1` hides nodes behind the camera |
 
 ### Bundle
 
