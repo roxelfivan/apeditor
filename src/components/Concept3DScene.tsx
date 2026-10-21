@@ -385,9 +385,11 @@ export default function Concept3DScene({
       >();
 
       /* ---------------- labels ---------------- */
-      // A plain absolutely-positioned div per node, projected to screen
-      // space each frame. This avoids a second three.js addon and lets the
-      // labels inherit the app's theme tokens.
+      // A plain absolutely-positioned div per node. The *anchor* is a
+      // world-space point on the node's story (layout label offset at
+      // slot.y), projected each frame. Glyphs still face the camera —
+      // that is how HTML overlays work — but they no longer sit on one
+      // 2D pixel plane independent of heading height.
       const labelHost = labelLayerRef.current;
       const labelEls = new Map<string, HTMLDivElement>();
 
@@ -486,7 +488,10 @@ export default function Concept3DScene({
         // Only draw the vertices actually written this pass.
         edgeGeo.setDrawRange(0, i / 3);
 
-        // Labels: project each node to screen space.
+        // Labels: project a world-space point on the node's own story.
+        // Using layout labelDx/Dy at slot.y (not a screen-pixel nudge)
+        // keeps wording on the 3D floor of that sphere, so a helix of
+        // sibling stories does not collapse back into one 2D overlay.
         if (labelHost) {
           const fontPx = Math.max(10, Math.min(26, s.labelPx));
           const maxChars = Math.max(10, Math.min(22, Math.round((18 * 16) / s.labelPx)));
@@ -494,7 +499,17 @@ export default function Concept3DScene({
             const el = labelEls.get(n.id);
             const entry = nodeMeshes.get(n.id);
             if (!el || !entry) continue;
-            const p = entry.mesh.position.clone().project(camera);
+            const slot: ConceptSlot = s.heights.get(n.id) ?? { y: 0, term: false };
+            const labelWorld = layoutToWorld(
+              n.x + n.labelDx,
+              n.y + n.labelDy,
+              slot.y
+            );
+            const p = new THREE.Vector3(
+              labelWorld.x,
+              labelWorld.y,
+              labelWorld.z
+            ).project(camera);
             const lit = !s.hotIds || s.hotIds.has(n.id);
             // `p.z > 1` is the standard behind-the-camera test after project.
             if (p.z > 1) {
@@ -504,13 +519,12 @@ export default function Concept3DScene({
             if (!el.isConnected) labelHost.appendChild(el);
             const sx = (p.x * 0.5 + 0.5) * vw;
             const sy = (-p.y * 0.5 + 0.5) * vh;
-            const reach = entry.radius * 1.2;
             el.textContent = wrapLines(n.label, maxChars).join('\n');
             el.style.fontSize = `${fontPx}px`;
             el.style.color = palette.label;
             el.style.opacity = lit ? '1' : '0.25';
-            el.style.left = `${sx + reach * 0.8}px`;
-            el.style.top = `${sy - reach * 0.8}px`;
+            el.style.left = `${sx}px`;
+            el.style.top = `${sy}px`;
           }
           // Drop labels for nodes that no longer exist.
           const liveIds = new Set(s.nodes.map((n) => n.id));

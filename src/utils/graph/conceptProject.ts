@@ -121,6 +121,47 @@ export function conceptZForDepth(depth: number): number {
 }
 
 /**
+ * How many vertical stories a sibling ring occupies.
+ *
+ * Tree depth alone puts every `##` child on one floor, so a document like
+ * App Plan (a dozen peer sections) still reads as a 2D fan in Graph 3D.
+ * Extra stories open once a parent has more children than fit on one
+ * band; the cap keeps a wide outline from becoming a skyscraper.
+ */
+export const CONCEPT_SIBLINGS_PER_STORY = 5;
+export const CONCEPT_SIBLING_STORIES_MAX = 3;
+
+export function siblingStoryCount(siblingCount: number): number {
+  if (!Number.isFinite(siblingCount) || siblingCount <= CONCEPT_SIBLINGS_PER_STORY) {
+    return 1;
+  }
+  return Math.min(
+    CONCEPT_SIBLING_STORIES_MAX,
+    Math.ceil(siblingCount / CONCEPT_SIBLINGS_PER_STORY)
+  );
+}
+
+/**
+ * World Y for a heading, including sibling-helix extras.
+ *
+ * `bandStories` is the graph-wide max of `siblingStoryCount`, so a nested
+ * heading cannot land inside a shallower sibling helix. When every sibling
+ * group is small this is 1 and the formula equals `conceptZForDepth`.
+ */
+export function conceptHeadingY(
+  depth: number,
+  extra: number,
+  bandStories: number
+): number {
+  const d = Number.isFinite(depth) ? Math.max(0, Math.round(depth)) : 0;
+  const e = Number.isFinite(extra) ? Math.max(0, Math.round(extra)) : 0;
+  const b = Number.isFinite(bandStories)
+    ? Math.max(1, Math.round(bandStories))
+    : 1;
+  return CONCEPT_HEADING_BASE_Z + (d * b + Math.min(e, b - 1)) * CONCEPT_Z_STEP;
+}
+
+/**
  * Y position for a `[[term]]` satellite: below the floor, on the term ring.
  *
  * `layoutAnchor` is the term's layout-space (x, y). The ring is dropped at
@@ -338,6 +379,9 @@ export interface HeightInput {
  * the radial `assignShells` map, because that collapses a lone page H1
  * onto the nucleus ring and would render that page one tier flat.
  *
+ * Wide sibling rings (many `##` under one parent) then helix onto extra
+ * stories so Graph 3D does not replay the 2D fan of overlapping labels.
+ *
  * `[[term]]` satellites land on the underground ring at `-CONCEPT_TERM_DEPTH`,
  * preserving their `(world.x, world.z)` so a wikilink chord from a heading
  * reads downward rather than collapsing. Tests assert:
@@ -345,7 +389,8 @@ export interface HeightInput {
  *   - every heading's `slot.y` is positive;
  *   - every term's `slot.y` is strictly negative;
  *   - the term's floor `(x, z)` matches its layout anchor;
- *   - tier spacing is at least `2 · nodeRadius('heading', false)`.
+ *   - tier spacing is at least `2 · nodeRadius('heading', false)`;
+ *   - a wide sibling ring occupies more than one distinct `slot.y`.
  *
  * Kept here rather than in the React component so the harness can assert a
  * wrong tier before it reaches a canvas.
@@ -358,6 +403,43 @@ export function assignConceptHeights(
   const slots = new Map<string, ConceptSlot>();
   const byId = new Map(nodes.map((n) => [n.id, n]));
 
+  const parentOf = new Map<string, string>();
+  for (const e of edges) {
+    if (e.kind !== 'heading') continue;
+    parentOf.set(e.target, e.source);
+  }
+
+  const groups = new Map<string, HeightInput[]>();
+  for (const n of nodes) {
+    if (n.kind !== 'heading') continue;
+    const parent = parentOf.get(n.id) ?? '';
+    const list = groups.get(parent);
+    if (list) list.push(n);
+    else groups.set(parent, [n]);
+  }
+
+  let bandStories = 1;
+  for (const group of groups.values()) {
+    bandStories = Math.max(bandStories, siblingStoryCount(group.length));
+  }
+
+  const extraOf = new Map<string, number>();
+  for (const [parentId, group] of groups) {
+    const stories = siblingStoryCount(group.length);
+    const parent = byId.get(parentId);
+    const ox = parent?.x ?? 0;
+    const oy = parent?.y ?? 0;
+    const sorted = [...group].sort((a, b) => {
+      const aa = Math.atan2(a.y - oy, a.x - ox);
+      const bb = Math.atan2(b.y - oy, b.x - ox);
+      if (aa !== bb) return aa - bb;
+      return a.id.localeCompare(b.id);
+    });
+    sorted.forEach((n, i) => {
+      extraOf.set(n.id, stories <= 1 ? 0 : i % stories);
+    });
+  }
+
   for (const n of nodes) {
     if (n.kind === 'document') {
       slots.set(n.id, { y: 0, term: false });
@@ -365,19 +447,17 @@ export function assignConceptHeights(
     }
     if (n.kind === 'heading') {
       slots.set(n.id, {
-        y: conceptZForDepth(depth.get(n.id) ?? 0),
+        y: conceptHeadingY(
+          depth.get(n.id) ?? 0,
+          extraOf.get(n.id) ?? 0,
+          bandStories
+        ),
         term: false,
       });
       continue;
     }
     // Terms drop onto the underground ring at their layout anchor.
-    slots.set(
-      n.id,
-      conceptTermSlot({ x: n.x, y: n.y })
-    );
+    slots.set(n.id, conceptTermSlot({ x: n.x, y: n.y }));
   }
-  // Silence the unused-import lint, kept because `byId` anchors the term
-  // anchor choice and would need to be reused if term placement grows.
-  void byId;
   return slots;
 }

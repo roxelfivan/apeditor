@@ -7,7 +7,7 @@ This page is the in-app changelog. It stays with the version in the top bar. Old
 **A third projection joins the Graph view.** Open the Graph, click **3D** in the toolbar — the layout becomes a 3D scene where headings stack as separate bands and `[[term]]` satellites sit on an underground ring.
 
 - **`Graph` / `Globe` / `3D` is now one toggle.** The three buttons are generated from a single table so they cannot drift apart; Reset still returns to the flat map.
-- **Spread the stack.** Heading tiers rise 135 units per level (was 70), so a tall document reads as a column of bands rather than one slab. Terms drop beneath the floor at `y = -200`, on a ring around each document at radius 360.
+- **Spread the stack.** Heading tiers rise 135 units per level (was 70), so a tall document reads as a column of bands rather than one slab. A wide ring of peer headings (more than five under one parent) helixes onto extra stories so Graph **3D** does not keep every wording on one 2D fan. Terms drop beneath the floor at `y = -200`, on a ring around each document at radius 360.
 - **Free 3D navigation.** Mouse wheel dollies, Shift+drag pans, two-finger gestures pan / pinch, arrow keys pan, `+` / `-` dolly. The toolbar's zoom readout follows a wheel-dolly on the same callback — one source of truth for the pose.
 - **Same data, same clicks.** Document spheres open the document, heading spheres open the heading range, hover highlights the closed neighbourhood (documents + headings + wikilinks / `@` keywords in the same set).
 
