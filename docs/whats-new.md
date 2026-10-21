@@ -8,7 +8,7 @@ This page is the in-app changelog. It stays with the version in the top bar. Old
 
 - **Filter.** In the Graph toolbar, **Filter** opens a checklist of documents and headings. Untick what you do not want; the map, Globe, and 3D view all update together. **Reset** clears the filter. Unticking everything shows an empty graph with **Clear the filter** — it does not silently restore the whole workspace.
 - **Wider zoom and labels.** Zoom from **25% to 1200%**. Label size from **6 px to 48 px**, including in 3D.
-- **Tall 3D stacks stay readable.** Very deep heading paths compress their vertical gap after the usual Markdown depth, so a long `Comment > …` chain does not shoot out of frame.
+- **Tall 3D stacks stay readable.** Very deep heading paths compress their vertical gap after the usual Markdown depth, so a long `Comment > …` chain does not shoot out of frame. A wide ring of peer headings (more than five under one parent) helixes onto extra stories so wording does not pile on one floor.
 - **Click opens the document.** A short click on a node leaves Graph for Split and selects the heading or `[[term]]` passage.
 
 ---
@@ -18,7 +18,7 @@ This page is the in-app changelog. It stays with the version in the top bar. Old
 **A third projection joins the Graph view.** Open the Graph, click **3D** in the toolbar — the layout becomes a 3D scene where headings stack as separate bands and `[[term]]` satellites sit on an underground ring.
 
 - **`Graph` / `Globe` / `3D` is now one toggle.** The three buttons are generated from a single table so they cannot drift apart; Reset still returns to the flat map.
-- **Spread the stack.** Heading tiers rise 135 units per level (was 70), so a tall document reads as a column of bands rather than one slab. A wide ring of peer headings (more than five under one parent) helixes onto extra stories so Graph **3D** does not keep every wording on one 2D fan. Terms drop beneath the floor at `y = -200`, on a ring around each document at radius 360.
+- **Spread the stack.** Heading tiers rise 135 units per level (was 70), so a tall document reads as a column of bands rather than one slab. Terms drop beneath the floor at `y = -200`, on a ring around each document at radius 360.
 - **Free 3D navigation.** Mouse wheel dollies, Shift+drag pans, two-finger gestures pan / pinch, arrow keys pan, `+` / `-` dolly. The toolbar's zoom readout follows a wheel-dolly on the same callback — one source of truth for the pose.
 - **Same data, same clicks.** Document spheres open the document, heading spheres open the heading range, hover highlights the closed neighbourhood (documents + headings + wikilinks / `@` keywords in the same set).
 

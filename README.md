@@ -27,7 +27,7 @@
 
 1. **Filter.** Toolbar popover (same checkbox language as the `@`-section picker) includes or excludes documents and sections *before* layout. Flat, Globe, and Concept all see the same pruned graph. **Reset** clears the filter with the other Graph controls.
 2. **Wider zoom and labels.** Zoom **0.25×–12×** (was 0.5×–4×); labels **6–48 px** (was 12–28), including the 3D label layer. Concept eye distance is derived from the zoom ceiling so the toolbar percentage and the camera cannot disagree.
-3. **Deep-tier compression in 3D.** Ordinary Markdown outlines keep the full tier gap; past depth 6 the gap tapers so tall `Comment > A > B > …` paths stay readable.
+3. **Deep-tier compression and sibling helix in 3D.** Ordinary Markdown outlines keep the full tier gap; past depth 6 the gap tapers so tall `Comment > A > B > …` paths stay readable. A wide ring of peer headings opens extra stories so labels do not pile on one floor.
 4. **Clicks open the document.** A short click on a Graph or 3D node switches to Split and selects the heading / `[[term]]` range (the textarea is unmounted while you are in Graph).
 
 See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.5.9 entry and prior changelogs.

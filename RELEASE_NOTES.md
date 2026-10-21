@@ -6,7 +6,7 @@ Patch release on top of [v0.5.8](https://github.com/roxelfivan/apeditor/releases
 
 - **Filter.** Toolbar popover to include / exclude documents and headings before layout. Flat, Globe, and Concept inherit the same pruned graph. Empty scope = everything; an explicit none sentinel covers "show nothing" without colliding with Reset.
 - **Wider zoom and labels.** 0.25×–12× zoom; 6–48 px labels across all three projections. `MAX_CONCEPT_DISTANCE` is derived from `MAX_GRAPH_ZOOM` so the readout and the camera stay in lockstep.
-- **Depth-compressed Concept tiers.** Past depth 6 the vertical gap tapers geometrically (floor 56), so deep `Comment > …` stacks stay legible.
+- **Depth-compressed Concept tiers.** Past depth 6 the vertical gap tapers geometrically (floor 56), so deep `Comment > …` stacks stay legible. Wide sibling rings helix onto up to three stories so peer headings do not pile on one floor.
 
 ### Fixed
 
@@ -17,7 +17,7 @@ Patch release on top of [v0.5.8](https://github.com/roxelfivan/apeditor/releases
 
 - See [`.release-notes-v0.5.9.md`](.release-notes-v0.5.9.md) for the full surface list.
 - `package.json` version bumped to `0.5.9`.
-- `npm run test:graph` — **73** cases.
+- `npm run test:graph` — **75** cases.
 
 ## v0.5.8 — Graph 3D: spread the stack, free navigation
 
