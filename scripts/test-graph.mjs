@@ -34,11 +34,12 @@ await fs.writeFile(
   `
 import { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview } from '${path.join(ROOT, 'src/utils/graph/parseWikilinks.ts').replace(/\\/g, '/')}';
 import { buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath } from '${path.join(ROOT, 'src/utils/graph/buildWorkspaceGraph.ts').replace(/\\/g, '/')}';
-import { layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings } from '${path.join(ROOT, 'src/utils/graph/layoutWorkspaceGraph.ts').replace(/\\/g, '/')}';
+import { layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, headingDepthByNode } from '${path.join(ROOT, 'src/utils/graph/layoutWorkspaceGraph.ts').replace(/\\/g, '/')}';
 import { clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds } from '${path.join(ROOT, 'src/utils/graph/graphCamera.ts').replace(/\\/g, '/')}';
 import { toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION } from '${path.join(ROOT, 'src/utils/graph/sphereProject.ts').replace(/\\/g, '/')}';
 import { applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes } from '${path.join(ROOT, 'src/utils/graph/fisheyeLens.ts').replace(/\\/g, '/')}';
-export { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION, applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes };
+import { conceptZForDepth, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE } from '${path.join(ROOT, 'src/utils/graph/conceptProject.ts').replace(/\\/g, '/')}';
+export { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, headingDepthByNode, clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION, applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes, conceptZForDepth, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE };
 `
 );
 
@@ -90,6 +91,28 @@ const {
   boundaryPointOnRay,
   clampMagnification,
   applyFisheyeToNodes,
+  headingDepthByNode,
+  conceptZForDepth,
+  conceptTermSlot,
+  conceptZoomBy,
+  conceptCameraPosition,
+  dragToConceptPose,
+  clampConceptPose,
+  conceptDistanceFromZoom,
+  floorPointFromRay,
+  layoutToWorld,
+  assignConceptHeights,
+  conceptPoseFromCamera,
+  MIN_CONCEPT_DISTANCE,
+  MAX_CONCEPT_DISTANCE,
+  DEFAULT_CONCEPT_DISTANCE,
+  DEFAULT_CONCEPT_POSE,
+  CONCEPT_HEADING_BASE_Z,
+  CONCEPT_Z_STEP,
+  CONCEPT_TERM_DEPTH,
+  CONCEPT_TERM_RING_R,
+  MIN_POLAR_ANGLE,
+  MAX_POLAR_ANGLE,
 } = await import(pathToFileURL(path.join(TMP_DIR, 'bundle.mjs')).href);
 
 let passed = 0;
@@ -660,6 +683,367 @@ test('fisheye: magnification is clamped to a usable range', () => {
   assert.equal(clampMagnification(0), 0);
   assert.ok(clampMagnification(1e9) <= 40);
   assert.ok(clampMagnification(NaN) === 0);
+});
+
+// --- 3D Concept projection ------------------------------------------------
+
+test('concept: heading depth is tree depth, not radial shell', () => {
+  const sections = Array.from({ length: 10 }, (_, i) => {
+    const n = i + 1;
+    return `## ${n}. Section title number ${n}\n\nbody\n`;
+  }).join('\n');
+  const welcome = doc(
+    'welcome',
+    'Welcome',
+    `# Welcome to ApEditor\n\nintro\n\n${sections}`
+  );
+  const ideas = doc('ideas', 'Ideas', '# Ideas\n\n- note\n');
+  const g = buildWorkspaceGraph([welcome, ideas], {});
+  const depth = headingDepthByNode(g.edges);
+
+  // The H1 is a root even though the 2D layout collapses it onto the
+  // nucleus ring — that collapse is exactly why shell depth would be
+  // wrong as a height coordinate.
+  const h1 = g.nodes.find((n) => n.label === 'Welcome to ApEditor');
+  const ideasH1 = g.nodes.find(
+    (n) => n.kind === 'heading' && n.label === 'Ideas'
+  );
+  assert.ok(h1 && ideasH1, 'fixture should produce both H1s');
+  assert.equal(depth.get(h1.id), 0, 'a top-level heading is depth 0');
+  assert.equal(depth.get(ideasH1.id), 0);
+
+  const kids = g.nodes.filter((n) => /^\d+\.\s/.test(n.label));
+  assert.equal(kids.length, 10);
+  for (const kid of kids) {
+    assert.equal(depth.get(kid.id), 1, `${kid.label} should be one tier down`);
+  }
+});
+
+test('concept: nested headings climb one tier per level', () => {
+  const ideas = doc(
+    'ideas',
+    'Ideas',
+    '# Comment > annotate\n\na\n\n# Comment > feedback\n\nb\n\n# Predict > ghost text\n\nc\n\n# Predict > sentence suggestion\n\nd\n'
+  );
+  const g = buildWorkspaceGraph([ideas], {});
+  const depth = headingDepthByNode(g.edges);
+  const byLabel = (label) =>
+    g.nodes.find((n) => n.kind === 'heading' && n.label === label);
+
+  // `heading-path:` prefix nodes are synthetic parents — real headings
+  // hang one level below them, not at their depth.
+  assert.equal(depth.get(byLabel('Comment').id), 0);
+  assert.equal(depth.get(byLabel('annotate').id), 1);
+  assert.equal(depth.get(byLabel('feedback').id), 1);
+  assert.equal(depth.get(byLabel('Predict').id), 0);
+  assert.equal(depth.get(byLabel('ghost text').id), 1);
+});
+
+test('concept: depth map holds no document or term nodes', () => {
+  const welcome = doc('welcome', 'Welcome', '# Start\n\nSee [[orphan]].\n');
+  const g = buildWorkspaceGraph([welcome], {});
+  const depth = headingDepthByNode(g.edges);
+  assert.equal(depth.size, 1, 'only the one heading carries a depth');
+  assert.equal(depth.has(documentNodeId('welcome')), false);
+  assert.equal(depth.has(termNodeId('orphan')), false);
+});
+
+test('concept: a cyclic heading edge list terminates', () => {
+  // `buildWorkspaceGraph` cannot produce a cycle, but the walk must be
+  // total so a malformed graph degrades instead of hanging the tab.
+  const depth = headingDepthByNode([
+    { id: 'a', source: 'x', target: 'y', kind: 'heading' },
+    { id: 'b', source: 'y', target: 'z', kind: 'heading' },
+    { id: 'c', source: 'z', target: 'y', kind: 'heading' },
+  ]);
+  assert.equal(depth.get('y'), 0);
+  assert.equal(depth.get('z'), 1);
+});
+
+test('concept: heading tiers rise monotonically with depth', () => {
+  // v0.5.8 spread the stack so a tall document does not collapse onto the
+  // floor. The exact numbers are pin-stable — bump them deliberately and
+  // update func_spec/10-graph-view.md together.
+  assert.equal(conceptZForDepth(0), 270);
+  assert.equal(conceptZForDepth(1), 405);
+  assert.equal(conceptZForDepth(2), 540);
+  // Documents sit at 0, so the first tier must clear them.
+  assert.ok(conceptZForDepth(0) > 0, 'a heading tier must sit above the floor');
+  // Non-integer and negative depths are clamped, not propagated.
+  assert.equal(conceptZForDepth(-3), conceptZForDepth(0));
+  assert.equal(conceptZForDepth(1.4), conceptZForDepth(1));
+  assert.equal(conceptZForDepth(NaN), conceptZForDepth(0));
+});
+
+test('concept: headings space out at least one sphere-radius per tier', () => {
+  // The slider value for `spacing per tier is wider than a node sphere'.
+  // Step must exceed the heading node diameter so two tiers never
+  // interpenetrate under any camera angle.
+  const minRadius = nodeRadius('heading', false); // leaf heading
+  const stepGap = conceptZForDepth(1) - conceptZForDepth(0);
+  assert.ok(
+    stepGap > 2 * minRadius,
+    `tier gap ${stepGap} must exceed 2·minRadius (${2 * minRadius})`
+  );
+});
+
+test('concept: terms drop to a negative y, below the floor', () => {
+  // Terms no longer stack onto the highest tier; they sit on an
+  // underground ring at -CONCEPT_TERM_DEPTH so a tall document's terms
+  // cannot merge with its `##` columns.
+  assert.ok(conceptTermSlot({ x: 0, y: 0 }).y < 0);
+  const slot = conceptTermSlot({ x: 50, y: -120 });
+  assert.equal(slot.term, true);
+  assert.equal(slot.ringX, 50);
+  assert.equal(slot.ringZ, -120);
+});
+
+test('concept: zoom moves the eye in and clamps', () => {
+  const near = conceptZoomBy(2000, 1);
+  const far = conceptZoomBy(2000, -1);
+  assert.ok(near < 2000, 'Zoom + moves toward the scene');
+  assert.ok(far > 2000, 'Zoom − moves away from the scene');
+  // Step size matches the flat/globe 1.25 factor.
+  assert.ok(Math.abs(near - 2000 / 1.25) < 1e-9);
+  assert.ok(conceptZoomBy(MAX_CONCEPT_DISTANCE, -1) === MAX_CONCEPT_DISTANCE);
+  assert.ok(conceptZoomBy(MIN_CONCEPT_DISTANCE, 1) === MIN_CONCEPT_DISTANCE);
+});
+
+test('concept: the toolbar zoom multiplier maps onto a distance', () => {
+  assert.equal(conceptDistanceFromZoom(1), DEFAULT_CONCEPT_DISTANCE);
+  assert.equal(conceptDistanceFromZoom(2), DEFAULT_CONCEPT_DISTANCE * 2);
+  assert.equal(conceptDistanceFromZoom(0.5), DEFAULT_CONCEPT_DISTANCE * 0.5);
+  // Out-of-range multipliers land on the clamps rather than NaN.
+  assert.equal(conceptDistanceFromZoom(1000), MAX_CONCEPT_DISTANCE);
+  assert.equal(conceptDistanceFromZoom(NaN), DEFAULT_CONCEPT_DISTANCE);
+});
+
+test('concept: eye position sits on the pose sphere, facing the target', () => {
+  for (const pose of [
+    DEFAULT_CONCEPT_POSE,
+    { yaw: 1.2, pitch: -0.4, distance: 2500, target: { x: 120, y: -80 } },
+    { yaw: -2.8, pitch: 1.1, distance: 900, target: { x: 0, y: 0 } },
+  ]) {
+    const p = clampConceptPose(pose);
+    const eye = conceptCameraPosition(p);
+    // The eye orbits `target` at exactly `distance`.
+    const d = Math.hypot(
+      eye.x - p.target.x,
+      eye.y - p.target.y,
+      eye.z - p.target.y
+    );
+    assert.ok(
+      Math.abs(d - p.distance) < 1e-6,
+      `eye drifted to ${d}, expected ${p.distance}`
+    );
+  }
+});
+
+test('concept: pitch is clamped away from the pole', () => {
+  const up = dragToConceptPose(DEFAULT_CONCEPT_POSE, 0, 1e9, 1);
+  assert.ok(up.pitch < Math.PI / 2, 'the camera must never pass the pole');
+  const down = dragToConceptPose(DEFAULT_CONCEPT_POSE, 0, -1e9, 1);
+  assert.ok(down.pitch > -Math.PI / 2);
+});
+
+test('concept: a pane-wide drag turns roughly a half revolution', () => {
+  // Same gain rule as the globe, so the mouse feels the same in all three
+  // projections — this is the whole point of reusing `dragToOrientation`.
+  const pane = 900;
+  const turned = dragToConceptPose(
+    DEFAULT_CONCEPT_POSE,
+    pane,
+    0,
+    pane / Math.PI
+  );
+  assert.ok(
+    Math.abs(turned.yaw - DEFAULT_CONCEPT_POSE.yaw - Math.PI) < 1e-9,
+    `expected a half turn, got ${turned.yaw}`
+  );
+  // Distance and target survive an orbit untouched.
+  assert.equal(turned.distance, DEFAULT_CONCEPT_POSE.distance);
+  assert.deepEqual(turned.target, DEFAULT_CONCEPT_POSE.target);
+});
+
+test('concept: layout (x, y) maps onto the floor, height onto world y', () => {
+  const w = layoutToWorld(300, -120, 90);
+  assert.equal(w.x, 300);
+  assert.equal(w.z, -120, 'layout y becomes world z so the layout is the floor');
+  assert.equal(w.y, 90, 'the extrusion is world y');
+});
+
+test('concept: a downward ray hits the floor at the layout point under it', () => {
+  // Straight down from above layout (400, 300). World z = 300, so the
+  // layout point under the eye is (400, 300) — not (400, 800).
+  const p = floorPointFromRay({ x: 400, y: 800, z: 300 }, { x: 0, y: -1, z: 0 });
+  assert.ok(p);
+  assert.ok(Math.abs(p.x - 400) < 1e-9);
+  assert.ok(Math.abs(p.y - 300) < 1e-9);
+});
+
+test('concept: an oblique ray intersects the floor ahead of the eye', () => {
+  // Eye at height 10 looking down-and-forward: 10 units of drop over a
+  // 45° slope puts the floor hit 10 units along +z.
+  const p = floorPointFromRay(
+    { x: 0, y: 10, z: 0 },
+    { x: 0, y: -Math.SQRT1_2, z: Math.SQRT1_2 }
+  );
+  assert.ok(p);
+  assert.ok(Math.abs(p.x) < 1e-9, 'a z-directed ray leaves x alone');
+  assert.ok(Math.abs(p.y - 10) < 1e-6, `expected 10, got ${p.y}`);
+});
+
+test('concept: a ray parallel to the floor has no intersection', () => {
+  assert.equal(floorPointFromRay({ x: 0, y: 5, z: 0 }, { x: 1, y: 0, z: 0 }), null);
+});
+
+test('concept: heights are assigned per node kind (ConceptSlot)', () => {
+  const welcome = doc(
+    'welcome',
+    'Welcome',
+    '# Start\n\nSee [[orphan]].\n\n## Detail\n\nmore\n'
+  );
+  const ideas = doc('ideas', 'Ideas', '# Ideas\n\nSee [[orphan]].\n');
+  const g = buildWorkspaceGraph([welcome, ideas], {});
+  const nodes = g.nodes.map((n) => ({
+    id: n.id,
+    kind: n.kind,
+    documentId: n.documentId,
+    x: 0,
+    y: 0,
+  }));
+  const slots = assignConceptHeights(nodes, g.edges);
+
+  // Documents are the floor.
+  assert.equal(slots.get(documentNodeId('welcome'))?.y, 0);
+  assert.equal(slots.get(documentNodeId('ideas'))?.y, 0);
+
+  // The top-level # is tier 0; its ## child is tier 1.
+  const start = g.nodes.find((n) => n.kind === 'heading' && n.label === 'Start');
+  const detail = g.nodes.find((n) => n.kind === 'heading' && n.label === 'Detail');
+  assert.ok(start && detail);
+  assert.equal(slots.get(start.id)?.y, conceptZForDepth(0));
+  assert.equal(slots.get(detail.id)?.y, conceptZForDepth(1));
+  assert.ok(
+    slots.get(detail.id).y > slots.get(start.id).y,
+    'a nested heading must sit above its parent tier'
+  );
+
+  // The term lands on the underground ring — strictly negative y.
+  const term = slots.get(termNodeId('orphan'));
+  assert.ok(term?.term, 'term node must carry term: true');
+  assert.ok(term.y < 0, `term.y should be negative, got ${term.y}`);
+  assert.ok(
+    Math.abs(term.y + CONCEPT_TERM_DEPTH) < 1e-9,
+    `term.y should be -CONCEPT_TERM_DEPTH (${CONCEPT_TERM_DEPTH})`
+  );
+});
+
+test('concept: terms and headings land on opposite signs of y', () => {
+  const welcome = doc(
+    'welcome',
+    'Welcome',
+    '# Start\n\n## Detail\n\nSee [[orphan]].\n'
+  );
+  const g = buildWorkspaceGraph([welcome], {});
+  const nodes = g.nodes.map((n) => ({
+    id: n.id,
+    kind: n.kind,
+    documentId: n.documentId,
+    x: 0,
+    y: 0,
+  }));
+  const slots = assignConceptHeights(nodes, g.edges);
+
+  for (const n of nodes) {
+    const slot = slots.get(n.id);
+    assert.ok(slot, `every node gets a slot; missing for ${n.id}`);
+    if (n.kind === 'heading') {
+      assert.ok(
+        slot.y > 0,
+        `heading ${n.id} should be above the floor, got ${slot.y}`
+      );
+    } else if (n.kind === 'term') {
+      assert.ok(
+        slot.y < 0,
+        `term ${n.id} should be below the floor, got ${slot.y}`
+      );
+    } else {
+      assert.equal(slot.y, 0, `document ${n.id} should be at y=0`);
+    }
+  }
+});
+
+test('concept: every node gets a ConceptSlot, none left undefined', () => {
+  const welcome = doc('welcome', 'Welcome', '# Start\n\nSee [[orphan]].\n');
+  const g = buildWorkspaceGraph([welcome], {});
+  const nodes = g.nodes.map((n) => ({
+    id: n.id,
+    kind: n.kind,
+    documentId: n.documentId,
+    x: 0,
+    y: 0,
+  }));
+  const slots = assignConceptHeights(nodes, g.edges);
+  assert.equal(slots.size, nodes.length, 'one slot per node');
+  for (const n of nodes) {
+    const slot = slots.get(n.id);
+    assert.ok(slot, `node ${n.id} (${n.kind}) has no slot`);
+    assert.ok(
+      Number.isFinite(slot.y),
+      `node ${n.id} (${n.kind}) has non-finite y=${slot.y}`
+    );
+  }
+});
+
+test('concept: pose round-trips through camera and pose helpers', () => {
+  // Driving the eye through `conceptCameraPosition` and back through
+  // `conceptPoseFromCamera` must recover the original yaw / pitch /
+  // distance — up to float precision. Multiple poses cover the corner
+  // cases: the opening pose, a steep pitch, and a 180° flipped yaw.
+  for (const pose of [
+    DEFAULT_CONCEPT_POSE,
+    { yaw: 1.2, pitch: -0.4, distance: 2500, target: { x: 120, y: -80 } },
+    { yaw: -2.8, pitch: 1.1, distance: 900, target: { x: 0, y: 0 } },
+    { yaw: Math.PI, pitch: 0, distance: 1000, target: { x: 0, y: 0 } },
+  ]) {
+    const eye = conceptCameraPosition(pose);
+    const recovered = conceptPoseFromCamera(eye, pose.target);
+    assert.ok(
+      Math.abs(recovered.yaw - pose.yaw) < 1e-9,
+      `yaw drift ${recovered.yaw - pose.yaw}`
+    );
+    assert.ok(
+      Math.abs(recovered.pitch - pose.pitch) < 1e-9,
+      `pitch drift ${recovered.pitch - pose.pitch}`
+    );
+    assert.ok(
+      Math.abs(recovered.distance - pose.distance) < 1e-9,
+      `distance drift ${recovered.distance - pose.distance}`
+    );
+  }
+});
+
+test('concept: MIN_POLAR_ANGLE / MAX_POLAR_ANGLE bracket the legal pole', () => {
+  // OrbitControls clamps via `polar` (φ = π/2 − pitch). Symmetric limits
+  // just shy of 0 and π keep the camera off both poles. The exact values
+  // are mirrored around π/2 so the same pose reads the same through
+  // both APIs without surprise drift.
+  assert.ok(MIN_POLAR_ANGLE > 0, 'min polar must keep the camera off straight down');
+  assert.ok(MAX_POLAR_ANGLE < Math.PI, 'max polar must keep the camera off straight up');
+  assert.ok(
+    MIN_POLAR_ANGLE < Math.PI / 2,
+    'eye should be able to reach a downward-looking angle'
+  );
+  assert.ok(
+    MAX_POLAR_ANGLE > Math.PI / 2,
+    'eye should be able to reach an upward-looking angle'
+  );
+  // Symmetric around π/2 so a pose ⇄ camera round-trip stays self-consistent.
+  assert.ok(
+    Math.abs(MIN_POLAR_ANGLE + MAX_POLAR_ANGLE - Math.PI) < 1e-9,
+    'polar limits should bracket π/2 symmetrically'
+  );
 });
 
 console.log(`${passed} passed`);

@@ -1,4 +1,4 @@
-# ApEditor — AI Markdown Editor (MVP)
+# ApEditor — AI Markdown Editor
 
 > **A local-first AI markdown editor.** Write, comment, and revise in one
 > window. Bring your own API key (or use Google AI Mode — no key
@@ -7,12 +7,14 @@
 >
 > **Lineage:** re-produced from
 > [`ai-text-editor`](https://github.com/darrylschaefer/ai-text-editor)
-> by [@darrylschaefer](https://github.com/darrylschaefer). This MVP
-> keeps the core editor + AI chat loop in a minimal number of files.
-> See [Credits](#credits) for details.
+> by [@darrylschaefer](https://github.com/darrylschaefer). ApEditor
+> evolved well past that starting point — it now spans ten functional
+> subsystems (editor, graph view, comments, OCR + PDF import,
+> revisions, settings, AI chat, prompt library, in-app help, in-app
+> functional specification). See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.5.7](https://img.shields.io/badge/version-0.5.7-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.7)
+[![v0.5.8](https://img.shields.io/badge/version-0.5.8-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.8)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).

@@ -48,8 +48,9 @@ Three files dominate: `Editor.tsx`, `ChatPanel.tsx`, and `utils/proposedEdit.ts`
 ┌───────────────────────────▼──────────────────────────────────┐
 │  Feature components                                          │
 │  Sidebar · Editor · ChatPanel · GraphView                    │
-│  Comment{Layer,Margin,Composer,Popover,Tray} · ReanchorPicker│
-│  ProposedEditCard · FileActionsButton · mentions/*           │
+│  Concept3DScene · Comment{Layer,Margin,Composer,Popover,Tray} │
+│  ReanchorPicker · ProposedEditCard · FileActionsButton       │
+│  mentions/*                                                 │
 └───────────────────────────┬──────────────────────────────────┘
                             │ calls hooks + pure utils
 ┌───────────────────────────▼──────────────────────────────────┐
@@ -125,7 +126,8 @@ This is the **only** place in the app that performs an HTTP request to a chat pr
 | [`CommentPopover.tsx`](../src/components/CommentPopover.tsx) | 911 | Read/edit one comment, multi-round rationale list, resize, persistence of popover size. |
 | [`SettingsModal.tsx`](../src/components/SettingsModal.tsx) | 834 | Provider, key, endpoint, model, system message, rationale rules, temperature, UI font size, debug mode. |
 | [`FileActionsButton.tsx`](../src/components/FileActionsButton.tsx) | 517 | Import (images + PDFs → OCR → Markdown) and Export (`.md`, `.json`). Dynamic-imports the heavy OCR deps. |
-| [`GraphView.tsx`](../src/components/GraphView.tsx) | 524 | SVG rendering, node drag, zoom, hover dimming, edge labels, `GraphViewControls`. |
+| [`GraphView.tsx`](../src/components/GraphView.tsx) | — | SVG rendering, node drag, zoom, hover dimming, edge labels, `GraphViewControls`, the flat / sphere / concept projection switch. |
+| [`Concept3DScene.tsx`](../src/components/Concept3DScene.tsx) | — | 3D Concept projection. three.js WebGL scene behind `React.lazy` + `await import('three')`, so it ships as its own chunk. Raycasts for hover/click, then forwards pointer events to `GraphView`. |
 | [`CommentComposer.tsx`](../src/components/CommentComposer.tsx) | 246 | Floating composer for a new comment. |
 | [`ReanchorPicker.tsx`](../src/components/ReanchorPicker.tsx) | 241 | Heading/paragraph picker for re-linking a stale comment. |
 | [`RevisionHistory.tsx`](../src/components/RevisionHistory.tsx) | 232 | Snapshot list, Preview / Diff tabs, restore, delete. |
@@ -204,7 +206,7 @@ Components never import each other. `Editor.tsx` does not import `ChatPanel.tsx`
 ```
 FileActionsButton ──mvp:insert-text──▶ Editor
 useInlineCompletion ──mvp:accept-completion──▶ Editor
-GraphView / ProposedEditCard / ChatPanel ──mvp:select-range──▶ Editor
+GraphView / Concept3DScene / ProposedEditCard / ChatPanel ──mvp:select-range──▶ Editor
 Editor ──mvp:editor-selection──▶ ChatPanel, PromptLibrary
 PromptLibrary ──mvp:fill-chat──▶ ChatPanel
 Editor ──mvp:send-comments──▶ ChatPanel

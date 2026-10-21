@@ -261,8 +261,20 @@ viewMode === 'graph'
       4. six refinement passes slide clusters toward the mean incoming ray
       5. RELAX_ITERS = 80 separation passes; the current doc node is pinned
       6. labelPlacement pushes labels outward, anchors start/middle/end by radial x
-  → GraphView renders SVG, wires drag / zoom / hover / click
+  → GraphView renders, wires drag / zoom / hover / click
+      projection 'flat'    → <svg>, layout coordinates unchanged
+      projection 'sphere'  → toSphere → rotateSphere → toScreen, back-hemisphere culled
+      projection 'concept' → <Concept3DScene> (lazy), three.js WebGL
+          headingDepthByNode(edges) → depth → ConceptSlot {y, term}
+             document 0, heading 270 + depth·135 (positive y),
+             term on underground ring at y = -200 (negative y)
+          orbit drag → ConceptPose {yaw, pitch, distance, target}
+          wheel / shift+drag / arrows / touch → OrbitControls, mirroring
+          the pose through setConceptPose so the toolbar zoom + Reset
+          still read from the same source
 ```
+
+`viewMode` is still `'write' | 'preview' | 'split' | 'graph'` — the three projections are an inner toggle within the Graph view, not three panes.
 
 See [Graph view](10-graph-view.md) for the full algorithm and the exported test helpers.
 

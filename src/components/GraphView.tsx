@@ -3,6 +3,8 @@ import {
   useMemo,
   useRef,
   useState,
+  lazy,
+  Suspense,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { useStore, useCurrentDocument } from '@/store/useStore';
@@ -33,6 +35,13 @@ import {
   type GraphProjection,
 } from '@/hooks/useGraphCamera';
 import { useGraphLens } from '@/hooks/useGraphLens';
+
+/**
+ * The 3D Concept scene is a separate chunk on purpose — see the header of
+ * `Concept3DScene.tsx`. `lazy` means the Graph view's flat and globe
+ * projections never pull three.js into the module graph.
+ */
+const Concept3DScene = lazy(() => import('@/components/Concept3DScene'));
 
 /** Screen-pixel label size. Matches the editor / UI default (~14–16px). */
 export const DEFAULT_GRAPH_LABEL_PX = 16;
@@ -127,6 +136,38 @@ const graphToolClass =
 const graphSegmentBase =
   'h-9 px-2.5 inline-flex items-center justify-center text-[13px] transition-colors';
 
+/**
+ * The projection segmented control.
+ *
+ * These are **projections, not view modes**: `viewMode` stays
+ * `'write' | 'preview' | 'split' | 'graph'`. Each entry keeps the same
+ * graph, the same nodes, and the same click behaviour — only the mapping
+ * from layout coordinates to pixels changes. Listing them here rather than
+ * hand-writing three near-identical buttons is what keeps the
+ * `aria-pressed` / active-class triple from drifting between entries.
+ */
+const PROJECTION_OPTIONS: {
+  id: GraphProjection;
+  label: string;
+  title: string;
+}[] = [
+  {
+    id: 'flat',
+    label: 'Graph',
+    title: 'Flat map — pan by dragging the background',
+  },
+  {
+    id: 'sphere',
+    label: 'Globe',
+    title: 'Globe — drag the background to spin the sphere',
+  },
+  {
+    id: 'concept',
+    label: '3D',
+    title: '3D Concept — headings stack upward; drag the background to orbit',
+  },
+];
+
 export function GraphViewControls({
   labelPx,
   onLabelPx,
@@ -210,32 +251,26 @@ export function GraphViewControls({
         aria-label="Graph projection"
         className="inline-flex overflow-hidden rounded border border-paper-hairline dark:border-cyber-border"
       >
-        <button
-          type="button"
-          aria-pressed={projection === 'flat'}
-          title="Flat map — pan by dragging the background"
-          className={`${graphSegmentBase} ${
-            projection === 'flat'
-              ? 'bg-cyber-clay text-paper-base dark:bg-ape-fire dark:text-white font-semibold'
-              : 'text-paper-inkSoft dark:text-cyber-muted hover:bg-paper-elevated dark:hover:bg-ape-elevated hover:text-cyber-clay dark:hover:text-cyber-cyan'
-          }`}
-          onClick={() => onProjection('flat')}
-        >
-          Graph
-        </button>
-        <button
-          type="button"
-          aria-pressed={projection === 'sphere'}
-          title="Globe — drag the background to spin the sphere"
-          className={`${graphSegmentBase} border-l border-paper-hairline dark:border-cyber-border ${
-            projection === 'sphere'
-              ? 'bg-cyber-clay text-paper-base dark:bg-ape-fire dark:text-white font-semibold'
-              : 'text-paper-inkSoft dark:text-cyber-muted hover:bg-paper-elevated dark:hover:bg-ape-elevated hover:text-cyber-clay dark:hover:text-cyber-cyan'
-          }`}
-          onClick={() => onProjection('sphere')}
-        >
-          Globe
-        </button>
+        {PROJECTION_OPTIONS.map((opt, i) => (
+          <button
+            key={opt.id}
+            type="button"
+            aria-pressed={projection === opt.id}
+            title={opt.title}
+            className={`${graphSegmentBase} ${
+              i > 0
+                ? 'border-l border-paper-hairline dark:border-cyber-border'
+                : ''
+            } ${
+              projection === opt.id
+                ? 'bg-cyber-clay text-paper-base dark:bg-ape-fire dark:text-white font-semibold'
+                : 'text-paper-inkSoft dark:text-cyber-muted hover:bg-paper-elevated dark:hover:bg-ape-elevated hover:text-cyber-clay dark:hover:text-cyber-cyan'
+            }`}
+            onClick={() => onProjection(opt.id)}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
       <button
         type="button"
@@ -257,7 +292,7 @@ export interface GraphViewProps {
   zoom?: number;
   /** Reports zoom changes so the toolbar can drive the view. */
   onZoomChange?: (next: number) => void;
-  /** Flat map or globe. The sphere is an inner toggle, not a view mode. */
+  /** Flat map, globe, or 3D Concept. A projection is an inner toggle, not a view mode. */
   projection?: GraphProjection;
 }
 
@@ -303,6 +338,11 @@ export function GraphView({
   const nodeDragRef = useRef<NodeDragSession | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  // Floor point captured when a Concept-mode node drag starts. A drag is
+  // measured against this anchor rather than against the pointer-down event,
+  // because the raycast only reports a floor point once the scene has
+  // rendered a frame with the new pose.
+  const floorAnchorRef = useRef<Point>({ x: 0, y: 0 });
 
   const placed = useMemo(
     () =>
@@ -330,7 +370,11 @@ export function GraphView({
     };
   }, [placed]);
 
-  const isSphere = projection === 'sphere';
+const isSphere = projection === 'sphere';
+  const isConcept = projection === 'concept';
+  // The fisheye lens is a planar, focus+context device. Both the sphere and
+  // the 3D stack are curved/tilted views where the lens's boundary
+  // assumption breaks down, so it stays off there — same as before.
   const lens = useGraphLens(placed, {
     enabled: isSphere,
     bounds: layoutBounds,
@@ -342,11 +386,16 @@ export function GraphView({
     layoutBounds,
     zoom,
     onZoomChange ?? (() => {})
-  );
+   );
 
   // Project every node through the lens, then the sphere. `depth` drives the
   // depth ramp; `visible` culls the far hemisphere, which would otherwise
   // mirror onto the viewport.
+  //
+  // Concept mode is not in this pipeline: the three.js scene reads `lensed`
+  // directly and does its own projection, because it needs the *unprojected*
+  // layout coordinates to build a 3D world. Returning them unchanged here
+  // keeps `byId` and the click handlers identical across all three.
   const projected = useMemo<ProjectedNode[]>(() => {
     if (!isSphere) {
       return lens.lensed.map((n) => ({ ...n, depth: 1, visible: true }));
@@ -420,11 +469,25 @@ export function GraphView({
     }
   };
 
-  const endNodeDrag = (session: NodeDragSession, node: ProjectedNode | undefined) => {
+  const endNodeDrag = (
+    session: NodeDragSession,
+    node: ProjectedNode | undefined,
+    /** The 3D scene fires its own click on pointer-up; don't double-fire. */
+    fireClick = true
+  ) => {
     nodeDragRef.current = null;
     setDraggingId(null);
     cam.endDrag();
-    if (!session.moved && node) onNodeClick(node);
+    if (fireClick && !session.moved && node) onNodeClick(node);
+  };
+
+  // Concept mode's scene hands back a laid-out node rather than a projected
+  // one — it never ran the sphere projection, so there is no `depth` /
+  // `visible` to carry. Route through `byId` so the click behaves exactly as
+  // it does in the SVG: a document selects, a heading opens its range.
+  const onConceptNodeClick = (node: LaidOutNode) => {
+    const projected = byId.get(node.id);
+    onNodeClick(projected ?? { ...node, depth: 1, visible: true });
   };
 
   const onNodePointerDown = useCallback(
@@ -460,6 +523,80 @@ export function GraphView({
     if (!svg) return;
     svg.setPointerCapture(e.pointerId);
     cam.beginDrag(e, isSphere ? 'orbit' : 'pan', cam.orientation);
+  };
+
+  /* ---- 3D Concept ---- */
+  // The scene reports the floor point under the pointer. Concept-mode node
+  // dragging reuses the same layout-space override map as the SVG, so a node
+  // dragged in 3D keeps its position when you switch back to Graph or Globe.
+  const [conceptFloor, setConceptFloor] = useState<{ x: number; y: number } | null>(
+    null
+  );
+
+  const onConceptBackgroundPointerDown = (
+    e: ReactPointerEvent<HTMLDivElement>
+  ) => {
+    if (e.button !== 0) return;
+    // A press on a node starts a node drag instead of an orbit. The scene's
+    // raycast already reported the hovered node, so `hoverId` is the answer.
+    if (hoverId) {
+      const node = placed.find((n) => n.id === hoverId);
+      if (!node) return;
+      e.preventDefault();
+      // Anchor the drag at the node's own layout position. The scene's
+      // latest floor point is the origin of the offset, so a node grabbed
+      // slightly off-centre does not snap.
+      floorAnchorRef.current = conceptFloor ?? { x: node.x, y: node.y };
+      nodeDragRef.current = {
+        id: node.id,
+        pointerId: e.pointerId,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        originX: node.x,
+        originY: node.y,
+        moved: false,
+      };
+      setDraggingId(node.id);
+      return;
+    }
+    cam.beginDrag(e, 'conceptOrbit', cam.orientation);
+  };
+
+  const onConceptPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const session = nodeDragRef.current;
+    if (session && e.pointerId === session.pointerId) {
+      const dist = Math.hypot(
+        e.clientX - session.startClientX,
+        e.clientY - session.startClientY
+      );
+      if (!session.moved && dist < DRAG_THRESHOLD_PX) return;
+      session.moved = true;
+      // The scene owns the raycast, so the floor point arrives through
+      // `onFloorPoint`. Until it does, hold the previous one — a single
+      // frame of lag is imperceptible and beats dropping the drag.
+      const start = conceptFloor;
+      if (!start) return;
+      setOverrides((prev) => ({
+        ...prev,
+        [session.id]: {
+          x: session.originX + (start.x - floorAnchorRef.current.x),
+          y: session.originY + (start.y - floorAnchorRef.current.y),
+        },
+      }));
+      return;
+    }
+    cam.moveDrag(e);
+  };
+
+  const onConceptPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const session = nodeDragRef.current;
+    if (session && e.pointerId === session.pointerId) {
+      // The scene already resolved the click from its own raycast, so this
+      // only has to close the drag.
+      endNodeDrag(session, byId.get(session.id), false);
+      return;
+    }
+    cam.endDrag();
   };
 
   const onSvgPointerMove = (e: ReactPointerEvent<SVGSVGElement>) => {
@@ -516,14 +653,57 @@ export function GraphView({
           {hovered.fullLabel || hovered.label}
         </div>
       )}
-      {empty ? (
-        <div className="h-full flex items-center justify-center px-6">
-          <p className="text-sm text-paper-inkSoft dark:text-cyber-muted text-center max-w-sm">
-            Add a heading or [[term]] (or @ another document) to grow this
-            graph.
-          </p>
-        </div>
-      ) : (
+{empty ? (
+      <div className="h-full flex items-center justify-center px-6">
+        <p className="text-sm text-paper-inkSoft dark:text-cyber-muted text-center max-w-sm">
+          Add a heading or [[term]] (or @ another document) to grow this
+          graph.
+        </p>
+      </div>
+    ) : isConcept ? (
+      // 3D Concept. The canvas and its label layer sit inside the same
+      // wrapper as the SVG, so `useGraphCamera`'s ResizeObserver, the hover
+      // tooltip, and the empty state all behave identically across
+      // projections. Pointer handlers are attached to the canvas *inside*
+      // the scene, which raycasts first and then forwards here — so
+      // `GraphView` keeps one drag model for all three projections.
+      <div
+        className={`absolute inset-0 ${
+          draggingId ? 'cursor-grabbing' : 'cursor-grab'
+        }`}
+      >
+        <Suspense
+          fallback={
+            <div className="h-full flex items-center justify-center">
+              <p className="text-sm text-paper-inkSoft dark:text-cyber-muted">
+                Loading 3D…
+              </p>
+            </div>
+          }
+        >
+          <Concept3DScene
+            nodes={lens.lensed}
+            edges={graph.edges}
+            pose={cam.conceptPose}
+            viewport={cam.viewport}
+            labelPx={labelPx}
+            currentDocumentId={current?.id ?? null}
+            hoverId={hoverId}
+            hotIds={hot}
+            onNodeClick={onConceptNodeClick}
+            onHoverChange={setHoverId}
+            onFloorPoint={setConceptFloor}
+            handlers={{
+              onPointerDown: onConceptBackgroundPointerDown,
+              onPointerMove: onConceptPointerMove,
+              onPointerUp: onConceptPointerUp,
+              onPointerCancel: onConceptPointerUp,
+              setConceptPose: (next) => cam.setConceptPose(next),
+            }}
+          />
+        </Suspense>
+      </div>
+    ) : (
         <svg
           ref={svgRef}
           className={`w-full h-full ${

@@ -1,6 +1,6 @@
 # Graph view
 
-> A local knowledge graph of the workspace, compiled entirely in the browser from documents, headings, `[[wikilinks]]`, and `@` mentions. No LLM call, no new dependency, no store-schema change. Added in v0.5.4. Pan / orbit navigation and the Globe projection added in v0.5.7.
+> A local knowledge graph of the workspace, compiled entirely in the browser from documents, headings, `[[wikilinks]]`, and `@` mentions. No LLM call, no new dependency, no store-schema change. Added in v0.5.4. Pan / orbit navigation and the Globe projection added in v0.5.7. The 3D Concept projection added in v0.5.8. Spreading the Concept stack and OrbitControls-driven free navigation in v0.5.8.
 
 ---
 
@@ -17,13 +17,13 @@ Graph replaces the text panes in the editor's view dropdown. It is a **symbolic*
 
 In `graph` mode, Format / Comment / Predict hide because they need the textarea. File actions and Save revision stay.
 
-**`viewMode` is unchanged by the Globe work.** It remains `'write' | 'preview' | 'split' | 'graph'`. A projection is a navigation aid *within* the Graph view, not a fifth pane:
+**`viewMode` is unchanged by the Globe and Concept work.** It remains `'write' | 'preview' | 'split' | 'graph'`. A projection is a navigation aid *within* the Graph view, not a fifth pane:
 
 | Why not a fifth `viewMode` |
 |---|
-| Graph and Globe are the same data with a different camera; a sibling pane would imply different capabilities |
+| Flat, Globe and Concept are the same data with a different camera; a sibling pane would imply different capabilities |
 | `viewMode` is persisted via `partialize`, so a new default would silently change what the app opens to between sessions |
-| Keeping both reachable preserves the paper's own comparison — same nodes, undistorted vs. wrapped |
+| Keeping them all reachable preserves the papers' own comparison — same nodes, undistorted, wrapped, and extruded |
 
 ## 2. Data model
 
@@ -274,8 +274,9 @@ Then `RELAX_ITERS = 80` passes of `separateAlongRays`:
 |---|---|
 | `segmentsCrossProper(...)` | Strict orientation-based proper-crossing test. Collinear pairs return `false`. |
 | `countProperEdgeCrossings(nodes, edges)` | O(n²) pair scan, skipping edge pairs that share an endpoint. |
+| `headingDepthByNode(edges)` | Tree depth per heading node. Consumed by `assignConceptZ` in the 3D scene; asserted directly so a wrong tier is caught before it reaches a canvas. |
 
-Both exist so `scripts/test-graph.mjs` can assert "no initial edges cross".
+The first two exist so `scripts/test-graph.mjs` can assert "no initial edges cross".
 
 ## 6. Camera
 
@@ -332,12 +333,14 @@ Nodes pass through three pure transforms, in this order:
 layoutWorkspaceGraph
   → manual drag overrides              (layout space)
   → applyFisheyeToNodes                (layout space; m = 0 is an exact identity)
-  → toSphere → rotateSphere → toScreen (sphere space; flat mode skips this)
+  → toSphere → rotateSphere → toScreen (sphere space; flat and concept skip this)
 ```
 
 The fisheye lens runs **before** the projection because edge orientation is only well defined on the plane — the refinement solve assumes a planar target.
 
 `projection: 'flat'` returns the layout coordinates unchanged and is the default. That is an invariant the test suite asserts, not merely a convention.
+
+**Concept is the exception.** It reads `lens.lensed` directly and builds a three.js world from the *unprojected* coordinates; see [§9d](#9d-3d-concept-projection).
 
 ### SVG structure
 
@@ -409,14 +412,17 @@ Dragging empty SVG space starts a **navigation** session (`useGraphCamera`), dis
 |---|---|---|
 | `flat` | `pan` | `panCamera` — content follows the pointer at any zoom |
 | `sphere` | `orbit` | `dragToOrientation` — the globe rotates |
+| `concept` | `conceptOrbit` | `dragToConceptPose` — the eye orbits its target |
 
-Both start at `DRAG_THRESHOLD_PX = 3`. The node drag threshold stays at `5`; they are separate sessions with separate refs, so a node drag never rotates the globe.
+All three start at `DRAG_THRESHOLD_PX = 3`. The node drag threshold stays at `5`; they are separate sessions with separate refs, so a node drag never rotates the scene.
 
 ### Keyboard
 
 Each `<circle>` has `role="button"` and `tabIndex={0}`, with an `onKeyDown` that fires `onNodeClick` on `Enter` or `' '` (both `preventDefault()`).
 
-**There are no arrow-key panning, wheel zoom, or wheel handlers.** Zoom is buttons-only. The globe can still be explored with a pointer.
+**There are no arrow-key panning, wheel zoom, or wheel handlers.** Zoom is buttons-only. The globe and the 3D scene can still be explored with a pointer.
+
+> **Concept has no keyboard path.** Flat and Globe put every node in the DOM as a focusable `<circle>`, so `Tab` reaches them and `Enter` opens them. A `<canvas>` cannot host focusable children, so the 3D view is pointer-only. This is a real accessibility gap, not an oversight — the [§9d](#9d-3d-concept-projection) label layer is `pointer-events: none` by design.
 
 ## 9. `GraphViewControls`
 
@@ -428,10 +434,12 @@ Each `<circle>` has `role="button"` and `tabIndex={0}`, with an `onKeyDown` that
 | **Zoom −** | `zoom /= 1.25`, clamped | `zoom <= MIN + 0.001` |
 | **Zoom +** | `zoom *= 1.25`, clamped | `zoom >= MAX - 0.001` |
 | Zoom readout | `{Math.round(zoom * 100)}%` | — |
-| **Graph / Globe** | Segmented `role="group"` toggle, `aria-pressed` on each | Never |
+| **Graph / Globe / 3D** | Segmented `role="group"` toggle, `aria-pressed` on each. Driven by the `PROJECTION_OPTIONS` table, so the three buttons cannot drift apart | Never |
 | **Reset** | `labelPx → 16`, `zoom → 1`, `projection → 'flat'`, `graphEpoch++` | Never |
 
 `graphLabelPx`, `graphZoom`, `graphProjection`, and `graphEpoch` are **`useState` in `Editor.tsx`, not store state.** They are intentionally not persisted.
+
+The same `zoom` multiplier drives all three projections; Concept derives its eye distance from it ([§9d](#9d-3d-concept-projection)) rather than keeping a second value that could drift.
 
 ## 9b. Globe projection
 
@@ -494,6 +502,138 @@ x' = c + (b − c)·β'
 
 **The lens is currently not exposed in the UI.** `useGraphLens` is wired into the pipeline and gated on `projection === 'sphere'`, but nothing sets a focal point yet; it activates when focal-point placement lands.
 
+## 9d. 3D Concept projection
+
+[`utils/graph/conceptProject.ts`](../src/utils/graph/conceptProject.ts) · [`components/Concept3DScene.tsx`](../src/components/Concept3DScene.tsx)
+
+The third projection. Where Globe **wraps** the layout on a sphere, Concept keeps the layout planar and **extrudes** it: `layout.x → world.x`, `layout.y → world.z`, and heading tiers rise along `world.y`. The atom becomes a floor plan with a stack over it.
+
+> `viewMode` is still `'write' | 'preview' | 'split' | 'graph'`. Concept is the third entry in the same projection toggle as Flat and Globe, for the reason [§1](#1-what-it-is) gives: same nodes, same clicks, different camera. It is **not** a fifth pane.
+
+### Pipeline divergence
+
+```
+buildWorkspaceGraph → layoutWorkspaceGraph → drag overrides → fisheye lens
+                                                             │
+        ┌────────────────────────────────────────────────────┤
+        │                                                    │
+   flat: identity                                    sphere: toSphere
+   concept: THREE.WebGLRenderer                        → rotateSphere
+            (reads `lens.lensed` directly)                 → toScreen
+```
+
+Concept is the one projection **not** implemented as a pure coordinate map on `placed`. It hands `lens.lensed` to a `three.js` scene, because building a 3D world needs the *unprojected* layout coordinates — a projected point cannot be lifted onto an axis. `projected` still returns them unchanged (with `depth: 1, visible: true`) so `byId`, the hover ring, and `onNodeClick` stay identical across all three.
+
+The fisheye lens stays **off** in Concept, as it is in Globe: `β` is a planar boundary ratio and has no meaning on a tilted floor.
+
+### Heights — two opposing y-bands
+
+v0.5.8 split headings and terms onto opposite signs of the world Y axis. A tall document used to read as one horizontal slab because the extrusion step (`60 + depth · 70`) was small relative to a layout radius that clears 200–400 units, and terms piled onto the highest tier anyway. Both bands now separate cleanly:
+
+| Node | `slot.y` | Notes |
+|---|---|---|
+| `document` | `0` | The floor — `world.y = 0` |
+| `heading` | `conceptZForDepth(depth)` = `270 + depth · 135` | Spacing test asserts the gap is wider than `2 · nodeRadius('heading', false)` |
+| `term` | `-CONCEPT_TERM_DEPTH` = `-200` | On the underground ring at the term's `(world.x, world.z)` |
+
+   520|`headingDepthByNode` reports **tree** depth, and the distinction from the radial shell is load-bearing. `assignShells` deliberately collapses a lone page H1 onto the nucleus ring (invariant 5) so its `##` children get a full shell — under that collapse Welcome's H1 and its ten `##` share one tier, and using shell depth would render the page one layer flat. The walk seeds the **children** of every root at `0`, not the roots themselves, because a root's parent is a document or a synthetic `heading-path:` node and neither is a heading.
+
+The walk is **iterative** and keys on `depth.has(id)`. `buildWorkspaceGraph` cannot produce a cycle, but a hand-built edge list could, and recursion would blow the stack; `concept: a cyclic heading edge list terminates` asserts totality.
+
+### Slot shape
+
+`assignConceptHeights` returns `Map<string, ConceptSlot>`, not `Map<string, number>`. The scene reads `slot.y` to place the mesh and `slot.term` to branch materials / label offsets:
+
+```ts
+interface ConceptSlot {
+  y: number;       // world Y the mesh sits at
+  ringX?: number;  // floor x for the underground term ring
+  ringZ?: number;
+  term: boolean;   // true for [[term]] nodes only
+}
+```
+
+A term's `(ringX, ringZ)` equals its layout anchor — preserved so a heading-to-term wikilink chord reads vertically downward (every edge chord now follows both endpoints' `slot.y`, not the floor; the old `e.kind === 'heading'` distinction in the scene was retired with this change).
+
+### Pose
+
+```ts
+interface ConceptPose { yaw: number; pitch: number; distance: number; target: Point }
+```
+
+| Detail | Rule |
+|---|---|
+| Yaw | Azimuth about the vertical axis. Positive turns the eye right |
+| Pitch | **Elevation**, positive looks *down*. Opposite sign to the sphere's tilt, because a camera above a floor is the natural reading |
+| Distance | Eye-to-target radius. `conceptDistanceFromZoom(zoom) = zoom · 1800`, clamped `[400, 6000]` |
+| Target | Layout-space orbit centre; re-centred by the same `fitKey` effect that drives the flat camera's `center`, so a resize or data change still reframes |
+| Default | `{ yaw: -0.6, pitch: 0.7, distance: 1800 }` — front-right, ~40° up. At pitch 0 the floor is edge-on and the tiers line up into a single row |
+| Clamp | `clampConceptPose` reuses `clampPitch`, so the pole limit is shared with Globe |
+
+   530|### Zoom is derived, not stored
+
+`distance` is recomputed from the toolbar's `zoom` multiplier on every change rather than held as independent state. `GraphViewControls` drives **one** `zoom` for all three projections; a separate `distance` would drift the moment the user pressed `Zoom +` in one projection and switched to another — the same failure mode as storing an absolute SVG scale alongside a fit scale.
+
+### Rotation gain is shared with Globe
+
+`dragToConceptPose` delegates to `dragToOrientation` with the same `pixelsPerRadian = max(viewport.w, 320) / π`. One full-pane drag is a half revolution in both Globe and Concept, so the mouse does not need retuning when switching. This is asserted for both.
+
+### Free navigation (v0.5.8)
+
+`three.js`'s `OrbitControls` is mounted on the scene's `<canvas>`. The hook remains the single source of truth for `ConceptPose` — `OrbitControls` reads `pose.distance` / `pose.target`, drags them around, and writes back via `setConceptPose`. Distance changes are mirrored into the toolbar's `zoom` multiplier on the same callback, so wheel-dolly shows in the readout.
+
+| Gesture | Effect | Notes |
+|---|---|---|
+| Left drag, empty space | Orbit | Existing `conceptOrbit` path; OrbitControls observes the same drag delta without re-emitting |
+| Left drag on a node | Move the node | OrbitControls' `enabled` flips to `false` for the duration (invariant 16) |
+| Shift + left drag | Pan | OrbitControls default |
+| Right drag | Pan | OrbitControls default |
+| Two-finger drag | Pan | OrbitControls touch handler |
+| Pinch | Dolly | OrbitControls touch handler |
+| Mouse wheel | Dolly | Wheel-to-zoom |
+| `+` / `-` keys | Dolly | OrbitControls keydown on the wrapper |
+| Arrow keys | Pan | OrbitControls keydown |
+| Click on a node | Select (document) / open range (heading) | Unchanged raycast path |
+
+Polar-angle clamps are `MIN_POLAR_ANGLE = π · 0.08` and `MAX_POLAR_ANGLE = π · 0.92`, symmetric around π/2 so OrbitControls' `phi = π/2 - pitch` matches `clampPitch` exactly. The terse range is what keeps the camera off both poles — at the north pole the floor flips; at the south pole the scene's `lookAt` becomes singular.
+
+Damping (`dampingFactor = 0.08`) keeps the camera moving briefly after `pointerup`, which is what makes a quick wheel flick feel like a flick rather than a snap. Damping is skipped during node drags because `controls.update()` is gated behind `controls.enabled`.
+
+### Edges are zoned
+
+| Edge kind | Z of both endpoints |
+|---|---|
+| `heading` | The lifted heights, so an outline reads as a stack |
+| `wikilink`, `@` | **Each endpoint's own `slot.y`**, which places terms-below-floor and headings-above-floor correctly |
+
+Lifting wikilinks would put every cross-document chord through the heading stack, where the extrusion hides it. The v0.5.8 zoning mirrors the slot rather than the heading kind, so a heading-to-term chord reads cleanly downward through the negative-y band.
+
+### Interaction parity
+
+The scene owns a `Raycaster`, but **not** the drag model. On every pointer event it raycasts first, then forwards the event to `GraphView` through a `handlers` prop, so orbit-vs-node-move and the override bookkeeping live in one place for all three projections.
+
+| Step | Rule |
+|---|---|
+| Hover | `onHoverChange(id)` sets the same `hoverId` the SVG uses, so the tooltip and the `neighborsOf` dimming ring are the same code |
+| Click | Resolved on `pointerup` from a fresh pick, then `onConceptNodeClick` routes through `byId`. `endNodeDrag(…, fireClick = false)` suppresses the SVG's own click so it cannot double-fire |
+| Node drag | The scene reports the pointer ray's intersection with `y = 0` in **layout** space (`floorPointFromRay`); the override is anchored at `floorAnchorRef` captured on pointer-down. Overrides stay layout-space, so a node dragged in 3D keeps its position when you switch back to Flat or Globe |
+| Orbit | Background press with no hovered node → `cam.beginDrag(e, 'conceptOrbit')` |
+| Label | A `position: absolute` div per node, projected each frame; `p.z > 1` hides nodes behind the camera |
+
+### Bundle
+
+three.js is reached through `React.lazy` **and** an `await import('three')` inside the effect, so it lands in its own chunk:
+
+| Chunk | Size |
+|---|---|
+| `Concept3DScene-*.js` | 7.8 kB (3.4 kB gz) |
+| `three.module-*.js` | 667 kB (172 kB gz) |
+| `index-*.js` | +11 kB — this document's prose, since the Func Spec viewer bundles `func_spec/` as a shipped asset. No three.js. |
+
+A workspace that never opens the 3D projection never pays for it, matching how `FileActionsButton` defers the OCR stack.
+
+Colours resolve from the theme's CSS custom properties rather than a hardcoded hex pair, so the scene follows the light/dark toggle for free; a `MutationObserver` on `<html class>` re-reads them on a flip instead of requiring a remount. `--cyber-primary` / `--cyber-muted` are space-separated `R G B` triplets by design (they feed Tailwind's `<alpha-value>` slots), so they are parsed component-wise rather than as hex.
+
 ## 10. Invariants and gotchas
 
 | # | Invariant |
@@ -508,9 +648,16 @@ x' = c + (b − c)·β'
 | 8 | `countProperEdgeCrossings` skips edge pairs sharing an endpoint — without that, every node with two children would count as a crossing. |
 | 9 | `heading-path:` nodes are synthetic; they have `documentId = null` and `start = end = null`, so clicking them does nothing. |
 | 10 | Graph mode hides Format / Comment / Predict because they need the textarea. If you add a toolbar control that works without the textarea, add it to the `showGraph` branch too. |
+| 11 | Concept heights come from `headingDepthByNode` (**tree** depth), never from `assignShells`. The shell map collapses a lone page H1 onto the nucleus ring, so reusing it would render Welcome — an H1 plus ten `##` — one tier flat. |
+| 12 | `headingDepthByNode` seeds the **children** of each root at depth `0`, never the roots themselves. A root's parent is a document or a `heading-path:` node, neither of which is a heading. |
+| 13 | The 3D scene forwards pointer events to `GraphView`; it must not start a drag of its own. Two drag models would drift the moment the threshold or the override anchor changed. |
+| 14 | three.js stays behind `React.lazy` **and** `await import('three')`. Eagerly importing it costs every workspace 667 kB for a view most never open. |
+| 15 | Headings live on `world.y > 0` and `[[term]]` satellites on `world.y < 0` — `concept: terms and headings land on opposite signs of y` enforces it. A term that crept onto the highest tier would re-introduce the v0.5.8 single-slab bug. |
+| 16 | `OrbitControls.enabled` flips to `false` for the duration of a node drag — the same pointer delta cannot both move a node and orbit the camera. Re-enabled on `pointerup`. |
 
 ## 11. Next
 
 - Wikilink syntax in the user guide → [Product overview §4.4](01-product-overview.md)
 - Mentions that become `@` edges → [@-references](09-mentions.md)
 - Layout fixtures → [Testing & security](14-testing-and-security.md)
+- **Keyboard access in the 3D view** — the label layer is `pointer-events: none`, so Concept is currently pointer-only. Promoting it to a focusable DOM list is the fix.

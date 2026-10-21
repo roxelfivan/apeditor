@@ -94,9 +94,11 @@ In `graph` mode the text panes are replaced entirely; Format, Comment, and Predi
 | **write** | One write pane, `flex-1`, no divider border |
 | **preview** | Only `<ReactMarkdown>` in `flex-1 overflow-y-auto p-4 prose-md` at `editorFontSize`, `lineHeight: 1.55`. No textarea, no margin column, no comment UI |
 | **split** | Write pane + preview pane side by side. Write pane gets `flex: 0 0 {pct}%` **and** `minWidth: 20%` / `maxWidth: 80%`, plus a right border. A `ResizeHandle` renders only when `isSplit && !isNarrow` |
-| **graph** | `<GraphView key={graphEpoch} labelPx zoom />` |
+| **graph** | `<GraphView key={graphEpoch} labelPx zoom projection />` |
 
 `graphEpoch` is a remount key. `GraphViewControls`'s **Reset** bumps it, which is how the drag override map is cleared.
+
+The Graph view has its own inner projection toggle — `Graph` / `Globe` / `3D` — rendered by `GraphViewControls`. Those are **projections, not view modes**: `viewMode` keeps exactly four values. See [Graph view](10-graph-view.md#9d-3d-concept-projection).
 
 ### Preview with proposed-edit highlights and wikilinks
 

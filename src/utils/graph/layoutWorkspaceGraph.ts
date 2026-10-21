@@ -136,6 +136,63 @@ export function countProperEdgeCrossings(
   return n;
 }
 
+/**
+ * Depth of every heading node in the heading-only subgraph.
+ *
+ * Roots — headings whose heading-parent is not itself a heading (their
+ * parent is the document) — report `0`; each nested heading reports its
+ * parent's depth plus one. This is the tree depth, *not* the radial
+ * `shell` the 2D layout uses: `assignShells` deliberately collapses a
+ * lone page H1 onto the nucleus ring so its `##` children get a full
+ * shell, which makes shell depth unsuitable as a height coordinate.
+ *
+ * The 3D Concept projection uses this to lift headings along +Z. Pure
+ * function, no state — the walk is memoised by the caller via `useMemo`.
+ *
+ * Only heading nodes appear in the map. Document and term nodes are
+ * absent, so a caller reading `map.get(someDocId)` gets `undefined`
+ * rather than a misleading `0`.
+ */
+export function headingDepthByNode(
+  edges: readonly GraphEdge[]
+): Map<string, number> {
+  const headingEdges = edges.filter((e) => e.kind === 'heading');
+
+  const children = new Map<string, string[]>();
+  const hasHeadingParent = new Set<string>();
+  for (const e of headingEdges) {
+    const list = children.get(e.source);
+    if (list) list.push(e.target);
+    else children.set(e.source, [e.target]);
+    hasHeadingParent.add(e.target);
+  }
+
+  // Iterative DFS. Recursion would be shorter, but a hand-built edge list
+  // containing a cycle would blow the stack, and `depth.has(id)` already
+  // makes a re-entry a no-op.
+  //
+  // The walk seeds the *children* of every root at depth 0 rather than the
+  // roots themselves at depth 0 and their children at 1. A root's source is
+  // a document or a synthetic `heading-path:` node, neither of which is a
+  // heading — so seeding the root would assign the first real heading the
+  // wrong tier and never get subtracted back.
+  const depth = new Map<string, number>();
+  const stack: { id: string; depth: number }[] = [];
+  for (const e of headingEdges) {
+    if (hasHeadingParent.has(e.source)) continue;
+    stack.push({ id: e.target, depth: 0 });
+  }
+  while (stack.length > 0) {
+    const { id, depth: d } = stack.pop()!;
+    if (depth.has(id)) continue;
+    depth.set(id, d);
+    for (const kid of children.get(id) ?? []) {
+      if (!depth.has(kid)) stack.push({ id: kid, depth: d + 1 });
+    }
+  }
+  return depth;
+}
+
 function assignAngles(
   id: string,
   a0: number,

@@ -1,3 +1,63 @@
+## v0.5.8 — Graph 3D: spread the stack, free navigation
+
+Patch release on top of [v0.5.8](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.8). The Concept projection learned two new things: how to look like a real 3D document outline instead of a flat slab of labels, and how to navigate freely.
+
+### Added
+
+- **Spread the y-axis.** Headings now rise 135 units per tier (was 70), so a tall document's `##` columns read as distinct bands. `[[term]]` satellites drop onto an underground ring at `y = -200`, so they cannot merge with heading tiers. The slot shape returned by `assignConceptHeights` tells the scene which side of the floor a node lives on.
+- **Free 3D navigation via OrbitControls.** three.js's `OrbitControls` writes back into the same `ConceptPose` the hook already owns. Mouse wheel dollies, shift+drag pans, touch two-finger pans and pinches, arrow keys pan, `+` / `-` dolly, with damping. The toolbar's zoom readout follows a wheel-dolly on the same callback.
+
+### Behaviour that did NOT change
+
+- **`viewMode`** stays `'write' | 'preview' | 'split' | 'graph'`. The three projections remain an inner toggle.
+- **Flat and Globe** are byte-identical, including their focusable `<circle>` nodes.
+- **The store.** No new fields, no migrations.
+
+### Known limitations
+
+- **The 3D view is still pointer-only for navigation.** Promoting the label layer to focusable DOM is the tracked fix.
+
+### Internal
+
+- `src/utils/graph/conceptProject.ts` — `ConceptSlot`, `conceptTermSlot`, `conceptPoseFromCamera`, polar clamps.
+- `src/components/Concept3DScene.tsx` — mounts `OrbitControls`; gates `controls.enabled` during node drag; edges follow each endpoint's `slot.y`.
+- `src/hooks/useGraphCamera.ts` — `setConceptPose` writes through to the toolbar `zoom` multiplier on distance changes.
+- See [`.release-notes-v0.5.8.md`](.release-notes-v0.5.8.md) for the full surface list and a tracking of the `ConceptSlot` change.
+
+### Verification
+
+- `npm run test:graph` — **57** (was 53; 4 new Concept cases). `npm run check:docs` — 349 / 349. `npm run typecheck` — clean. `npm run build` — clean. `OrbitControls` ships inside the existing `Concept3DScene-*.js` lazy chunk (8.6 kB / 3.8 kB gz, up from 7.8 kB); the main bundle and `three.module-*.js` are unchanged.
+
+## v0.5.8 — Graph view: 3D Concept projection
+
+Patch release on top of [v0.5.7](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.7). The Graph view gains a **third projection**: a WebGL scene where the workspace graph is a *floor plan* and heading tiers stack upward, which you orbit. Flat and Globe are untouched. First release to add a runtime dependency (`three`), deferred behind `React.lazy` so a workspace that never opens 3D never downloads it.
+
+### Added
+
+- **`Graph` / `Globe` / `3D` toggle.** A third segmented button in the existing `GraphViewControls` row, now generated from a single `PROJECTION_OPTIONS` table so the three cannot drift apart. Default is still flat; **Reset** still returns to flat.
+- **3D Concept projection.** `src/components/Concept3DScene.tsx` renders the same graph in three.js with the layout as the floor and heading tiers extruded upward. Orbit by dragging the background; click a document to select it or a heading to open its range, through the same code path as the SVG.
+- **Heading tiers from tree depth.** New `headingDepthByNode(edges)` export: a top-level `#` sits at height `60`, each nested level adds `70`, and `[[term]]` satellites float `90` above their document's deepest tier. Deliberately **tree** depth, not the radial `assignShells` map — that one collapses a lone page H1 onto the nucleus ring and would render the Welcome document as a single flat tier.
+- **Bundle split.** `Concept3DScene-*.js` is 7.8 kB (3.4 kB gz) and `three.module-*.js` is 667 kB (172 kB gz), both lazy chunks. The main bundle gains no three.js; its ~11 kB increase is the added `func_spec/` prose, which the in-app Func Spec viewer ships as an asset.
+
+### Behaviour that did NOT change
+
+- **`viewMode`** stays exactly `'write' | 'preview' | 'split' | 'graph'`. All three projections are a navigation aid *within* the Graph view, not three panes.
+- **Flat and Globe** are behaviourally identical, including their focusable `<circle>` nodes.
+- **The store** — no new fields, no migrations. **The fisheye lens** stays gated on `'sphere'` and inert; a planar boundary ratio means nothing on a tilted floor.
+
+### Known limitations
+
+- **The 3D view is pointer-only.** A `<canvas>` cannot host focusable children, so Concept has no keyboard path where Flat and Globe have one. Promoting the label overlay to a focusable DOM list is the tracked fix.
+
+### Internal
+
+- `src/utils/graph/conceptProject.ts` (new), `src/components/Concept3DScene.tsx` (new) — see [`.release-notes-v0.5.8.md`](.release-notes-v0.5.8.md) for the full surface list.
+- `func_spec/10-graph-view.md` — new **§9d 3D Concept projection**; invariants 11–14 added.
+
+### Verification
+
+- `npm run test:graph` — **53** (was 36; 17 new Concept cases). `npm run check:docs` — 349 / 349. `npm run typecheck` — clean. `npm run build` — clean.
+
 ## v0.5.7 — Graph navigation: pan, orbit, Globe
 
 Patch release on top of [v0.5.6](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.6). The Graph view can finally be moved around — drag empty space to pan the flat map; flip the toolbar's new **Globe** toggle to spin the same nodes onto a sphere. Three new pure modules in `src/utils/graph/` and two in `src/hooks/`; zero new dependencies, no store-schema change, no `viewMode` change.

@@ -96,8 +96,9 @@ rg "mvp:" src/ -n
 | `CommentPopover` | [`CommentPopover.tsx`](../src/components/CommentPopover.tsx) | Read/edit/delete one comment, multi-round rationale list, resize, persisted size. |
 | `CommentTray` | [`CommentTray.tsx`](../src/components/CommentTray.tsx) | Send to AI bar plus the stale-comment Re-link / Dismiss list. |
 | `ReanchorPicker` | [`ReanchorPicker.tsx`](../src/components/ReanchorPicker.tsx) | Heading/paragraph picker for re-linking a stale comment. Presentational only. |
-| `GraphView` | [`GraphView.tsx`](../src/components/GraphView.tsx) | SVG rendering, drag, zoom, hover dimming, edge labels. |
-| `GraphViewControls` | `GraphView.tsx` | Label size, zoom, Reset (remounts `GraphView` via `graphEpoch`). |
+| `GraphView` | [`GraphView.tsx`](../src/components/GraphView.tsx) | SVG rendering, drag, zoom, hover dimming, edge labels, the flat / sphere / concept projection switch. |
+| `Concept3DScene` | [`Concept3DScene.tsx`](../src/components/Concept3DScene.tsx) | 3D Concept projection: three.js scene behind `React.lazy`. Raycasts, then forwards pointer events to `GraphView` so the drag model stays in one place. |
+| `GraphViewControls` | `GraphView.tsx` | Label size, zoom, Reset (remounts `GraphView` via `graphEpoch`). The **Graph / Globe / 3D** segmented toggle, driven by the `PROJECTION_OPTIONS` table. |
 
 ### 3.4 AI
 
