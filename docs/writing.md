@@ -38,10 +38,10 @@ Graph compiles what is already in the workspace. It does not ask an AI to invent
 - Each sidebar document is a node. The open document is marked.
 - Each Markdown heading (`#` / Setext) is a node under its document. Titles with `>` nest: `# Comment > annotate` and `# Comment > feedback` share a **Comment** node that links to **annotate** and **feedback**. Subheadings (`##`) nest the same way.
 - Hover a node or its label to read the **full title** in the bar at the top of Graph (labels wrap on the canvas; long lines still get a tooltip). The initial map is atomic: the open document is the nucleus, headings sit on concentric shells, and `[[wikilink]]` / other-doc satellites park on the same ray as their source so lines do not cross through the ring.
-- **−** / **+** on the Graph toolbar change only Graph label size (12–28 px, default 16 — the same range as the rest of the app). **Zoom −** / **Zoom +** scale the whole map (50–400%). **Reset** restores label size, zoom, projection, and node positions, then redraws the map.
-- **Graph / Globe** on the Graph toolbar switches how the same map is seen. **Graph** is the flat map. **Globe** wraps it onto a sphere so you can drag to spin it and browse from any side.
-- Drag a node (or its label) to rearrange it. A short click still opens the document or selects the heading / `[[term]]`. Positions last until **Reset** or you leave Graph.
-- Drag **empty space** to navigate: in **Graph** it pans the map (at any zoom), in **Globe** it turns the globe. Dragging across the whole pane in Globe turns it a half revolution.
+- **−** / **+** on the Graph toolbar change only Graph label size (6–48 px, default 16). **Zoom −** / **Zoom +** scale the whole map (25–1200%). **Filter** chooses which documents and headings appear. **Reset** restores label size, zoom, projection, filter, and node positions, then redraws the map.
+- **Graph / Globe / 3D** on the Graph toolbar switches how the same map is seen. **Graph** is the flat map. **Globe** wraps it onto a sphere. **3D** extrudes headings upward (deep stacks compress so they stay readable).
+- Drag a node (or its label) to rearrange it. A short click opens the document in **Split** and selects the heading / `[[term]]`. Positions last until **Reset** or you leave Graph.
+- Drag **empty space** to navigate: in **Graph** it pans the map (at any zoom), in **Globe** it turns the globe, in **3D** it orbits. Dragging across the whole pane in Globe turns it a half revolution.
 - Write `[[Name]]` (optional `[[Name|label]]` or `[[Name#Heading]]`) to add a wikilink, the same syntax as Obsidian / LLM wiki.
 - If `Name` matches another document title, Graph draws a line to that document (or heading). If it does not, Graph adds a **term** node. Click it to select that `[[…]]` span.
 - `@` mentions on comments also draw lines to the referenced document or heading.

@@ -1,6 +1,27 @@
+## v0.5.9 — Graph scope filter, wider zoom / labels, deep-tier compression
+
+Patch release on top of [v0.5.8](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.8). The Graph view gains a document / section **Filter**, wider zoom (0.25×–12×) and label (6–48 px) ranges that also fix a silent Concept distance clamp, depth-compressed 3D tiers for tall path headings, and click fixes so a Graph node opens the document in Split.
+
+### Added
+
+- **Filter.** Toolbar popover to include / exclude documents and headings before layout. Flat, Globe, and Concept inherit the same pruned graph. Empty scope = everything; an explicit none sentinel covers "show nothing" without colliding with Reset.
+- **Wider zoom and labels.** 0.25×–12× zoom; 6–48 px labels across all three projections. `MAX_CONCEPT_DISTANCE` is derived from `MAX_GRAPH_ZOOM` so the readout and the camera stay in lockstep.
+- **Depth-compressed Concept tiers.** Past depth 6 the vertical gap tapers geometrically (floor 56), so deep `Comment > …` stacks stay legible.
+
+### Fixed
+
+- Graph / 3D node clicks switch to Split and restore the caret (textarea is unmounted in Graph).
+- 3D clicks no longer drop when the pointerup raycast misses after a clean pointerdown.
+
+### Internal
+
+- See [`.release-notes-v0.5.9.md`](.release-notes-v0.5.9.md) for the full surface list.
+- `package.json` version bumped to `0.5.9`.
+- `npm run test:graph` — **73** cases.
+
 ## v0.5.8 — Graph 3D: spread the stack, free navigation
 
-Patch release on top of [v0.5.8](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.8). The Concept projection learned two new things: how to look like a real 3D document outline instead of a flat slab of labels, and how to navigate freely.
+Patch release on top of [v0.5.7](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.7). The Concept projection learned two new things: how to look like a real 3D document outline instead of a flat slab of labels, and how to navigate freely.
 
 ### Added
 

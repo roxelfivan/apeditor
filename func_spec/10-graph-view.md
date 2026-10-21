@@ -1,6 +1,6 @@
 # Graph view
 
-> A local knowledge graph of the workspace, compiled entirely in the browser from documents, headings, `[[wikilinks]]`, and `@` mentions. No LLM call, no new dependency, no store-schema change. Added in v0.5.4. Pan / orbit navigation and the Globe projection added in v0.5.7. The 3D Concept projection added in v0.5.8. Spreading the Concept stack and OrbitControls-driven free navigation in v0.5.8.
+> A local knowledge graph of the workspace, compiled entirely in the browser from documents, headings, `[[wikilinks]]`, and `@` mentions. No LLM call, no new dependency, no store-schema change. Added in v0.5.4. Pan / orbit navigation and the Globe projection added in v0.5.7. The 3D Concept projection added in v0.5.8. Spreading the Concept stack and OrbitControls-driven free navigation in v0.5.8. The document / section scope filter added in v0.5.9. Zoom range widened to 0.25×–12× (which also fixes a silent Concept distance clamp), labels widened to 6–48px across all three projections, and heading tiers made depth-compressed so deep `Comment > A > B > …` paths stay legible.
 
 ---
 
@@ -284,8 +284,8 @@ The first two exist so `scripts/test-graph.mjs` can assert "no initial edges cro
 
 ```ts
 DEFAULT_GRAPH_ZOOM = 1
-MIN_GRAPH_ZOOM     = 0.5
-MAX_GRAPH_ZOOM     = 4
+MIN_GRAPH_ZOOM     = 0.25
+MAX_GRAPH_ZOOM     = 12
 GRAPH_ZOOM_FACTOR  = 1.25
 
 interface GraphCamera { cx: number; cy: number; scale: number }
@@ -330,10 +330,11 @@ maxChars = max(10, min(22, round((18 * 16) / labelPx)))
 Nodes pass through three pure transforms, in this order:
 
 ```
-layoutWorkspaceGraph
-  → manual drag overrides              (layout space)
-  → applyFisheyeToNodes                (layout space; m = 0 is an exact identity)
-  → toSphere → rotateSphere → toScreen (sphere space; flat and concept skip this)
+filterWorkspaceGraph                      (prunes the scope filter; see §11)
+  → layoutWorkspaceGraph
+  → manual drag overrides                 (layout space)
+  → applyFisheyeToNodes                   (layout space; m = 0 is an exact identity)
+  → toSphere → rotateSphere → toScreen   (sphere space; flat and concept skip this)
 ```
 
 The fisheye lens runs **before** the projection because edge orientation is only well defined on the plane — the refinement solve assumes a planar target.
@@ -428,16 +429,17 @@ Each `<circle>` has `role="button"` and `tabIndex={0}`, with an `onKeyDown` that
 
 | Control | Behaviour | Disabled |
 |---|---|---|
-| `−` | `labelPx -= GRAPH_LABEL_STEP` | `labelPx <= 12` |
-| `+` | `labelPx += GRAPH_LABEL_STEP` | `labelPx >= 28` |
+| `−` | `labelPx -= GRAPH_LABEL_STEP` | `labelPx <= 6` |
+| `+` | `labelPx += GRAPH_LABEL_STEP` | `labelPx >= 48` |
 | Readout | The raw `labelPx`, `tabular-nums` | — |
-| **Zoom −** | `zoom /= 1.25`, clamped | `zoom <= MIN + 0.001` |
-| **Zoom +** | `zoom *= 1.25`, clamped | `zoom >= MAX - 0.001` |
+| **Zoom −** | `zoom /= 1.25`, clamped | `zoom <= 0.25` |
+| **Zoom +** | `zoom *= 1.25`, clamped | `zoom >= 12` |
 | Zoom readout | `{Math.round(zoom * 100)}%` | — |
 | **Graph / Globe / 3D** | Segmented `role="group"` toggle, `aria-pressed` on each. Driven by the `PROJECTION_OPTIONS` table, so the three buttons cannot drift apart | Never |
-| **Reset** | `labelPx → 16`, `zoom → 1`, `projection → 'flat'`, `graphEpoch++` | Never |
+| **Filter** | Toggles the scope popover. `aria-expanded` tracks it; an `on` badge appears when the scope is non-empty | Never |
+| **Reset** | `labelPx → 16`, `zoom → 1`, `projection → 'flat'`, `scope → empty`, `graphEpoch++` | Never |
 
-`graphLabelPx`, `graphZoom`, `graphProjection`, and `graphEpoch` are **`useState` in `Editor.tsx`, not store state.** They are intentionally not persisted.
+`graphLabelPx`, `graphZoom`, `graphProjection`, `graphScope`, and `graphEpoch` are **`useState` in `Editor.tsx`, not store state.** They are intentionally not persisted.
 
 The same `zoom` multiplier drives all three projections; Concept derives its eye distance from it ([§9d](#9d-3d-concept-projection)) rather than keeping a second value that could drift.
 
@@ -533,12 +535,46 @@ v0.5.8 split headings and terms onto opposite signs of the world Y axis. A tall 
 | Node | `slot.y` | Notes |
 |---|---|---|
 | `document` | `0` | The floor — `world.y = 0` |
-| `heading` | `conceptHeadingY(depth, extra, bandStories)` | Base is `270 + depth · 135`. A parent with more than 5 heading children helixes extras onto up to 3 stories (`extra = index % stories`) so Graph 3D does not replay a 2D fan of overlapping labels. `bandStories` is the graph-wide max, so nested headings cannot land inside a shallower helix. Small outlines (`≤ 5` siblings) keep `bandStories = 1` and match `conceptZForDepth`. |
+| `heading` | `conceptHeadingY(depth, extra, bandStories)` | Virtual depth `depth · bandStories + extra` fed through `conceptZForDepth` (gaps compress past depth 6). A parent with more than 5 heading children helixes extras onto up to 3 stories so Graph 3D does not replay a 2D fan of overlapping labels. `bandStories` is the graph-wide max. Small outlines (`≤ 5` siblings) keep `bandStories = 1` and match `conceptZForDepth(depth)`. |
 | `term` | `-CONCEPT_TERM_DEPTH` = `-200` | On the underground ring at the term's `(world.x, world.z)` |
 
    520|`headingDepthByNode` reports **tree** depth, and the distinction from the radial shell is load-bearing. `assignShells` deliberately collapses a lone page H1 onto the nucleus ring (invariant 5) so its `##` children get a full shell — under that collapse Welcome's H1 and its ten `##` share one tier, and using shell depth would render the page one layer flat. The walk seeds the **children** of every root at `0`, not the roots themselves, because a root's parent is a document or a synthetic `heading-path:` node and neither is a heading.
 
 The walk is **iterative** and keys on `depth.has(id)`. `buildWorkspaceGraph` cannot produce a cycle, but a hand-built edge list could, and recursion would blow the stack; `concept: a cyclic heading edge list terminates` asserts totality.
+
+### Tier spacing compresses with depth
+
+Markdown tops out at six heading levels, but `splitHeadingPath` (`Comment > A > B > C…`) is **unbounded** — so a path heading can produce as many tiers as someone cares to type. At a flat `135` per tier, a 40-tier document reached `~5,500` units and had to be framed from a distance that made every label unreadable. The spacing now **tapers with depth**:
+
+| Constant | Value | Role |
+|---|---:|---|
+| `CONCEPT_Z_STEP` | `135` | Gap at shallow depth |
+| `CONCEPT_Z_COMPRESS_AFTER` | `6` | Where compression engages — exactly where plain markdown stops |
+| `CONCEPT_Z_COMPRESS_RATIO` | `0.82` | Per-tier multiplier past that point |
+| `MIN_CONCEPT_Z_STEP` | `56` | Floor; still ~2× a heading sphere's world radius (`20 × 1.15`) |
+
+```
+conceptZStep(d) = d <= 6 ? 135 : max(56, 135 · 0.82^(d-6))
+```
+
+Two properties make this safe rather than merely smaller:
+
+- **Ordinary documents do not move.** Six tiers of plain markdown — every normal document — still sit at `270 + 6 · 135 = 1080`, exactly where they did. The threshold is *chosen* to be CommonMark's heading ceiling, so compression only ever engages on path headings.
+- **Geometry converges before it collides.** Repeated multiplication means the total height stops being a function of nesting depth: 40 tiers land at `3,041` (55% of linear) instead of `5,535`, and the gap floors at `56` by tier 15 rather than decaying forever. A tall stack is still navigable; an interpenetrating one would not be, which is why the floor sits at `56` and not lower.
+
+The spacing test walks **all 60 tiers** rather than checking depth 1 — with a taper, a shallow-only check passes while a deep outline's tiers have already sunk into each other.
+
+### Zoom range is one number, not two
+
+`MAX_CONCEPT_DISTANCE` is **derived**: `MAX_GRAPH_ZOOM × DEFAULT_CONCEPT_DISTANCE`. That is not tidiness, it is a bug fix.
+
+> Before this, the ceilings were independent: `MAX_GRAPH_ZOOM = 4` against `MAX_CONCEPT_DISTANCE = 6000`. Since `1800 × 4 = 7200 > 6000`, the toolbar happily read **400%** while `clampConceptDistance` had already stopped the eye at 333% — a silent clamp, visible only as a camera that refuses to move. `zoom: the Concept eye distance never clamps below its own zoom range` now asserts the *property*, so a future retune of either constant cannot reintroduce the disagreement.
+
+### Labels — two ranges that must not drift
+
+`GraphView` exposes `MIN/MAX_GRAPH_LABEL_PX` for the SVG; `Concept3DScene` re-clamps its own projected label layer. The scene is lazy-loaded and cannot import those constants without a static cycle back through `GraphView`, so the literals are the duplication.
+
+> They were silently wrong before this: the SVG allowed `12–28px` while the 3D layer clamped to `[10, 26]`. A user at 28px would see larger labels in Flat and Globe and identical labels in 3D, with no indication anything had been dropped. Both now read `[6, 48]`, and the test suite asserts the two agree by parsing both files.
 
 ### Slot shape
 
@@ -654,8 +690,94 @@ Colours resolve from the theme's CSS custom properties rather than a hardcoded h
 | 14 | three.js stays behind `React.lazy` **and** `await import('three')`. Eagerly importing it costs every workspace 667 kB for a view most never open. |
 | 15 | Headings live on `world.y > 0` and `[[term]]` satellites on `world.y < 0` — `concept: terms and headings land on opposite signs of y` enforces it. A term that crept onto the highest tier would re-introduce the v0.5.8 single-slab bug. |
 | 16 | `OrbitControls.enabled` flips to `false` for the duration of a node drag — the same pointer delta cannot both move a node and orbit the camera. Re-enabled on `pointerup`. |
+| 17 | The scope filter runs **between `buildWorkspaceGraph` and `layoutWorkspaceGraph`**, never after layout. Filtering after would leave excluded nodes occupying layout space and force a second pass over the camera, the lens, and the three.js scene. |
+| 18 | Excluding the current document **is allowed**. The filter checkbox must match the graph; `layoutWorkspaceGraph` then re-anchors on `docs[0]` among whatever remains. Pinning the current page made unticking it a silent no-op. |
+| 19 | The ancestor walk that restores a `heading-path:` scaffold stops at the first **real** heading node. Dragging in a real ancestor would resurrect a `##` the user just unticked under a selected `###`. |
+| 20 | A `[[term]]` survives on **reachability, not on selection**. It belongs to the workspace rather than to any one document, so it is kept iff a surviving node still links to it. |
+| 21 | `MAX_CONCEPT_DISTANCE` is **derived** from `MAX_GRAPH_ZOOM × DEFAULT_CONCEPT_DISTANCE`, never set independently. Two independent ceilings let the toolbar read a percentage the camera never reached. |
+| 22 | The 3D label clamp must equal `MIN/MAX_GRAPH_LABEL_PX`. The scene is lazy-loaded and cannot import them, so the literals drift unless a test diffs the two. |
+| 23 | `CONCEPT_Z_COMPRESS_AFTER = 6` is **CommonMark's heading ceiling** on purpose. Any larger and compression would move ordinary documents; any smaller and it would engage on documents that never needed it. |
+| 24 | The tier spacing test walks **every** tier, not depth 1. A taper makes a shallow-only check pass while deep tiers have already interpenetrated. |
 
-## 11. Next
+## 11. Scope filter
+
+[`utils/graph/graphFilter.ts`](../src/utils/graph/graphFilter.ts) · [`components/GraphScopeFilter.tsx`](../src/components/GraphScopeFilter.tsx)
+
+Before this, the graph showed every document and every section, always. On a workspace of any size that is unreadable, and there was no way to narrow it. The filter is the missing control.
+
+### It is a pre-layout pass, not a display toggle
+
+The whole design follows from one placement decision:
+
+```
+buildWorkspaceGraph
+  → filterWorkspaceGraph          ← the scope filter
+  → layoutWorkspaceGraph
+  → drag overrides → fisheye lens → (flat | sphere | concept)
+```
+
+`layoutWorkspaceGraph` is a pure derivation of `(nodes, edges)`, so a pruned graph simply **lays out smaller**. Nothing downstream learns that a filter exists — the fisheye lens, the stereographic projection, and `Concept3DScene` are untouched, and all three projections inherit the filter for free.
+
+> Filtering *after* layout would have been the obvious alternative and the wrong one. The excluded nodes would still occupy layout space, still widen the camera's fitted bounds, and still force every downstream pass to re-derive what to skip — in three places instead of one.
+
+### The scope
+
+```ts
+interface GraphScope {
+  /** Empty = every document. `__graph_scope_none__` alone = no documents. */
+  documentIds: Set<string>;
+  /** docId → included `heading:<docId>:<start>` ids. No entry = all sections. */
+  sectionIds: Map<string, Set<string>>;
+}
+```
+
+Two shorthands, both resolved by helpers rather than at the call site:
+
+| Shape | Means |
+|---|---|
+| `documentIds` empty | Every document |
+| `documentIds` = `{__graph_scope_none__}` | No documents (`createNoneScope()`) |
+| `sectionIds` has no entry for a document | Every section of that document |
+| `sectionIds[doc]` is an **empty** set | That document, with none of its sections |
+
+> The empty-set-means-everything shorthand is what lets **Reset** and the popover's **All** both be `createScope()`, and it is why `normalizeScope` exists: a fully-ticked panel has to collapse back to the default, or the Filter button would light up for a selection that restricts nothing. Unticking the last document must emit the none sentinel instead, or it would collapse into the same shorthand and restore the full graph.
+
+### Pruning rules
+
+| # | Node kind | Kept when |
+|---|---|---|
+| 1 | `document` | Its id is in the included set |
+| 2 | `heading` | Its document is included, and its doc has no section filter or its id is listed |
+| 3 | `heading-path:` | A surviving real heading walks up through it. These are synthetic, `start === null`, and never listed in the panel — a section filter cannot address one |
+| 4 | `term` | At least one surviving node links to it, transitively |
+| 5 | any edge | **Both** endpoints survive |
+
+Rule 4 is a worklist, not a single pass, so a term chained to another term still terminates. Rule 5 is the same guarantee the globe's back-hemisphere culling already relies on: an edge to a node that is not drawn would otherwise stretch across the viewport to nothing.
+
+> **The empty scope returns the input object by reference.** The unfiltered case is the overwhelmingly common one, and it should cost a comparison rather than two array filters.
+
+### The panel
+
+A popover reusing the `.mention-popover*` family — the same classes, `☑`/`☐` rows, and level gutter as the `@`-section picker. A graph filter and a section picker are the same mental operation; a second bespoke widget would read as a different product.
+
+| Element | Behaviour |
+|---|---|
+| Document row | Toggles the document. Deselecting **drops its `sectionIds` entry**, so a later re-tick does not restore a choice the user cannot see was made. Shows `n/m` sections |
+| Section row | Toggles one heading. Indented by `level`, hidden when its document is off |
+| Cascade | Ticking a heading selects its descendants, unticking removes them — one click for a whole sub-outline, matching the `@`-picker |
+| **All / None / Invert** | `All` = `createScope()`. `None` **keeps the current document**, so the result is still a layable graph with a visible way back |
+| **Clear** | Appears only when the scope is non-empty |
+| Keyboard | Arrows walk the flat row sequence, Space/Enter toggles, Escape closes, Cmd/Ctrl+A selects all |
+
+Rows are derived from `buildHeadingSections(doc).filter(s => s.level > 0)`, the same predicate as Pass 1 of `buildWorkspaceGraph`, so the panel **cannot offer a row the compiler never made a node for**. Stale ids are filtered out on read, so a heading deleted since the scope was set cannot keep its checkbox lit.
+
+Outside press closes, via a `pointerdown` listener that ignores both `[data-graph-scope-filter]` and `[data-graph-view-controls]` — the same pattern as the Format menu.
+
+### Empty state
+
+The pre-filter empty state could only say *"Add a heading or `[[term]]`…"*. A filter that excludes everything needs different words, or the user hunts for a bug that is not there — so the two are distinguished and the dead-end offers **Clear the filter** inline.
+
+## 12. Next
 
 - Wikilink syntax in the user guide → [Product overview §4.4](01-product-overview.md)
 - Mentions that become `@` edges → [@-references](09-mentions.md)

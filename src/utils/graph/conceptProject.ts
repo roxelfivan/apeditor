@@ -40,6 +40,7 @@
  */
 
 import type { Point } from '@/utils/graph/graphCamera';
+import { MAX_GRAPH_ZOOM } from '@/utils/graph/graphCamera';
 import type { GraphEdge, GraphNodeKind } from '@/utils/graph/buildWorkspaceGraph';
 import { headingDepthByNode } from '@/utils/graph/layoutWorkspaceGraph';
 import { clampPitch, dragToOrientation } from '@/utils/graph/sphereProject';
@@ -92,11 +93,38 @@ export interface ConceptSlot {
 /** Height of the first heading tier. Documents sit at 0, so this clears them. */
 export const CONCEPT_HEADING_BASE_Z = 270;
 /**
- * Vertical gap between heading tiers. Roughly 2× the document-sphere radius
- * (36), so a tier reads as its own band even with wrapped labels. The
- * invariant in `nodeRadius` is documented alongside the test.
+ * Vertical gap between heading tiers at shallow depth. Roughly 2× the
+ * document-sphere radius (36), so a tier reads as its own band even with
+ * wrapped labels.
+ *
+ * The invariant documented alongside the test is stated against this
+ * constant — `conceptZForDepth` is monotone but not uniformly spaced, so
+ * the "tiers never interpenetrate" guarantee is asserted as a *minimum*
+ * gap, not as this exact number.
  */
 export const CONCEPT_Z_STEP = 135;
+/**
+ * Floor for the tier gap once compression kicks in. A heading mesh's
+ * world radius is `nodeRadius × 1.15` ≈ 23, so 56 still clears two
+ * adjacent tiers by a wide margin — the labels get tight before the
+ * geometry ever does.
+ *
+ * Compressing below this would make tiers overlap, which is the one
+ * outcome worse than a tall stack: an unreadable stack is still
+ * navigable, an interpenetrating one is not.
+ */
+export const MIN_CONCEPT_Z_STEP = 56;
+/**
+ * Tier depth at which the gap starts compressing.
+ *
+ * Six is where plain markdown runs out of heading levels (`######` is the
+ * last), so every ordinary document is unaffected by the compression —
+ * it only ever engages on `Comment > A > B > …` style path headings,
+ * which are unbounded.
+ */
+export const CONCEPT_Z_COMPRESS_AFTER = 6;
+/** Multiplier applied to the gap per tier beyond `CONCEPT_Z_COMPRESS_AFTER`. */
+export const CONCEPT_Z_COMPRESS_RATIO = 0.82;
 /**
  * Depth of the `[[term]]` ring below the floor. Pulled negative so terms
  * cannot visually merge with any heading tier, no matter how tall.
@@ -110,14 +138,40 @@ export const CONCEPT_TERM_DEPTH = 200;
 export const CONCEPT_TERM_RING_R = 360;
 
 /**
+ * Vertical gap between tier `depth - 1` and tier `depth`.
+ *
+ * Shallow outlines keep the full `CONCEPT_Z_STEP`. Past
+ * `CONCEPT_Z_COMPRESS_AFTER` each further tier multiplies the gap by
+ * `CONCEPT_Z_COMPRESS_RATIO`, so a 25-tier stack packs into a readable
+ * column instead of shooting out of frame, and is floored at
+ * `MIN_CONCEPT_Z_STEP` so neighbouring tiers never interpenetrate.
+ *
+ * Geometric rather than linear on purpose: repeated multiplication makes
+ * the total height converge, so the tall-document ceiling stops being a
+ * function of how deep someone nested their headings.
+ */
+export function conceptZStep(depth: number): number {
+  const d = Number.isFinite(depth) ? Math.max(1, Math.round(depth)) : 1;
+  if (d <= CONCEPT_Z_COMPRESS_AFTER) return CONCEPT_Z_STEP;
+  const over = d - CONCEPT_Z_COMPRESS_AFTER;
+  return Math.max(
+    MIN_CONCEPT_Z_STEP,
+    CONCEPT_Z_STEP * Math.pow(CONCEPT_Z_COMPRESS_RATIO, over)
+  );
+}
+
+/**
  * Height of a heading at tree `depth`.
  *
- * Depth 0 (a top-level `#`) is the first tier. The step is deliberately
- * larger than a node radius so two tiers never interpenetrate.
+ * Depth 0 (a top-level `#`) is the first tier. Gaps shrink geometrically
+ * with depth — see `conceptZStep` — so this stays monotone increasing
+ * while the *increments* taper.
  */
 export function conceptZForDepth(depth: number): number {
   const d = Number.isFinite(depth) ? Math.max(0, Math.round(depth)) : 0;
-  return CONCEPT_HEADING_BASE_Z + d * CONCEPT_Z_STEP;
+  let z = CONCEPT_HEADING_BASE_Z;
+  for (let tier = 1; tier <= d; tier++) z += conceptZStep(tier);
+  return z;
 }
 
 /**
@@ -158,7 +212,10 @@ export function conceptHeadingY(
   const b = Number.isFinite(bandStories)
     ? Math.max(1, Math.round(bandStories))
     : 1;
-  return CONCEPT_HEADING_BASE_Z + (d * b + Math.min(e, b - 1)) * CONCEPT_Z_STEP;
+  // Same compression curve as a deep outline: treat helix stories as
+  // extra virtual depth so a wide sibling ring and a tall path heading
+  // share one spacing policy.
+  return conceptZForDepth(d * b + Math.min(e, b - 1));
 }
 
 /**
@@ -183,9 +240,20 @@ export function conceptTermSlot(layoutAnchor: Point): ConceptSlot {
 /* --------------------------------------------------------------------- */
 
 export const MIN_CONCEPT_DISTANCE = 400;
-export const MAX_CONCEPT_DISTANCE = 6000;
 /** Reference distance that the toolbar's `100%` zoom reads as. */
 export const DEFAULT_CONCEPT_DISTANCE = 1800;
+/**
+ * Eye-distance ceiling.
+ *
+ * **Derived from `MAX_GRAPH_ZOOM`, not chosen independently.** The toolbar
+ * holds one `zoom` multiplier for all three projections and Concept reads
+ * its distance from it, so if this ceiling were lower than
+ * `MAX_GRAPH_ZOOM × DEFAULT_CONCEPT_DISTANCE`, the readout would climb to
+ * "1200%" while the camera sat still — the exact silent clamp that
+ * `zoom: the Concept eye distance never clamps below its own zoom range`
+ * guards against.
+ */
+export const MAX_CONCEPT_DISTANCE = MAX_GRAPH_ZOOM * DEFAULT_CONCEPT_DISTANCE;
 
 export function clampConceptDistance(distance: number): number {
   if (!Number.isFinite(distance)) return DEFAULT_CONCEPT_DISTANCE;

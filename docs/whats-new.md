@@ -2,6 +2,17 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## v0.5.9 — Graph Filter, wider zoom / labels
+
+**Narrow the map, zoom further, click to open.**
+
+- **Filter.** In the Graph toolbar, **Filter** opens a checklist of documents and headings. Untick what you do not want; the map, Globe, and 3D view all update together. **Reset** clears the filter. Unticking everything shows an empty graph with **Clear the filter** — it does not silently restore the whole workspace.
+- **Wider zoom and labels.** Zoom from **25% to 1200%**. Label size from **6 px to 48 px**, including in 3D.
+- **Tall 3D stacks stay readable.** Very deep heading paths compress their vertical gap after the usual Markdown depth, so a long `Comment > …` chain does not shoot out of frame.
+- **Click opens the document.** A short click on a node leaves Graph for Split and selects the heading or `[[term]]` passage.
+
+---
+
 ## v0.5.8 — Graph view: 3D Concept
 
 **A third projection joins the Graph view.** Open the Graph, click **3D** in the toolbar — the layout becomes a 3D scene where headings stack as separate bands and `[[term]]` satellites sit on an underground ring.

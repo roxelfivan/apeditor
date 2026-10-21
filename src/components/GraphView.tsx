@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -8,10 +9,18 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { useStore, useCurrentDocument } from '@/store/useStore';
+import type { DocumentRecord } from '@/types';
 import {
   buildWorkspaceGraph,
   type GraphEdge,
 } from '@/utils/graph/buildWorkspaceGraph';
+import {
+  createScope,
+  filterWorkspaceGraph,
+  isScopeEmpty,
+  type GraphScope,
+} from '@/utils/graph/graphFilter';
+import { GraphScopeFilter } from '@/components/GraphScopeFilter';
 import {
   layoutWorkspaceGraph,
   type LaidOutNode,
@@ -45,8 +54,23 @@ const Concept3DScene = lazy(() => import('@/components/Concept3DScene'));
 
 /** Screen-pixel label size. Matches the editor / UI default (~14–16px). */
 export const DEFAULT_GRAPH_LABEL_PX = 16;
-export const MIN_GRAPH_LABEL_PX = 12;
-export const MAX_GRAPH_LABEL_PX = 28;
+/**
+ * Floor. 6px is past "readable" on purpose: it is the zoom-out end where a
+ * dense atom's labels become texture, and the user wants the *shape* of
+ * the graph, not its wording.
+ */
+export const MIN_GRAPH_LABEL_PX = 6;
+/**
+ * Ceiling. 48px is wide enough for a two-word heading to stay on one line
+ * at a comfortable read, past which the label starts covering its
+ * neighbours.
+ *
+ * The 3D scene clamps its own label layer to `[6, 48]` — the same range.
+ * A divergence here is invisible in Flat and Globe and silently truncates
+ * in 3D, so the two are asserted equal by `label: the 3D layer honours
+ * the SVG label range` rather than left to drift.
+ */
+export const MAX_GRAPH_LABEL_PX = 48;
 export const GRAPH_LABEL_STEP = 2;
 
 const DRAG_THRESHOLD_PX = 5;
@@ -176,6 +200,10 @@ export function GraphViewControls({
   onReset,
   projection,
   onProjection,
+  documents,
+  currentDocumentId,
+  scope,
+  onScopeChange,
 }: {
   labelPx: number;
   onLabelPx: (next: number) => void;
@@ -184,7 +212,34 @@ export function GraphViewControls({
   onReset: () => void;
   projection: GraphProjection;
   onProjection: (next: GraphProjection) => void;
+  documents: DocumentRecord[];
+  currentDocumentId: string | null;
+  scope: GraphScope;
+  onScopeChange: (next: GraphScope) => void;
 }) {
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterBtnRef = useRef<HTMLButtonElement>(null);
+  const [anchor, setAnchor] = useState<DOMRect | null>(null);
+
+  const openFilter = () => {
+    const rect = filterBtnRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setAnchor(rect);
+    setFilterOpen(true);
+  };
+
+  // Escape closes the popover as well as clearing hover, so the panel
+  // is dismissable without reaching for the button again.
+  useEffect(() => {
+    if (!filterOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFilterOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [filterOpen]);
+
+  const filtered = !isScopeEmpty(scope);
   const canMinus = labelPx > MIN_GRAPH_LABEL_PX;
   const canPlus = labelPx < MAX_GRAPH_LABEL_PX;
   const canZoomOut = zoom > MIN_GRAPH_ZOOM + 0.001;
@@ -272,11 +327,45 @@ export function GraphViewControls({
           </button>
         ))}
       </div>
+      <span className="mx-1 h-5 w-px bg-paper-hairline dark:border-cyber-border" aria-hidden />
+      <button
+        ref={filterBtnRef}
+        type="button"
+        className={`${graphToolClass} px-2.5 gap-1.5 ${
+          filterOpen || filtered
+            ? 'text-cyber-clay dark:text-cyber-cyan border-cyber-clay dark:border-cyber-cyan'
+            : ''
+        }`}
+        aria-label="Filter graph by document and section"
+        aria-expanded={filterOpen}
+        title="Show only particular documents and sections"
+        onClick={() => (filterOpen ? setFilterOpen(false) : openFilter())}
+      >
+        Filter
+        {filtered && (
+          <span
+            aria-hidden
+            className="min-w-[1.15rem] px-1 py-0.5 rounded bg-cyber-clay dark:bg-ape-fire text-[10px] font-mono font-semibold text-paper-base dark:text-white text-center tabular-nums"
+          >
+            on
+          </span>
+        )}
+      </button>
+      {filterOpen && anchor && (
+        <GraphScopeFilter
+          documents={documents}
+          currentDocumentId={currentDocumentId}
+          scope={scope}
+          onChange={onScopeChange}
+          onClose={() => setFilterOpen(false)}
+          anchor={anchor}
+        />
+      )}
       <button
         type="button"
         className={`${graphToolClass} px-3`}
         aria-label="Reset Graph view"
-        title="Reset labels, zoom, projection, and re-lay out nodes (tidy atom layout)"
+        title="Reset labels, zoom, projection, and filter, and re-lay out nodes (tidy atom layout)"
         onClick={onReset}
       >
         Reset
@@ -294,6 +383,10 @@ export interface GraphViewProps {
   onZoomChange?: (next: number) => void;
   /** Flat map, globe, or 3D Concept. A projection is an inner toggle, not a view mode. */
   projection?: GraphProjection;
+  /** Documents and sections to include. Empty scope shows everything. */
+  scope?: GraphScope;
+  /** Clears the scope. Offered by the empty state so a dead filter is one click from gone. */
+  onClearScope?: () => void;
 }
 
 type NodeDragSession = {
@@ -306,21 +399,43 @@ type NodeDragSession = {
   moved: boolean;
 };
 
+const DEFAULT_SCOPE = createScope();
+
 export function GraphView({
   labelPx = DEFAULT_GRAPH_LABEL_PX,
   zoom = 1,
   onZoomChange,
   projection = 'flat',
+  scope = DEFAULT_SCOPE,
+  onClearScope,
 }: GraphViewProps) {
   const documents = useStore((s) => s.documents);
   const comments = useStore((s) => s.comments);
   const current = useCurrentDocument();
   const setCurrentDocument = useStore((s) => s.setCurrentDocument);
   const setEditorFocus = useStore((s) => s.setEditorFocus);
+  // The textarea is unmounted while `viewMode === 'graph'`, so a click that
+  // only selects a range (heading/term) or switches the document ends up
+  // invisible — there is no textarea for `restoreCaret` to land in and the
+  // atom re-centre inside the graph is just a slight layout shift on the
+  // same screen. Switch to split on click so the action matches what the
+  // docs/writing.md description promises ("opens the document").
+  const viewMode = useStore((s) => s.viewMode);
+  const setViewMode = useStore((s) => s.setViewMode);
 
-  const graph = useMemo(
+  const compiled = useMemo(
     () => buildWorkspaceGraph(documents, comments),
     [documents, comments]
+  );
+
+  // The scope filter sits *between* compile and layout, so all three
+  // projections inherit it without knowing it exists. `layoutWorkspaceGraph`
+  // is a pure derivation of `(nodes, edges)`, so a pruned graph simply
+  // lays out smaller — no downstream change to the lens, the sphere, or
+  // the three.js scene.
+  const graph = useMemo(
+    () => filterWorkspaceGraph(compiled, scope),
+    [compiled, scope]
   );
 
   const laidOut = useMemo(
@@ -437,11 +552,17 @@ const isSphere = projection === 'sphere';
   );
 
   const [hoverId, setHoverId] = useState<string | null>(null);
+  // `neighborsOf` reads `graph.edges`, which is already pruned, so the
+  // dimming ring can never highlight a node the filter removed.
   const hot = hoverId ? neighborsOf(hoverId, graph.edges) : null;
   const hovered = hoverId ? byId.get(hoverId) ?? null : null;
 
+  // Two different empty states. The first is a workspace with nothing to
+  // link; the second is a filter that excluded everything — the copy has
+  // to say which, or the user hunts for a filter bug that is not there.
+  const scopeFilterActive = !isScopeEmpty(scope);
   const empty =
-    documents.length <= 1 && graph.nodes.every((n) => n.kind === 'document');
+    graph.nodes.length <= 1 && graph.nodes.every((n) => n.kind === 'document');
 
   const userFont = labelPx / Math.max(cam.camera.scale, 1e-6);
   const lineGap = userFont * 1.2;
@@ -462,10 +583,20 @@ const isSphere = projection === 'sphere';
   const onNodeClick = (node: ProjectedNode) => {
     if (node.kind === 'document' && node.documentId) {
       setCurrentDocument(node.documentId);
+    } else if (node.documentId != null && node.start != null && node.end != null) {
+      openRange(node.documentId, node.start, node.end);
+    } else {
       return;
     }
-    if (node.documentId != null && node.start != null && node.end != null) {
-      openRange(node.documentId, node.start, node.end);
+    // A click from inside the Graph view is the user's "open" gesture —
+    // switch out of `graph` so the document / range is actually visible.
+    // The textarea is unmounted while we're in `graph`, so without this
+    // the action reduces to a layout shift that the user can't follow up
+    // on (`mvp:select-range`'s `restoreCaret` would no-op for the same
+    // reason). `setViewMode` is read once at render time, so the click
+    // handler uses the value it had at the previous render commit.
+    if (viewMode === 'graph') {
+      setViewMode('split');
     }
   };
 
@@ -656,8 +787,21 @@ const isSphere = projection === 'sphere';
 {empty ? (
       <div className="h-full flex items-center justify-center px-6">
         <p className="text-sm text-paper-inkSoft dark:text-cyber-muted text-center max-w-sm">
-          Add a heading or [[term]] (or @ another document) to grow this
-          graph.
+          {scopeFilterActive ? (
+            <>
+              The current filter leaves nothing to draw.{' '}
+              <button
+                type="button"
+                className="underline underline-offset-2 hover:text-cyber-clay dark:hover:text-cyber-cyan"
+                onClick={() => onClearScope?.()}
+              >
+                Clear the filter
+              </button>{' '}
+              to see the workspace again.
+            </>
+          ) : (
+            'Add a heading or [[term]] (or @ another document) to grow this graph.'
+          )}
         </p>
       </div>
     ) : isConcept ? (
@@ -833,5 +977,3 @@ const isSphere = projection === 'sphere';
     </div>
   );
 }
-
-export type { Point };

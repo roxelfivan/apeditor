@@ -493,7 +493,12 @@ export default function Concept3DScene({
         // keeps wording on the 3D floor of that sphere, so a helix of
         // sibling stories does not collapse back into one 2D overlay.
         if (labelHost) {
-          const fontPx = Math.max(10, Math.min(26, s.labelPx));
+          // Clamp to the *same* range the SVG path uses. This scene is
+          // lazy-loaded, so it cannot read the SVG's constants at render
+          // time without a static import cycle — the literals are the
+          // duplication, and `label: the 3D layer honours the SVG label
+          // range` is what keeps them honest.
+          const fontPx = Math.max(6, Math.min(48, s.labelPx));
           const maxChars = Math.max(10, Math.min(22, Math.round((18 * 16) / s.labelPx)));
           for (const n of s.nodes) {
             const el = labelEls.get(n.id);
@@ -588,6 +593,27 @@ export default function Concept3DScene({
         return id;
       };
 
+      /**
+       * The 3D pointerflow has a subtle bug: the canvas has no native
+       * `click` event because we `setPointerCapture`-equivalent on `svg`,
+       * not on `canvas`. We rely on `pointerdown` → `pointerup` instead.
+       * But `pick()` runs at both events, and a one-pixel mouse jitter
+       * between them is enough for the raycast to miss a node it just
+       * hit — the user's intent (click on the node they pressed) is then
+       * silently dropped because `pointerup`'s pick returns `null`.
+       *
+       * Capture the node id the user actually pressed on, and only fire
+       * `onNodeClick` if the pointerup matches that id OR if the original
+       * id is still set (i.e. it was a node-pickdown), gated by a small
+       * click-vs-drag threshold. Mirrors how the SVG path uses
+       * `setPointerCapture` to keep the click attached to the original
+       * element.
+       */
+      const CLICK_DRAG_THRESHOLD_PX = 5;
+      let downPickId: string | null = null;
+      let downClientX = 0;
+      let downClientY = 0;
+
       // The caller's drag model needs the *current* hover before it decides
       // between orbiting and moving a node, so picking happens first on
       // every event the caller sees. `pointermove` is coalesced to one pick
@@ -596,6 +622,11 @@ export default function Concept3DScene({
       // never a frame stale.
       const onPointerDown = (e: PointerEvent) => {
         const id = pick(e.clientX, e.clientY);
+        // Capture which node (if any) the user pressed on so a click can
+        // be resolved from `pointerup` even if `pick()` then misses.
+        downPickId = id;
+        downClientX = e.clientX;
+        downClientY = e.clientY;
         // A node pick takes the camera out of the user's hands for the
         // duration of the drag — orbit / pan / dolly would compete for
         // the same pointer delta. Re-enabled on `pointerup`.
@@ -624,10 +655,24 @@ export default function Concept3DScene({
         // drag threshold decides the rest, so a node drag never fires a
         // click and an orbit never fires one either.
         const id = pick(e.clientX, e.clientY);
-        if (id) {
-          const node = live.current.nodes.find((n) => n.id === id);
+        // Resolve the click from whichever node we captured, gating on
+        // travel distance to distinguish a click from a drag. If the
+        // pointerup pick matches the pointerdown pick, that's the cleanest
+        // case. If pointerdown picked a node and the pointerup pick is
+        // null (raycast jitter), still treat the press as a click on the
+        // captured node. If pointerdown pick is null, only fire a click
+        // when pointerup also picks a node.
+        const travel = Math.hypot(e.clientX - downClientX, e.clientY - downClientY);
+        const drag = travel >= CLICK_DRAG_THRESHOLD_PX;
+        const clickedId =
+          (downPickId && !drag) ? downPickId
+            : (!drag && id) ? id
+            : null;
+        if (clickedId) {
+          const node = live.current.nodes.find((n) => n.id === clickedId);
           if (node) live.current.onNodeClick(node);
         }
+        downPickId = null;
         // Hand the camera back regardless of whether the up produced a
         // click — the previous down() either disabled or left it enabled.
         controls.enabled = true;

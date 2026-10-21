@@ -37,6 +37,7 @@ import {
   GraphViewControls,
 } from '@/components/GraphView';
 import type { GraphProjection } from '@/hooks/useGraphCamera';
+import { createScope, type GraphScope } from '@/utils/graph/graphFilter';
 import { clampGraphZoom, DEFAULT_GRAPH_ZOOM } from '@/utils/graph/graphCamera';
 import { SUGGESTION_HEIGHT_KEY } from '@/utils/storage';
 import { useIsCommentSheet, useIsNarrow } from '@/hooks/useMediaQuery';
@@ -97,6 +98,9 @@ function restoreCaret(
  */
 export function Editor() {
   const doc = useCurrentDocument();
+  // Only the Graph filter panel needs the whole list; the rest of the
+  // editor works off the single open document.
+  const documents = useStore((s) => s.documents);
   const isNarrow = useIsNarrow();
   const isCommentSheet = useIsCommentSheet();
   const viewMode = useStore((s) => s.viewMode);
@@ -108,6 +112,11 @@ export function Editor() {
   // projection is a navigation aid within the Graph view, not a view mode,
   // and persisting it would change what the app opens to between sessions.
   const [graphProjection, setGraphProjection] = useState<GraphProjection>('flat');
+  // Which documents / sections the Graph view draws. Local state for the
+  // same reason as the controls above: a scope is a way of looking at the
+  // workspace, not a change to it, and persisting it would restore a
+  // half-legible graph with no visible cause on next launch.
+  const [graphScope, setGraphScope] = useState<GraphScope>(createScope);
   const [graphEpoch, setGraphEpoch] = useState(0);
   const rawEditorSplitPct = useStore((s) => s.layout.editorSplitPct);
   const editorSplitPct = clamp(
@@ -394,13 +403,27 @@ export function Editor() {
       ) {
         return;
       }
+      // Apply, ChatPanel *and* the Graph view (when a heading or `[[term]]`
+      // is clicked) all dispatch this. In Graph view the textarea is
+      // unmounted, so we must leave the view first and defer the caret
+      // restore one frame — the textarea's ref does not exist until
+      // React has committed the new view-mode render.
+      if (viewMode === 'graph') {
+        setViewMode('split');
+        requestAnimationFrame(() => {
+          restoreCaret(textareaRef.current, detail.start, detail.end, {
+            preserveScroll: true,
+          });
+        });
+        return;
+      }
       restoreCaret(textareaRef.current, detail.start, detail.end, {
         preserveScroll: true,
       });
     };
     window.addEventListener('mvp:select-range', handler);
     return () => window.removeEventListener('mvp:select-range', handler);
-  }, []);
+  }, [viewMode]);
 
   // Listen for OCR-insert events from the import media button. Inserts
   // the text at the current caret position if the textarea has been
@@ -1255,10 +1278,15 @@ export function Editor() {
             onZoom={(next) => setGraphZoom(clampGraphZoom(next))}
             projection={graphProjection}
             onProjection={setGraphProjection}
+            documents={documents}
+            currentDocumentId={doc?.id ?? null}
+            scope={graphScope}
+            onScopeChange={setGraphScope}
             onReset={() => {
               setGraphLabelPx(DEFAULT_GRAPH_LABEL_PX);
               setGraphZoom(DEFAULT_GRAPH_ZOOM);
               setGraphProjection('flat');
+              setGraphScope(createScope());
               setGraphEpoch((n) => n + 1);
             }}
           />
@@ -2013,6 +2041,8 @@ export function Editor() {
             zoom={graphZoom}
             onZoomChange={setGraphZoom}
             projection={graphProjection}
+            scope={graphScope}
+            onClearScope={() => setGraphScope(createScope())}
           />
         )}
       </div>

@@ -10,6 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -35,11 +36,12 @@ await fs.writeFile(
 import { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview } from '${path.join(ROOT, 'src/utils/graph/parseWikilinks.ts').replace(/\\/g, '/')}';
 import { buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath } from '${path.join(ROOT, 'src/utils/graph/buildWorkspaceGraph.ts').replace(/\\/g, '/')}';
 import { layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, headingDepthByNode } from '${path.join(ROOT, 'src/utils/graph/layoutWorkspaceGraph.ts').replace(/\\/g, '/')}';
-import { clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds } from '${path.join(ROOT, 'src/utils/graph/graphCamera.ts').replace(/\\/g, '/')}';
+import { filterWorkspaceGraph, createScope, createNoneScope, isScopeEmpty, isNoneScope, normalizeScope, resolveDocumentIds, resolveSectionIds } from '${path.join(ROOT, 'src/utils/graph/graphFilter.ts').replace(/\\/g, '/')}';
+import { clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, MIN_GRAPH_ZOOM, MAX_GRAPH_ZOOM } from '${path.join(ROOT, 'src/utils/graph/graphCamera.ts').replace(/\\/g, '/')}';
 import { toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION } from '${path.join(ROOT, 'src/utils/graph/sphereProject.ts').replace(/\\/g, '/')}';
 import { applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes } from '${path.join(ROOT, 'src/utils/graph/fisheyeLens.ts').replace(/\\/g, '/')}';
-import { conceptZForDepth, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE } from '${path.join(ROOT, 'src/utils/graph/conceptProject.ts').replace(/\\/g, '/')}';
-export { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, headingDepthByNode, clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION, applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes, conceptZForDepth, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE };
+import { conceptZForDepth, conceptZStep, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, clampConceptDistance, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, MIN_CONCEPT_Z_STEP, CONCEPT_Z_COMPRESS_AFTER, CONCEPT_Z_COMPRESS_RATIO, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE } from '${path.join(ROOT, 'src/utils/graph/conceptProject.ts').replace(/\\/g, '/')}';
+export { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, headingDepthByNode, filterWorkspaceGraph, createScope, createNoneScope, isScopeEmpty, isNoneScope, normalizeScope, resolveDocumentIds, resolveSectionIds, clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, MIN_GRAPH_ZOOM, MAX_GRAPH_ZOOM, toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION, applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes, conceptZForDepth, conceptZStep, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, clampConceptDistance, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, MIN_CONCEPT_Z_STEP, CONCEPT_Z_COMPRESS_AFTER, CONCEPT_Z_COMPRESS_RATIO, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE };
 `
 );
 
@@ -70,6 +72,14 @@ const {
   layoutWorkspaceGraph,
   nodeRadius,
   countProperEdgeCrossings,
+  filterWorkspaceGraph,
+  createScope,
+  createNoneScope,
+  isScopeEmpty,
+  isNoneScope,
+  normalizeScope,
+  resolveDocumentIds,
+  resolveSectionIds,
   clampGraphZoom,
   stepGraphZoom,
   zoomedViewBox,
@@ -79,6 +89,8 @@ const {
   worldToScreen,
   zoomCameraAt,
   cameraBounds,
+  MIN_GRAPH_ZOOM,
+  MAX_GRAPH_ZOOM,
   toSphere,
   toScreen,
   rotateSphere,
@@ -93,6 +105,7 @@ const {
   applyFisheyeToNodes,
   headingDepthByNode,
   conceptZForDepth,
+  conceptZStep,
   conceptHeadingY,
   siblingStoryCount,
   conceptTermSlot,
@@ -100,6 +113,7 @@ const {
   conceptCameraPosition,
   dragToConceptPose,
   clampConceptPose,
+  clampConceptDistance,
   conceptDistanceFromZoom,
   floorPointFromRay,
   layoutToWorld,
@@ -111,6 +125,9 @@ const {
   DEFAULT_CONCEPT_POSE,
   CONCEPT_HEADING_BASE_Z,
   CONCEPT_Z_STEP,
+  MIN_CONCEPT_Z_STEP,
+  CONCEPT_Z_COMPRESS_AFTER,
+  CONCEPT_Z_COMPRESS_RATIO,
   CONCEPT_TERM_DEPTH,
   CONCEPT_TERM_RING_R,
   CONCEPT_SIBLINGS_PER_STORY,
@@ -369,10 +386,35 @@ test('camera: zoom boxes shrink toward the center', () => {
   assert.equal(box.h, 50);
   assert.equal(box.x, -50);
   assert.equal(box.y, -25);
-  assert.equal(clampGraphZoom(99), 4);
-  assert.equal(clampGraphZoom(0), 0.5);
+  assert.equal(clampGraphZoom(99), MAX_GRAPH_ZOOM);
+  assert.equal(clampGraphZoom(0), MIN_GRAPH_ZOOM);
   assert.ok(stepGraphZoom(1, 1) > 1);
   assert.ok(stepGraphZoom(1, -1) < 1);
+});
+
+test('zoom: the Concept eye distance never clamps below its own zoom range', () => {
+  // The toolbar drives ONE `zoom` multiplier for all three projections,
+  // and Concept derives its distance from it. Before this was wired the
+  // ceilings were independent (4× zoom vs 6000 distance), so 400% was
+  // reachable in the readout but the eye stopped at 333% — a silent
+  // clamp, visible only as a camera that refuses to move. The distance
+  // ceiling is now *derived* from the zoom ceiling; assert the property
+  // rather than the two numbers so a future retune stays honest.
+  assert.ok(
+    MAX_CONCEPT_DISTANCE >= MAX_GRAPH_ZOOM * DEFAULT_CONCEPT_DISTANCE,
+    `MAX_CONCEPT_DISTANCE (${MAX_CONCEPT_DISTANCE}) must cover the full zoom range (${MAX_GRAPH_ZOOM * DEFAULT_CONCEPT_DISTANCE})`
+  );
+  // The full range must survive the round trip, at both ends.
+  assert.equal(conceptDistanceFromZoom(MAX_GRAPH_ZOOM), MAX_GRAPH_ZOOM * DEFAULT_CONCEPT_DISTANCE);
+  // And the ceiling must be reached, not approached asymptotically.
+  assert.equal(clampConceptDistance(MAX_CONCEPT_DISTANCE), MAX_CONCEPT_DISTANCE);
+  assert.equal(
+    clampConceptDistance(MAX_CONCEPT_DISTANCE * 4),
+    MAX_CONCEPT_DISTANCE,
+    'over-range distances clamp down'
+  );
+  assert.ok(MIN_CONCEPT_DISTANCE < DEFAULT_CONCEPT_DISTANCE);
+  assert.ok(MIN_GRAPH_ZOOM < 1 && MAX_GRAPH_ZOOM > 1, 'the default must sit inside the range');
 });
 
 test('layout: node bullets are at least double the original size', () => {
@@ -783,11 +825,81 @@ test('concept: headings space out at least one sphere-radius per tier', () => {
   // The slider value for `spacing per tier is wider than a node sphere'.
   // Step must exceed the heading node diameter so two tiers never
   // interpenetrate under any camera angle.
+  //
+  // Checked at EVERY tier, not just depth 1: `conceptZStep` compresses
+  // with depth, so the shallow check alone would pass while a deep
+  // outline's tiers sank into each other.
   const minRadius = nodeRadius('heading', false); // leaf heading
-  const stepGap = conceptZForDepth(1) - conceptZForDepth(0);
+  for (let d = 1; d <= 60; d++) {
+    const stepGap = conceptZForDepth(d) - conceptZForDepth(d - 1);
+    assert.ok(
+      stepGap > 2 * minRadius,
+      `tier ${d} gap ${stepGap} must exceed 2·minRadius (${2 * minRadius})`
+    );
+  }
+});
+
+test('concept: tier spacing compresses with depth but never below the floor', () => {
+  // Shallow outlines are untouched: plain markdown stops at H6, so every
+  // ordinary document renders exactly as it did before compression.
+  for (let d = 1; d <= CONCEPT_Z_COMPRESS_AFTER; d++) {
+    assert.equal(conceptZStep(d), CONCEPT_Z_STEP, `tier ${d} should keep the full step`);
+  }
+  // Past the threshold the gap shrinks monotonically...
+  let previous = CONCEPT_Z_STEP;
+  for (let d = CONCEPT_Z_COMPRESS_AFTER + 1; d <= 40; d++) {
+    const gap = conceptZStep(d);
+    assert.ok(gap <= previous, `tier ${d} gap ${gap} must not exceed the one below it ${previous}`);
+    // ...and converges rather than growing without bound, which is the
+    // whole point: the tall-document ceiling stops being a function of
+    // how deep someone nested their headings.
+    assert.ok(gap >= MIN_CONCEPT_Z_STEP, `tier ${d} gap ${gap} fell below the floor`);
+    previous = gap;
+  }
+  // It really does reach the floor, and stays there. Asserting this on
+  // `conceptZStep` rather than on a difference of two `conceptZForDepth`
+  // values avoids float cancellation — accumulating 40 tiers and
+  // subtracting them back loses ~1e-10, which a `< MIN` check would read
+  // as a violation.
+  assert.equal(conceptZStep(40), MIN_CONCEPT_Z_STEP);
+  assert.equal(conceptZStep(15), MIN_CONCEPT_Z_STEP, 'the floor is reached well before 40 tiers');
   assert.ok(
-    stepGap > 2 * minRadius,
-    `tier gap ${stepGap} must exceed 2·minRadius (${2 * minRadius})`
+    conceptZStep(CONCEPT_Z_COMPRESS_AFTER + 1) < CONCEPT_Z_STEP,
+    'compression must engage right after the threshold'
+  );
+});
+
+test('concept: a deep path heading packs into a readable column', () => {
+  // `# A > B > … > Z` is unbounded — `splitHeadingPath` has no cap — so
+  // 40 tiers is a realistic worst case for someone using path headings.
+  // Before compression the top tier sat ~5,500 units up and the whole
+  // stack had to be framed from a distance that made labels unreadable.
+  const deepHeight = conceptZForDepth(39);
+  const linearHeight = CONCEPT_HEADING_BASE_Z + 39 * CONCEPT_Z_STEP;
+  assert.ok(
+    deepHeight < linearHeight * 0.6,
+    `40 tiers should be well under the uncompressed height (${deepHeight} vs ${linearHeight})`
+  );
+  // The ordinary case is unaffected, which is the compatibility promise:
+  // six tiers of ordinary markdown sit exactly where they always did.
+  // Compared with a tolerance because `conceptZForDepth` accumulates a
+  // running sum while the expectation multiplies — same number, different
+  // rounding.
+  assert.ok(
+    Math.abs(
+      conceptZForDepth(CONCEPT_Z_COMPRESS_AFTER) -
+        (CONCEPT_HEADING_BASE_Z + CONCEPT_Z_COMPRESS_AFTER * CONCEPT_Z_STEP)
+    ) < 1e-9,
+    'the six ordinary markdown tiers must not move'
+  );
+  // And the compressed stack still frames inside the camera's reach, so
+  // "more stories" is actually legible rather than merely smaller.
+  const span = deepHeight + CONCEPT_TERM_DEPTH;
+  const distanceToFrame =
+    span / 2 / Math.tan((45 * Math.PI) / 180 / 2);
+  assert.ok(
+    distanceToFrame < MAX_CONCEPT_DISTANCE,
+    `a 40-tier stack must fit inside the eye range (${Math.ceil(distanceToFrame)} < ${MAX_CONCEPT_DISTANCE})`
   );
 });
 
@@ -1107,6 +1219,329 @@ test('concept: MIN_POLAR_ANGLE / MAX_POLAR_ANGLE bracket the legal pole', () => 
     Math.abs(MIN_POLAR_ANGLE + MAX_POLAR_ANGLE - Math.PI) < 1e-9,
     'polar limits should bracket π/2 symmetrically'
   );
+});
+
+// ---------------------------------------------------------------------------
+// Scope filter — src/utils/graph/graphFilter.ts
+// ---------------------------------------------------------------------------
+
+/**
+ * Two documents, each with a nested outline, linked both ways, plus a
+ * `[[term]]` and a `Comment > annotate` style path heading. Enough
+ * structure to exercise every pruning rule in `filterWorkspaceGraph`.
+ */
+function filterFixture() {
+  const alpha = doc(
+    'alpha',
+    'Alpha',
+    '# Alpha\n\n## Beta\n\n### Gamma\n\nSee [[shared]] and [[Beta]].\n\n## Delta\n'
+  );
+  const beta = doc('beta', 'Beta', '# Beta\n\n## Nested > deep\n\nBack to [[Alpha]].\n');
+  return { alpha, beta };
+}
+
+const filterNodeIds = (g) => new Set(g.nodes.map((n) => n.id));
+const filterEdgeIds = (g) => new Set(g.edges.map((e) => e.id));
+
+test('filter: an empty scope is the identity', () => {
+  const { alpha, beta } = filterFixture();
+  const g = buildWorkspaceGraph([alpha, beta], {});
+  const out = filterWorkspaceGraph(g, createScope());
+  assert.equal(out.nodes.length, g.nodes.length);
+  assert.equal(out.edges.length, g.edges.length);
+  // Identity is a shared reference, not just an equal shape: the fast
+  // path is what keeps the unfiltered case allocation-free.
+  assert.equal(out, g);
+  assert.ok(isScopeEmpty(createScope()));
+});
+
+test('filter: pruning a document removes its nodes and every edge touching them', () => {
+  const { alpha, beta } = filterFixture();
+  const g = buildWorkspaceGraph([alpha, beta], {});
+  const scope = { documentIds: new Set(['alpha']), sectionIds: new Map() };
+  const out = filterWorkspaceGraph(g, scope);
+  const ids = filterNodeIds(out);
+
+  assert.ok(ids.has(documentNodeId('alpha')), 'kept document stays');
+  assert.ok(!ids.has(documentNodeId('beta')), 'deselected document goes');
+  for (const n of out.nodes) {
+    if (n.documentId === 'beta') {
+      throw new Error(`node ${n.id} from the deselected doc survived`);
+    }
+  }
+  // No edge may reference a dropped node — a surviving edge would be
+  // culled later anyway, but only after costing a `byId.get()` miss in
+  // every projection's render loop.
+  for (const e of out.edges) {
+    assert.ok(ids.has(e.source), `dangling edge source ${e.source}`);
+    assert.ok(ids.has(e.target), `dangling edge target ${e.target}`);
+  }
+});
+
+test('filter: a section filter keeps the document and only the listed headings', () => {
+  const { alpha, beta } = filterFixture();
+  const g = buildWorkspaceGraph([alpha, beta], {});
+  const headings = g.nodes.filter(
+    (n) => n.kind === 'heading' && n.documentId === 'alpha' && n.start != null
+  );
+  const betaHeading = headings.find((n) => n.label === 'Beta');
+  const gamma = headings.find((n) => n.label === 'Gamma');
+  assert.ok(betaHeading && gamma, 'fixture has the headings under test');
+
+  const scope = {
+    documentIds: new Set(['alpha', 'beta']),
+    sectionIds: new Map([
+      ['alpha', new Set([headingNodeId('alpha', gamma.start)])],
+    ]),
+  };
+  const out = filterWorkspaceGraph(g, scope);
+  const ids = filterNodeIds(out);
+
+  assert.ok(ids.has(documentNodeId('alpha')), 'document node survives');
+  assert.ok(!ids.has(headingNodeId('alpha', betaHeading.start)), 'sibling heading dropped');
+  assert.ok(ids.has(headingNodeId('alpha', gamma.start)), 'listed heading kept');
+  // `beta` has no entry in `sectionIds`, so all of its headings stay.
+  assert.ok(
+    out.nodes.some(
+      (n) => n.kind === 'heading' && n.documentId === 'beta' && n.start != null
+    ),
+    'a document with no section filter keeps all of its sections'
+  );
+});
+
+test('filter: an empty section set means the document shows with no sections', () => {
+  const { alpha, beta } = filterFixture();
+  const g = buildWorkspaceGraph([alpha, beta], {});
+  // Keep `beta` fully included so the assertion is about alpha's empty
+  // section set, not about document-level pruning.
+  const scope = {
+    documentIds: new Set(['alpha', 'beta']),
+    sectionIds: new Map([['alpha', new Set()]]),
+  };
+  const out = filterWorkspaceGraph(g, scope);
+  const ids = filterNodeIds(out);
+  assert.ok(ids.has(documentNodeId('alpha')));
+  for (const n of out.nodes) {
+    if (n.kind === 'heading' && n.documentId === 'alpha' && n.start != null) {
+      throw new Error(`heading ${n.id} survived an empty section set`);
+    }
+  }
+});
+
+test('filter: a heading-path scaffold disappears once its children do', () => {
+  const beta = doc('beta', 'Beta', '# Beta\n\n## Nested > deep\n');
+  const g = buildWorkspaceGraph([beta], {});
+  const pathNode = g.nodes.find((n) => n.id.startsWith('heading-path:'));
+  assert.ok(pathNode, 'fixture produces a heading-path prefix node');
+
+  const leaf = g.nodes.find(
+    (n) => n.kind === 'heading' && n.start != null && n.label === 'deep'
+  );
+  assert.ok(leaf);
+
+  // Keep the scaffold by keeping its leaf.
+  const kept = filterWorkspaceGraph(
+    g,
+    {
+      documentIds: new Set(['beta']),
+      sectionIds: new Map([['beta', new Set([headingNodeId('beta', leaf.start)])]]),
+    }
+  );
+  assert.ok(
+    filterNodeIds(kept).has(pathNode.id),
+    'the prefix spine stays when a descendant survives'
+  );
+
+  // Drop every real heading and the scaffold has nothing to parent.
+  const dropped = filterWorkspaceGraph(
+    g,
+    {
+      documentIds: new Set(['beta']),
+      sectionIds: new Map([
+        ['beta', new Set(g.nodes.filter((n) => n.kind === 'heading' && n.start != null).map((n) => n.id).filter((id) => !id.startsWith('heading-path:') && id !== headingNodeId('beta', leaf.start)))],
+      ]),
+    }
+  );
+  assert.ok(
+    !filterNodeIds(dropped).has(pathNode.id),
+    'an orphaned heading-path node must not linger'
+  );
+});
+
+test('filter: a term survives iff a kept node still references it', () => {
+  const alpha = doc('alpha', 'Alpha', '# Alpha\n\nSee [[shared]].\n');
+  const beta = doc('beta', 'Beta', '# Beta\n\nAlso [[shared]].\n');
+  const g = buildWorkspaceGraph([alpha, beta], {});
+  assert.ok(filterNodeIds(g).has(termNodeId('shared')), 'fixture makes a shared term');
+
+  const bothDocs = filterWorkspaceGraph(
+    g,
+    { documentIds: new Set(['alpha', 'beta']), sectionIds: new Map() }
+  );
+  assert.ok(filterNodeIds(bothDocs).has(termNodeId('shared')));
+
+  // Deselecting `beta` must not take a term `alpha` still links to.
+  const alphaOnly = filterWorkspaceGraph(
+    g,
+    { documentIds: new Set(['alpha']), sectionIds: new Map() }
+  );
+  assert.ok(
+    filterNodeIds(alphaOnly).has(termNodeId('shared')),
+    'a term outlives the loss of one referrer'
+  );
+
+  // A scope with no headings keeps no wikilink source, so the term goes.
+  const noHeadings = filterWorkspaceGraph(
+    g,
+    {
+      documentIds: new Set(['alpha', 'beta']),
+      sectionIds: new Map([
+        ['alpha', new Set()],
+        ['beta', new Set()],
+      ]),
+    }
+  );
+  assert.ok(
+    !filterNodeIds(noHeadings).has(termNodeId('shared')),
+    'a term with no surviving referrer is dropped'
+  );
+});
+
+test('filter: excluding the current document prunes it', () => {
+  const { alpha, beta } = filterFixture();
+  const g = buildWorkspaceGraph([alpha, beta], {});
+  const out = filterWorkspaceGraph(g, { documentIds: new Set(), sectionIds: new Map() });
+  // An empty documentIds set means "everything".
+  assert.ok(filterNodeIds(out).has(documentNodeId('alpha')));
+
+  const excluded = filterWorkspaceGraph(
+    g,
+    { documentIds: new Set(['beta']), sectionIds: new Map() }
+  );
+  assert.ok(
+    !filterNodeIds(excluded).has(documentNodeId('alpha')),
+    'unticking the current document must drop it from the graph'
+  );
+  assert.ok(
+    filterNodeIds(excluded).has(documentNodeId('beta')),
+    'the remaining document stays'
+  );
+});
+
+test('filter: a filtered graph still lays out with no crossing edges', () => {
+  const { alpha, beta } = filterFixture();
+  const g = buildWorkspaceGraph([alpha, beta], {});
+  const scope = { documentIds: new Set(['alpha']), sectionIds: new Map() };
+  const out = filterWorkspaceGraph(g, scope);
+  const laid = layoutWorkspaceGraph(out.nodes, out.edges, 'alpha');
+
+  assert.equal(laid.length, out.nodes.length, 'every surviving node is placed');
+  for (const n of laid) {
+    assert.ok(Number.isFinite(n.x) && Number.isFinite(n.y), `${n.id} is not placed`);
+  }
+  assert.equal(
+    countProperEdgeCrossings(laid, out.edges),
+    0,
+    'the pruned layout must still be crossing-free'
+  );
+});
+
+test('filter: every pruned edge is well formed', () => {
+  const { alpha, beta } = filterFixture();
+  const g = buildWorkspaceGraph([alpha, beta], {});
+  const out = filterWorkspaceGraph(
+    g,
+    { documentIds: new Set(['alpha']), sectionIds: new Map() }
+  );
+  const ids = filterNodeIds(out);
+  const edges = filterEdgeIds(out);
+  assert.equal(edges.size, out.edges.length, 'edge ids stay unique');
+  for (const e of out.edges) {
+    assert.ok(ids.has(e.source) && ids.has(e.target));
+  }
+  assert.ok(
+    out.edges.every((e) => edges.has(e.id)),
+    'pruning preserves the original edge objects'
+  );
+});
+
+test('filter: normalizeScope collapses a fully-selected scope to the default', () => {
+  const all = ['a', 'b', 'c'];
+  assert.ok(isScopeEmpty(normalizeScope({ documentIds: new Set(all), sectionIds: new Map() }, all)));
+  // A partial selection stays put.
+  const partial = normalizeScope({ documentIds: new Set(['a']), sectionIds: new Map() }, all);
+  assert.ok(!isScopeEmpty(partial));
+  assert.equal(partial.documentIds.size, 1);
+  // An empty section set is the default for that document, so the entry
+  // is dropped rather than persisted as a "show nothing" marker.
+  const sections = normalizeScope(
+    { documentIds: new Set(), sectionIds: new Map([['a', new Set()]]) },
+    all
+  );
+  assert.equal(sections.sectionIds.size, 0);
+});
+
+test('filter: none scope is distinct from empty-means-everything', () => {
+  const { alpha, beta } = filterFixture();
+  const g = buildWorkspaceGraph([alpha, beta], {});
+  const none = createNoneScope();
+  assert.ok(isNoneScope(none));
+  assert.ok(!isScopeEmpty(none));
+  assert.ok(isNoneScope(normalizeScope(none, ['alpha', 'beta'])));
+  assert.equal(resolveDocumentIds(none, ['alpha', 'beta']).size, 0);
+
+  const out = filterWorkspaceGraph(g, none);
+  assert.equal(out.nodes.length, 0, 'none scope keeps no nodes');
+  assert.equal(out.edges.length, 0, 'none scope keeps no edges');
+});
+
+test('filter: resolve helpers expand the shorthand forms', () => {
+  const docs = ['a', 'b'];
+  assert.deepEqual([...resolveDocumentIds(createScope(), docs)].sort(), ['a', 'b']);
+  assert.deepEqual([...resolveDocumentIds({ documentIds: new Set(['b']), sectionIds: new Map() }, docs)], ['b']);
+
+  const sections = ['heading:a:0', 'heading:a:9'];
+  assert.deepEqual([...resolveSectionIds(createScope(), 'a', sections)], sections);
+  assert.deepEqual(
+    [...resolveSectionIds({ documentIds: new Set(), sectionIds: new Map([['a', new Set(['heading:a:9'])]]) }, 'a', sections)],
+    ['heading:a:9']
+  );
+});
+
+test('label: the 3D layer honours the SVG label range', () => {
+  // `Concept3DScene` is lazy-loaded and cannot import `GraphView`'s label
+  // constants without a static import cycle, so the range is a duplicated
+  // literal in each file. They were already silently divergent (12–28 in
+  // the SVG vs 10–26 in 3D): a user at 28px saw larger labels in Flat and
+  // Globe and identical labels in 3D, with nothing indicating a drop.
+  //
+  // Parsing both files is the honest way to keep them honest — importing
+  // the scene would pull three.js into this harness, and importing
+  // GraphView would need a React stub for JSX.
+  const graphViewSrc = readFileSync(
+    path.join(ROOT, 'src/components/GraphView.tsx'),
+    'utf8'
+  );
+  const conceptSrc = readFileSync(
+    path.join(ROOT, 'src/components/Concept3DScene.tsx'),
+    'utf8'
+  );
+
+  const min = Number(graphViewSrc.match(/MIN_GRAPH_LABEL_PX = (\d+)/)[1]);
+  const max = Number(graphViewSrc.match(/MAX_GRAPH_LABEL_PX = (\d+)/)[1]);
+  const clamp = conceptSrc.match(/Math\.max\((\d+), Math\.min\((\d+), s\.labelPx\)/);
+  assert.ok(clamp, 'Concept3DScene should clamp the label layer');
+  assert.equal(
+    Number(clamp[1]),
+    min,
+    `3D label floor (${clamp[1]}) must match MIN_GRAPH_LABEL_PX (${min})`
+  );
+  assert.equal(
+    Number(clamp[2]),
+    max,
+    `3D label ceiling (${clamp[2]}) must match MAX_GRAPH_LABEL_PX (${max})`
+  );
+  assert.ok(min < 16 && max >= 16, 'the default label size must sit inside the range');
 });
 
 console.log(`${passed} passed`);

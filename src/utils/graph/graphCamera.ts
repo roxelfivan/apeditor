@@ -15,8 +15,24 @@
  */
 
 export const DEFAULT_GRAPH_ZOOM = 1;
-export const MIN_GRAPH_ZOOM = 0.5;
-export const MAX_GRAPH_ZOOM = 4;
+/**
+ * Zoom floor: 0.25× shows the whole graph at a quarter of its fitted size,
+ * which is the useful end of "too far out" — past that a multi-document
+ * workspace is a field of unreadable dots and the user is better served by
+ * the flat map's fit-to-pane.
+ */
+export const MIN_GRAPH_ZOOM = 0.25;
+/**
+ * Zoom ceiling: 12×. Enough to read a single heading's label from a
+ * dense atom without letting the user get so far in that the viewBox
+ * becomes numerically noisy.
+ *
+ * This must stay in step with `MAX_CONCEPT_DISTANCE`: Concept derives its
+ * eye distance from this multiplier, and a ceiling here that outruns the
+ * distance clamp means the toolbar reads "1200%" while the camera has
+ * silently stopped at a lower number.
+ */
+export const MAX_GRAPH_ZOOM = 12;
 export const GRAPH_ZOOM_FACTOR = 1.25;
 
 export interface Point {

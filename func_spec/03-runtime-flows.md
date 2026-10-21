@@ -232,7 +232,7 @@ Pure and synchronous; no store writes, no network, no React.
 
 ```
 viewMode === 'graph'
-  → Editor renders <GraphView key={graphEpoch} labelPx zoom />
+  → Editor renders <GraphView key={graphEpoch} labelPx zoom scope />
   → buildWorkspaceGraph(documents, commentsByDoc)
       Pass 0  one node per document                          doc:<id>
       Pass 1  one node per real heading (level > 0)          heading:<docId>:<start>
@@ -250,8 +250,12 @@ viewMode === 'graph'
       Pass 5  @ mentions from comment rounds
                 section-scoped → the heading with the most matching paragraphs
                 edge kind '@', always sourced from the document node
+  → filterWorkspaceGraph(compiled, scope)          ← v0.5.9 scope filter
+      empty scope → identity (same object reference)
+      else prune documents / headings / path spine / unreachable terms
   → layoutWorkspaceGraph(graph, currentDocumentId)
       1. seed the CURRENT document as an atom at the origin
+           (or docs[0] when the current document was filtered out)
            assignAngles weighted by subtreeWidth
            assignShells collapses a lone H1 + its children so the ring does not collapse
            shellRadii → radii[0] = NUCLEUS_RING (88), then +SHELL_GAP (280) floors
@@ -266,12 +270,13 @@ viewMode === 'graph'
       projection 'sphere'  → toSphere → rotateSphere → toScreen, back-hemisphere culled
       projection 'concept' → <Concept3DScene> (lazy), three.js WebGL
           headingDepthByNode(edges) → depth → ConceptSlot {y, term}
-             document 0, heading 270 + depth·135 (positive y),
+             document 0, heading via conceptZForDepth (gaps compress past depth 6),
              term on underground ring at y = -200 (negative y)
           orbit drag → ConceptPose {yaw, pitch, distance, target}
           wheel / shift+drag / arrows / touch → OrbitControls, mirroring
           the pose through setConceptPose so the toolbar zoom + Reset
           still read from the same source
+      node click → setViewMode('split') + mvp:select-range (textarea remounts)
 ```
 
 `viewMode` is still `'write' | 'preview' | 'split' | 'graph'` — the three projections are an inner toggle within the Graph view, not three panes.

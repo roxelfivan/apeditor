@@ -14,10 +14,23 @@
 > functional specification). See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.5.8](https://img.shields.io/badge/version-0.5.8-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.8)
+[![v0.5.9](https://img.shields.io/badge/version-0.5.9-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.9)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
+
+---
+
+## What's new in v0.5.9
+
+> Graph can finally be narrowed. A **Filter** picks which documents and headings appear; zoom and labels go wider; deep 3D heading stacks compress instead of shooting out of frame; and a Graph / 3D node click opens the document in Split. Patch on top of [v0.5.8](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.8).
+
+1. **Filter.** Toolbar popover (same checkbox language as the `@`-section picker) includes or excludes documents and sections *before* layout. Flat, Globe, and Concept all see the same pruned graph. **Reset** clears the filter with the other Graph controls.
+2. **Wider zoom and labels.** Zoom **0.25×–12×** (was 0.5×–4×); labels **6–48 px** (was 12–28), including the 3D label layer. Concept eye distance is derived from the zoom ceiling so the toolbar percentage and the camera cannot disagree.
+3. **Deep-tier compression in 3D.** Ordinary Markdown outlines keep the full tier gap; past depth 6 the gap tapers so tall `Comment > A > B > …` paths stay readable.
+4. **Clicks open the document.** A short click on a Graph or 3D node switches to Split and selects the heading / `[[term]]` range (the textarea is unmounted while you are in Graph).
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.5.9 entry and prior changelogs.
 
 ---
 
