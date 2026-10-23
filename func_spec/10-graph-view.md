@@ -1,6 +1,6 @@
 # Graph view
 
-> A local knowledge graph of the workspace, compiled entirely in the browser from documents, headings, `[[wikilinks]]`, and `@` mentions. No LLM call, no new dependency, no store-schema change. Added in v0.5.4. Pan / orbit navigation and the Globe projection added in v0.5.7. The 3D Concept projection added in v0.5.8. Spreading the Concept stack and OrbitControls-driven free navigation in v0.5.8. The document / section scope filter added in v0.5.9. Zoom range widened to 0.25×–12× (which also fixes a silent Concept distance clamp), labels widened to 6–48px across all three projections, and heading tiers made depth-compressed so deep `Comment > A > B > …` paths stay legible.
+> A local knowledge graph of the workspace, compiled entirely in the browser from documents, headings, `[[wikilinks]]`, and `@` mentions. No LLM call, no new dependency, no store-schema change. Added in v0.5.4. Pan / orbit navigation and the Globe projection added in v0.5.7. The 3D Concept projection added in v0.5.8. Spreading the Concept stack and OrbitControls-driven free navigation in v0.5.8. The document / section scope filter added in v0.5.9, together with zoom widened to 0.25×–12× (which also fixes a silent Concept distance clamp), labels widened to 6–48px across all three projections, and heading tiers made depth-compressed so deep `Comment > A > B > …` paths stay legible. In v0.6.0 the Concept labels were made legible while rotating — typographic hierarchy by node kind, a camera-distance ramp, near-over-far paint order, and a halo — the dark-mode sphere colours were lifted off the background, and the editor toolbar became a single non-wrapping row.
 
 ---
 
@@ -443,6 +443,24 @@ Each `<circle>` has `role="button"` and `tabIndex={0}`, with an `onKeyDown` that
 
 The same `zoom` multiplier drives all three projections; Concept derives its eye distance from it ([§9d](#9d-3d-concept-projection)) rather than keeping a second value that could drift.
 
+### The toolbar is one row, always
+
+The editor toolbar in `Editor.tsx` and the controls group here were **both `flex-wrap`**, which stacked twice over: the controls broke internally at *their own* width, and the outer toolbar broke again at the pane's, dropping **Filter / Reset** onto a second line and then **Import / Save** onto a third. The overflow point drifted with pane width, so the same controls sat differently at every size.
+
+Both are now `flex-nowrap`, and the toolbar row scrolls horizontally instead:
+
+| Element | Contract |
+|---|---|
+| Toolbar row | `flex flex-nowrap`, one band at any width |
+| `div[data-editor-toolbar-scroll]` | `flex-1 min-w-0 overflow-x-auto` — the controls slide under the Import / Save cluster rather than stacking |
+| `GraphViewControls` | `inline-flex flex-nowrap shrink-0` — one unbreakable unit inside the scroller |
+| Import / Save | `shrink-0`, **outside** the scroller, so they never move off the right edge |
+| `flex-1 min-w-2` spacer | **Removed.** With a `nowrap` row it had nothing to push against, and it was the element whose wrap the second row used to break on |
+
+`min-w-0` on the scroller is load-bearing: a flex item keeps its intrinsic content width by default, so without it `overflow-x` never engages and the pinned cluster gets shoved out instead of the row scrolling.
+
+**The Filter popover is `position: fixed`**, so scrolling the toolbar would slide the button out from under a popover whose `left` / `top` were measured once at open. `GraphViewControls` re-measures the anchor on capture-phase `scroll` and on `resize`; `GraphScopeFilter`'s existing `clampToViewport` then re-clamps, because it is keyed on `anchor`. Capture-phase is required — the scroller is an *ancestor* of the button, not the event target.
+
 ## 9b. Globe projection
 
 [`utils/graph/sphereProject.ts`](../src/utils/graph/sphereProject.ts)
@@ -575,6 +593,45 @@ The spacing test walks **all 60 tiers** rather than checking depth 1 — with a 
 `GraphView` exposes `MIN/MAX_GRAPH_LABEL_PX` for the SVG; `Concept3DScene` re-clamps its own projected label layer. The scene is lazy-loaded and cannot import those constants without a static cycle back through `GraphView`, so the literals are the duplication.
 
 > They were silently wrong before this: the SVG allowed `12–28px` while the 3D layer clamped to `[10, 26]`. A user at 28px would see larger labels in Flat and Globe and identical labels in 3D, with no indication anything had been dropped. Both now read `[6, 48]`, and the test suite asserts the two agree by parsing both files.
+
+### Label legibility — hierarchy, depth, and separation
+
+Every label rendered at the same size, the same weight, and the same ink, at any camera distance, painted in DOM insertion order. Orbiting therefore collapsed the graph into one undifferentiated field of same-shaped words: the sphere radii already distinguished a hub from a heading from a `[[term]]`, and the label layer threw that information away.
+
+Four mechanisms now compose, all inside the existing label loop:
+
+| Mechanism | Rule | Why |
+|---|---|---|
+| **Kind hierarchy** | `conceptLabelStyle` — document `1.0` / `700`, heading `0.92` / `600`, term `0.82` / `500`. The current document is pinned to `1.0` / `700` | Mirrors `nodeRadius` (`36` / `20–26` / `16`). Type now carries the same distinction the geometry already draws |
+| **Depth ramp** | `conceptLabelDepth` — opacity `1 → 0.25`, scale `1 → 0.7` across `[0.55, 1.9] × poseDistance` | Flat and Globe fade by `depthScale`; the 3D layer had **no** depth cue, so a node 50 units away and one 3000 units away looked identical |
+| **Z-order** | `z-index = 2000 · (1 − t)`, from the ramp's own `t` | DOM order decided occlusion, so rotating the scene arbitrarily shuffled which label won an overlap |
+| **Halo** | Three-pass `text-shadow` in the canvas surface colour | The standard map-label treatment — keeps two overlapping words individually readable without a background plate |
+
+**Nearest wins, nothing disappears.** No label is ever hidden; the near one paints solid on top while the far one fades toward `0.25`. "Collision" is resolved by paint order and contrast, not by removal — the graph never silently loses wording.
+
+**The ramp is zoom-invariant by construction.** Both bounds are ratios of `poseDistance`, never absolute distances. Zooming tightens the readable band along with the geometry, so the ramp looks the same at 25% and 1200%. Absolute bounds would need a ceiling of their own and would silently disagree with `MAX_CONCEPT_DISTANCE` the moment either was retuned — the same bug class that constant is derived to prevent. `label: the depth ramp is zoom-invariant` asserts the property rather than the values.
+
+**Hover opts out of the fade.** The node under the pointer renders at full size and full opacity. Fading it would hide precisely the thing the user aimed at. The neighbour-lit set keeps the existing `0.25` dim.
+
+**The clamp survives the kind scale.** `Math.max(6, Math.min(48, s.labelPx))` is still the first thing the label block computes, and per-kind scaling is applied *after* it — folding the multiplier into the clamp would break `label: the 3D layer honours the SVG label range`, which parses that literal out of the source. `conceptLabelStyle` re-applies the floor afterwards so a `0.82`-scaled term at a 6px base cannot render at 4.9px.
+
+Two incidental fixes in the same block: labels are now **created before** they are positioned (a node appearing mid-session used to sit unpositioned for one frame, flashing at the layer origin), and the theme observer now rewrites the halo alongside the edge and floor materials, so a light-mode halo does not survive a dark flip as a fringe.
+
+### Sphere colours are lifted in dark mode
+
+`ConceptPalette`'s dark values originally reused the `ape.*` **surface** tokens. Those are right as SVG fills — a flat circle needs only to be distinguishable from the canvas — but the 3D spheres are `MeshStandardMaterial` under real lights, and an albedo that dark renders at essentially the background value:
+
+| Kind | Was | Contrast | Now | Contrast |
+|---|---|:-:|---|:-:|
+| `document` | `#222932` | 1.23:1 | `#5F738C` | 3.71:1 |
+| `heading` | `#1A2026` | 1.10:1 | `#465767` | 2.43:1 |
+| `term` | `#11171B` | **1.00:1** | `#3A4C58` | 2.03:1 |
+
+`term` was **byte-identical to the `ape.base` canvas**, so `[[term]]` spheres were not "dark" so much as invisible. A whole-frame luminance histogram confirmed it: 98.5% of pixels fell in the darkest eighth of the range, with the two brightest buckets empty.
+
+The replacements preserve the original **hue and saturation exactly** and raise only lightness, so the cool blue-grey family is unchanged and the three kinds stay related. `document` is the lightest because a hub is the anchor you navigate by. Light mode is unchanged.
+
+> **Do not "simplify" these back to the `ape.*` tokens.** They read as fills in the SVG and as near-black albedo here. The two surfaces want different colours for the same node kind.
 
 ### Slot shape
 

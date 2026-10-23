@@ -40,8 +40,8 @@ import { filterWorkspaceGraph, createScope, createNoneScope, isScopeEmpty, isNon
 import { clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, MIN_GRAPH_ZOOM, MAX_GRAPH_ZOOM } from '${path.join(ROOT, 'src/utils/graph/graphCamera.ts').replace(/\\/g, '/')}';
 import { toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION } from '${path.join(ROOT, 'src/utils/graph/sphereProject.ts').replace(/\\/g, '/')}';
 import { applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes } from '${path.join(ROOT, 'src/utils/graph/fisheyeLens.ts').replace(/\\/g, '/')}';
-import { conceptZForDepth, conceptZStep, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, clampConceptDistance, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, MIN_CONCEPT_Z_STEP, CONCEPT_Z_COMPRESS_AFTER, CONCEPT_Z_COMPRESS_RATIO, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE } from '${path.join(ROOT, 'src/utils/graph/conceptProject.ts').replace(/\\/g, '/')}';
-export { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, headingDepthByNode, filterWorkspaceGraph, createScope, createNoneScope, isScopeEmpty, isNoneScope, normalizeScope, resolveDocumentIds, resolveSectionIds, clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, MIN_GRAPH_ZOOM, MAX_GRAPH_ZOOM, toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION, applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes, conceptZForDepth, conceptZStep, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, clampConceptDistance, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, MIN_CONCEPT_Z_STEP, CONCEPT_Z_COMPRESS_AFTER, CONCEPT_Z_COMPRESS_RATIO, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE };
+import { conceptZForDepth, conceptZStep, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, clampConceptDistance, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, conceptLabelStyle, conceptLabelDepth, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, MIN_CONCEPT_Z_STEP, CONCEPT_Z_COMPRESS_AFTER, CONCEPT_Z_COMPRESS_RATIO, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE, MIN_CONCEPT_LABEL_PX, CONCEPT_LABEL_NEAR_RATIO, CONCEPT_LABEL_FAR_RATIO, CONCEPT_LABEL_MIN_OPACITY, CONCEPT_LABEL_MIN_SCALE } from '${path.join(ROOT, 'src/utils/graph/conceptProject.ts').replace(/\\/g, '/')}';
+export { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, headingDepthByNode, filterWorkspaceGraph, createScope, createNoneScope, isScopeEmpty, isNoneScope, normalizeScope, resolveDocumentIds, resolveSectionIds, clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, MIN_GRAPH_ZOOM, MAX_GRAPH_ZOOM, toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION, applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes, conceptZForDepth, conceptZStep, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, clampConceptDistance, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, conceptLabelStyle, conceptLabelDepth, MIN_CONCEPT_LABEL_PX, CONCEPT_LABEL_NEAR_RATIO, CONCEPT_LABEL_FAR_RATIO, CONCEPT_LABEL_MIN_OPACITY, CONCEPT_LABEL_MIN_SCALE, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, MIN_CONCEPT_Z_STEP, CONCEPT_Z_COMPRESS_AFTER, CONCEPT_Z_COMPRESS_RATIO, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE };
 `
 );
 
@@ -119,6 +119,13 @@ const {
   layoutToWorld,
   assignConceptHeights,
   conceptPoseFromCamera,
+  conceptLabelStyle,
+  conceptLabelDepth,
+  MIN_CONCEPT_LABEL_PX,
+  CONCEPT_LABEL_NEAR_RATIO,
+  CONCEPT_LABEL_FAR_RATIO,
+  CONCEPT_LABEL_MIN_OPACITY,
+  CONCEPT_LABEL_MIN_SCALE,
   MIN_CONCEPT_DISTANCE,
   MAX_CONCEPT_DISTANCE,
   DEFAULT_CONCEPT_DISTANCE,
@@ -1542,6 +1549,163 @@ test('label: the 3D layer honours the SVG label range', () => {
     `3D label ceiling (${clamp[2]}) must match MAX_GRAPH_LABEL_PX (${max})`
   );
   assert.ok(min < 16 && max >= 16, 'the default label size must sit inside the range');
+});
+
+/* --------------------------------------------------------------------- */
+/* Concept label presentation                                             */
+/* --------------------------------------------------------------------- */
+
+test('label: the 3D layer keeps the SVG clamp intact behind the kind scale', () => {
+  // `conceptLabelStyle` applies a per-kind multiplier *after* the clamp.
+  // Folding it in — or re-deriving the clamp — would break the range test
+  // above, because that test parses this literal out of the source rather
+  // than importing it (importing the scene would pull three.js into the
+  // harness). Assert the literal is still present and still the first
+  // thing the label block computes.
+  const conceptSrc = readFileSync(
+    path.join(ROOT, 'src/components/Concept3DScene.tsx'),
+    'utf8'
+  );
+  assert.ok(
+    conceptSrc.includes('Math.max(6, Math.min(48, s.labelPx))'),
+    'Concept3DScene must still clamp labelPx to the SVG range before any kind scaling'
+  );
+  // The halo has to be theme-aware; a hardcoded light-mode halo survives a
+  // dark flip as a visible fringe around every glyph.
+  assert.ok(
+    conceptSrc.includes('labelHaloCss(palette.halo)'),
+    'the label halo must read the theme palette, not a literal colour'
+  );
+});
+
+test('label: kind drives a typographic hierarchy', () => {
+  const base = 16;
+  const doc = conceptLabelStyle('document', false, base);
+  const head = conceptLabelStyle('heading', false, base);
+  const term = conceptLabelStyle('term', false, base);
+
+  // The point of the change: documents read larger than headings, which
+  // read larger than terms. Before this, all three rendered identically
+  // and the sphere radii were the only cue.
+  assert.ok(doc.scale > head.scale, 'a document label outranks a heading');
+  assert.ok(head.scale > term.scale, 'a heading label outranks a term');
+  assert.ok(doc.fontPx > head.fontPx && head.fontPx > term.fontPx);
+  assert.ok(doc.weight > head.weight && head.weight > term.weight);
+  assert.equal(doc.fontPx, base, 'a document label is the full chosen size');
+});
+
+test('label: the current document is never demoted', () => {
+  const base = 16;
+  for (const kind of ['document', 'heading', 'term']) {
+    const style = conceptLabelStyle(kind, true, base);
+    assert.equal(style.scale, 1, `${kind} current label keeps full size`);
+    assert.equal(style.weight, 700, `${kind} current label stays boldest`);
+    assert.equal(style.fontPx, base);
+  }
+  // The open page outranks a plain document hub too, not just a term.
+  assert.ok(
+    conceptLabelStyle('document', true, base).weight >=
+      conceptLabelStyle('document', false, base).weight
+  );
+});
+
+test('label: a kind scale can never push a label under the floor', () => {
+  // At the 6px base a term's 0.82 scale would round to 4.9px — below the
+  // point where glyphs stop being letters. The floor is applied after the
+  // multiplier, so the smallest readable size wins.
+  assert.equal(conceptLabelStyle('term', false, MIN_CONCEPT_LABEL_PX).fontPx,
+    MIN_CONCEPT_LABEL_PX);
+  assert.equal(conceptLabelStyle('heading', false, MIN_CONCEPT_LABEL_PX).fontPx,
+    MIN_CONCEPT_LABEL_PX);
+  // And a nonsense base cannot produce a non-finite size either.
+  const junk = conceptLabelStyle('term', false, Number.NaN);
+  assert.ok(Number.isFinite(junk.fontPx), 'a NaN base still yields a finite size');
+  assert.equal(junk.fontPx, MIN_CONCEPT_LABEL_PX);
+});
+
+test('label: the depth ramp decays monotonically with distance', () => {
+  const pose = DEFAULT_CONCEPT_DISTANCE;
+  let prevOpacity = Infinity;
+  let prevScale = Infinity;
+  // Walk well past the far ratio — the ramp must flatten at the floor
+  // rather than keep sliding into negative territory.
+  for (let d = 0; d <= pose * 4; d += pose / 40) {
+    const depth = conceptLabelDepth(d, pose);
+    assert.ok(
+      depth.opacity <= prevOpacity,
+      `opacity must not rise with distance (${d} → ${depth.opacity} > ${prevOpacity})`
+    );
+    assert.ok(
+      depth.scale <= prevScale,
+      `scale must not rise with distance (${d} → ${depth.scale} > ${prevScale})`
+    );
+    assert.ok(depth.opacity >= CONCEPT_LABEL_MIN_OPACITY - 1e-9);
+    assert.ok(depth.opacity <= 1 + 1e-9);
+    assert.ok(depth.scale >= CONCEPT_LABEL_MIN_SCALE - 1e-9);
+    assert.ok(depth.scale <= 1 + 1e-9);
+    assert.ok(depth.t >= 0 && depth.t <= 1, 't is a normalised 0–1 ramp position');
+    prevOpacity = depth.opacity;
+    prevScale = depth.scale;
+  }
+});
+
+test('label: the depth ramp honours its near and far ratios', () => {
+  const pose = DEFAULT_CONCEPT_DISTANCE;
+  // Inside the near band a label is full-strength foreground; past the far
+  // band it is floored. Both ends are what the scene relies on.
+  assert.equal(conceptLabelDepth(pose * CONCEPT_LABEL_NEAR_RATIO, pose).opacity, 1);
+  assert.equal(conceptLabelDepth(0, pose).opacity, 1);
+  assert.ok(
+    Math.abs(
+      conceptLabelDepth(pose * CONCEPT_LABEL_FAR_RATIO, pose).opacity -
+        CONCEPT_LABEL_MIN_OPACITY
+    ) < 1e-9
+  );
+  // Monotone by construction: near < far must cost opacity.
+  assert.ok(
+    conceptLabelDepth(pose * CONCEPT_LABEL_FAR_RATIO, pose).opacity <
+      conceptLabelDepth(pose * CONCEPT_LABEL_NEAR_RATIO, pose).opacity
+  );
+});
+
+test('label: the depth ramp is zoom-invariant', () => {
+  // **The load-bearing property.** Both bounds are ratios of the orbit
+  // distance, so scaling distance and pose together must be a no-op. If a
+  // future edit swaps in absolute bounds, this fails — and with it the
+  // silent disagreement with `MAX_CONCEPT_DISTANCE` that
+  // `MAX_CONCEPT_DISTANCE = MAX_GRAPH_ZOOM × DEFAULT_CONCEPT_DISTANCE`
+  // exists to prevent.
+  for (const pose of [DEFAULT_CONCEPT_DISTANCE, 4000, 600]) {
+    for (const ratio of [0, 0.3, 0.6, 1.0, 1.4, 2.5, 9]) {
+      const d = pose * ratio;
+      const base = conceptLabelDepth(d, pose);
+      for (const k of [2, 4, 10]) {
+        const scaled = conceptLabelDepth(d * k, pose * k);
+        assert.ok(
+          Math.abs(scaled.opacity - base.opacity) < 1e-9,
+          `opacity changed when both distance and pose were scaled by ${k}`
+        );
+        assert.ok(
+          Math.abs(scaled.scale - base.scale) < 1e-9,
+          `scale changed when both distance and pose were scaled by ${k}`
+        );
+      }
+    }
+  }
+});
+
+test('label: a degenerate pose still yields a usable ramp', () => {
+  // A zero or NaN pose must not produce NaN opacity, which would render
+  // every label invisible (`opacity: NaN` is dropped by the CSSOM).
+  for (const pose of [0, Number.NaN, -5]) {
+    for (const d of [0, 500, 5000]) {
+      const depth = conceptLabelDepth(d, pose);
+      assert.ok(Number.isFinite(depth.opacity), `opacity finite for pose=${pose}`);
+      assert.ok(Number.isFinite(depth.scale), `scale finite for pose=${pose}`);
+      assert.ok(depth.opacity >= CONCEPT_LABEL_MIN_OPACITY - 1e-9);
+      assert.ok(depth.scale >= CONCEPT_LABEL_MIN_SCALE - 1e-9);
+    }
+  }
 });
 
 console.log(`${passed} passed`);

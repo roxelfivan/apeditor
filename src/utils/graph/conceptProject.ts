@@ -426,6 +426,137 @@ export function layoutToWorld(x: number, y: number, worldY: number): Point3 {
 }
 
 /* --------------------------------------------------------------------- */
+/* Label presentation                                                      */
+/* --------------------------------------------------------------------- */
+
+/**
+ * Typographic hierarchy for a node's on-canvas label.
+ *
+ * **The mirror of the sphere hierarchy.** `nodeRadius` already tells a
+ * document hub (36) from a heading (20–26) from a `[[term]]` (16), and the
+ * label layer was throwing that information away — every label rendered at
+ * the same size and weight, so an orbit collapsed the whole graph into one
+ * undifferentiated field of same-shaped words. Scaling the *type* by kind
+ * restores a distinction the geometry already draws.
+ *
+ * The current document is never demoted: it is the page the user is
+ * looking at, and its title is the one label guaranteed to stay readable
+ * at any orbit angle.
+ */
+export interface ConceptLabelStyle {
+  /** Rendered size in CSS px, already clamped at the label floor. */
+  fontPx: number;
+  /** CSS `font-weight`, 500–700. */
+  weight: number;
+  /** The size multiplier applied to the viewer's chosen `labelPx`. */
+  scale: number;
+}
+
+/** Hard floor on a rendered label, mirroring `MIN_GRAPH_LABEL_PX` in `GraphView`. */
+export const MIN_CONCEPT_LABEL_PX = 6;
+
+/** Per-kind size and weight. Larger sphere → larger, heavier type. */
+const LABEL_STYLE_BY_KIND: Record<
+  GraphNodeKind,
+  { scale: number; weight: number }
+> = {
+  document: { scale: 1, weight: 700 },
+  heading: { scale: 0.92, weight: 600 },
+  term: { scale: 0.82, weight: 500 },
+};
+
+/**
+ * Size and weight for a node's label.
+ *
+ * `baseFontPx` is the viewer's clamped `labelPx` — the same number the SVG
+ * path uses as `userFont`. The floor is applied **here, after** the kind
+ * multiplier, so shrinking a term from a 6px base cannot push it below the
+ * point where glyphs stop being letters and become texture.
+ */
+export function conceptLabelStyle(
+  kind: GraphNodeKind,
+  isCurrent: boolean,
+  baseFontPx: number
+): ConceptLabelStyle {
+  const base = Number.isFinite(baseFontPx) ? baseFontPx : MIN_CONCEPT_LABEL_PX;
+  const spec = LABEL_STYLE_BY_KIND[kind] ?? LABEL_STYLE_BY_KIND.term;
+  // The open document keeps full size and the boldest weight regardless of
+  // what the viewer dialled in — it anchors the whole graph.
+  const scale = isCurrent ? 1 : spec.scale;
+  const weight = isCurrent ? 700 : spec.weight;
+  return {
+    fontPx: Math.max(MIN_CONCEPT_LABEL_PX, base * scale),
+    weight,
+    scale,
+  };
+}
+
+/**
+ * Where the depth ramp starts, as a fraction of the orbit distance.
+ *
+ * Anything nearer is treated as fully foreground. At the default 1800-unit
+ * orbit that is the ~990 units around the eye — the near half of the
+ * stack — without having to know how big the graph is.
+ */
+export const CONCEPT_LABEL_NEAR_RATIO = 0.55;
+/** Where the ramp bottoms out, as a fraction of the orbit distance. */
+export const CONCEPT_LABEL_FAR_RATIO = 1.9;
+/** Opacity floor. Far labels recede into texture rather than vanishing. */
+export const CONCEPT_LABEL_MIN_OPACITY = 0.25;
+/** Size floor. Far labels shrink, but never past legibility. */
+export const CONCEPT_LABEL_MIN_SCALE = 0.7;
+
+/** How a label's appearance decays with distance from the eye. */
+export interface ConceptLabelDepth {
+  /** Opacity multiplier, in `[CONCEPT_LABEL_MIN_OPACITY, 1]`. */
+  opacity: number;
+  /** Size multiplier, in `[CONCEPT_LABEL_MIN_SCALE, 1]`. */
+  scale: number;
+  /**
+   * Normalised distance across the ramp: `0` at the near ratio, `1` at the
+   * far ratio, clamped. Exposed so the scene's `z-index` is derived from
+   * the *same* quantity as the fade — two independently computed depth
+   * values would eventually rank a near label behind a far one.
+   */
+  t: number;
+}
+
+/**
+ * Fade and shrink a label by its distance from the camera.
+ *
+ * **Both bounds are ratios of `poseDistance`, never absolute distances.**
+ * That is the whole design: the band `[NEAR, FAR] × poseDistance` scales
+ * with the orbit radius, so zooming tightens the readable band along with
+ * the geometry and the ramp looks identical at 25% and 1200%. Absolute
+ * bounds would need a ceiling of their own and would silently disagree
+ * with `MAX_CONCEPT_DISTANCE` the moment either was retuned — the exact
+ * class of bug that constant is derived to prevent.
+ *
+ * Flat and Globe already fade by depth (`depthScale` in `GraphView`); the
+ * 3D layer had no depth ramp at all, which is why orbiting it piled every
+ * distance onto one visual plane.
+ */
+export function conceptLabelDepth(
+  distanceToCamera: number,
+  poseDistance: number
+): ConceptLabelDepth {
+  const pose = Number.isFinite(poseDistance)
+    ? Math.max(poseDistance, 1e-6)
+    : 1;
+  const near = CONCEPT_LABEL_NEAR_RATIO * pose;
+  const far = CONCEPT_LABEL_FAR_RATIO * pose;
+  const d = Number.isFinite(distanceToCamera) ? distanceToCamera : near;
+  // Clamped to [0, 1] so a node inside the near band is never brighter
+  // than foreground, and one past the far band never goes negative.
+  const t = Math.min(1, Math.max(0, (d - near) / (far - near)));
+  return {
+    opacity: 1 - (1 - CONCEPT_LABEL_MIN_OPACITY) * t,
+    scale: 1 - (1 - CONCEPT_LABEL_MIN_SCALE) * t,
+    t,
+  };
+}
+
+/* --------------------------------------------------------------------- */
 /* Heights                                                                */
 /* --------------------------------------------------------------------- */
 

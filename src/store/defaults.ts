@@ -82,78 +82,113 @@ export const initialDocs: DocumentRecord[] = [
     'Welcome',
     `# 👋 Welcome to ApEditor
 
-A local-first AI markdown editor. Everything you write stays in your
-browser.
+A local-first AI markdown editor. Your documents, comments, chat
+history, and revisions live in this browser — nothing is uploaded
+until you connect an AI.
 
-## 1. 🔑 Connect an AI
+## 1. 🔑 Connect an AI (optional)
 
-**Open Settings (gear, top right) and paste your API key.** That's
-the only setup. Or choose **Google AI Mode (no key)** in Settings if
-you prefer opening Google AI Mode in a new tab instead. The chat
-panel on the right can then answer questions and rewrite passages.
+**Open Settings (gear, top right) and paste an API key.** Choose a
+provider there — each one brings its own endpoint and model defaults.
+If you'd rather not use a key, pick **Google AI Mode (no key)**, which
+opens Google in a new tab instead; paste an answer back with
+\`⌘/Ctrl + Enter\`. The whole app works fine with no AI at all.
 
-## 2. ❓ Open Help anytime
+## 2. ✍️ Write, Preview, or Split
 
-**Click ? in the top bar** (or press \`⌘/Ctrl + /\`) for the full
-user guide. Help uses the same Light / Dark theme as the app.
+**Pick a mode from the editor dropdown.** **Write** is a plain
+textarea, **Preview** renders your Markdown, and **Split** shows both.
+\`⌘/Ctrl + B\` / \`I\` / \`U\` bold, italicise, and underline while
+you type; the **Format** menu also adjusts the text size.
 
-## 3. ✍️ Just write
+## 3. 🕸️ Explore the Graph
 
-**Type in Write.** Markdown renders live in Preview. Use the editor
-view dropdown to switch **Write**, **Preview**, or **Split**.
+**Pick Graph** in the same dropdown to see your workspace as a map of
+documents, headings, and links — built entirely in your browser. Link
+pages with \`[[Page]]\`, point at a section with \`[[Page#Heading]]\`,
+and pull in another document by typing \`@\` followed by its name.
+Three projections share one graph:
+
+- **Graph** — a flat map. Drag the background to pan.
+- **Globe** — the same nodes wrapped on a sphere. Drag to spin it.
+- **3D** — headings rise into stacked tiers you can orbit.
+
+Use **Filter** to narrow the graph to particular documents and
+sections. Clicking a document node opens it; clicking a heading jumps
+straight to that section.
 
 ## 4. 💬 Comment on a passage
 
-**Select text → click Comment in the editor toolbar → write your
-note.** A highlight and a numbered margin badge mark the passage.
-Open a badge to **Edit** or **Delete** any comment (including after
-send). When ready, click **Send to AI** under the editor to send the
-article plus every comment as one batch. \`⌘/Ctrl + Z\` undoes the
-last comment change. Comments that can no longer be found show as
-**Outdated**.
+**Select text → Comment in the editor toolbar.** A highlight and a
+numbered margin badge mark the passage. Open a badge to **Edit** or
+**Delete** it, even after sending. When you're ready, **Send to AI**
+under the editor sends the article plus every comment as one batch,
+and \`⌘/Ctrl + Z\` undoes the last comment change.
 
-## 5. @ Reference another document
+If the text under a comment is later edited, the comment turns
+**Outdated**. The tray then offers **N stale comments — Re-link or
+Dismiss**: **Re-link** opens a picker of headings and paragraphs so you
+can point the comment at the right place again; **Dismiss** drops it.
 
-**Type @ in Chat, a comment, or rejection feedback.** Pick another
-document, then **Whole document** or tick headings and **Use
-selection**. A chip (and often a § caption) shows what you attached.
-You need at least two documents in the sidebar.
+## 5. ✅ Apply or Reject AI edits
 
-## 6. 💾 Save a snapshot
+**AI rewrites arrive as cards**, each with a rationale. Click **Apply**
+or **Reject**. For several changes in one reply, use **Apply N changes**
+in the chat footer. If a quote no longer matches the document, select
+the target text and use **Highlight Apply** instead.
 
-**Click Save in the editor toolbar** when you like a draft. Open
-**Revision history** (clock, top bar) later to diff and restore
-(\`⌘/Ctrl + h\`).
+## 6. @ Reference another document
+
+**Type \`@\` in Chat, a comment, or rejection feedback.** Pick another
+document, then choose **Whole document** or tick individual headings
+and **Use selection**. A chip — and often a \`§\` caption — shows what
+you attached. You need at least two documents in the sidebar.
 
 ## 7. 📚 Use a saved prompt
 
 **Open Prompt library** (bookmark, top bar) or press \`⌘/Ctrl + ,\`.
-Click any prompt to drop it into the chat input, or write your own
-and ask the AI to rewrite / shorten / expand the selection. Check
+Click a prompt to drop it into the chat input, or write your own and
+ask the AI to rewrite / shorten / expand the selection. Tick
 **include selection** in the chat panel when you want the selected
-text sent with your message.
+text sent along with your message.
 
-## 8. ✅ Apply or Reject AI edits
-
-**AI rewrites show up as cards** with a rationale. Click **Apply** or
-**Reject** on each one. For several changes in one reply, use
-**Apply N changes** in the chat footer. After Apply, open the comment
-badge to read the rationale (multi-round history if you follow up).
-If a quote no longer matches the document, select the target text and
-use **Highlight Apply**.
-
-## 9. ✨ Get sentence suggestions while writing
+## 8. ✨ Get sentence suggestions while writing
 
 **Predict starts off.** Click **Predict** (or \`⌘/Ctrl + \\\`) to turn
-it on and request a suggestion. Press \`Tab\` or **Accept** to insert,
-\`Esc\` or **Reject** to dismiss.
+it on and request a suggestion at the cursor. Press \`Tab\` to insert
+it, \`Esc\` to dismiss it. Click the same button again to turn it back
+off.
+
+## 9. 💾 Save a snapshot
+
+**Click Save in the editor toolbar** when you like a draft. Open
+**Revision history** (clock, top bar, or \`⌘/Ctrl + h\`) later to diff
+any two revisions and restore one.
 
 ## 10. 📷 Import text from photos or PDFs
 
-**Click Import text from photos or PDFs in the editor toolbar.** Pick
-an image or a PDF. Recognition stays in the browser; the extracted
-text is rewritten as readable Markdown by your configured model
-before it is inserted at your caret.`
+**Open the import button in the editor toolbar** and pick an image or
+a PDF. Recognition runs in your browser; the extracted text is
+rewritten as readable Markdown by your configured model and inserted
+at your caret. Pick which languages to recognise with the three
+checkboxes.
+
+## 11. 💾 Keep a copy outside the browser
+
+The same import button also exports. **Export .md** downloads this
+document as plain Markdown. **Export .json** packs the document with
+its comments, chat history, and revisions into one versioned file —
+worth taking before clearing browser data, or for moving a workspace
+to another machine. **Import .json** restores one, asking before it
+overwrites anything.
+
+## 12. ❓ Help, shortcuts, and settings
+
+**Help** (\`?\` in the top bar, or \`⌘/Ctrl + /\`) is the full guide,
+and it has a **Keyboard shortcuts** page listing every shortcut. The
+**Settings** modal (\`⌘/Ctrl + .\`) holds your provider, key, model,
+and the two font sizes. Light and dark themes follow the top-bar
+toggle.`
   ),
   makeDoc(
     'Ideas',

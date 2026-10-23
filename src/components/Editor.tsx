@@ -1242,8 +1242,28 @@ export function Editor() {
       // regardless of the global UI font-size setting.
       style={{ fontSize: '14px' }}
     >
-      <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-paper-hairline dark:border-cyber-border bg-paper-base dark:bg-ape-base text-[15px] leading-none">
-        <div className="relative inline-block">
+      {/* Toolbar band — **one row, always**. It used to be
+          `flex flex-wrap`, which meant the overflow point drifted with the
+          pane width and Import / Save kept landing alone on a second line
+          under the graph controls. Now the row is `flex-nowrap` and
+          horizontally scrollable: a control group that outgrows the pane
+          slides under the Import / Save cluster instead of stacking, and
+          the pinned cluster never moves off the right edge.
+
+          The scroller is a sibling of the pinned group, not their parent,
+          so scrolling the controls cannot drag the Import / Save buttons
+          out of reach — they are always one click away.
+      */}
+      <div className="flex flex-nowrap items-center gap-2 px-4 py-2 border-b border-paper-hairline dark:border-cyber-border bg-paper-base dark:bg-ape-base text-[15px] leading-none">
+        {/* Scrolling region. `min-w-0` on a flex item is what actually lets
+            it shrink below its content width — without it the child keeps
+            its intrinsic width, `overflow-x` never engages, and the pinned
+            group gets pushed off instead of the row scrolling. */}
+        <div
+          data-editor-toolbar-scroll
+          className="flex flex-nowrap items-center gap-2 min-w-0 flex-1 overflow-x-auto overscroll-x-contain [scrollbar-width:thin]"
+        >
+        <div className="relative inline-block shrink-0">
           <select
             value={viewMode}
             onChange={(e) =>
@@ -1552,11 +1572,14 @@ export function Editor() {
         </button>
         </>
         )}
-        {/* Spacer pushes Import / Save to the trailing edge without
-            forcing a full-row wrap (`basis-full` used to drop them
-            onto a second line). All toolbar controls stay on one
-            horizontal band when width allows. */}
-        <div className="flex-1 min-w-2" aria-hidden />
+        </div>
+        {/* Import / Save — pinned to the trailing edge, **outside** the
+            scroller above. `shrink-0` keeps both buttons at full size
+            however hard the controls are squeezed, so the two actions that
+            must never be hunted for are permanently in the same place. The
+            old `flex-1 min-w-2` spacer is gone: with the row `flex-nowrap`
+            it had nothing to push against, and it was the element whose
+            wrap the second row used to break on. */}
         <div className="inline-flex items-center gap-2 shrink-0">
           <FileActionsButton />
           <button

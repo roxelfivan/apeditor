@@ -383,7 +383,7 @@ The env vars seed **defaults only**. The Settings modal always wins.
 
 | Title | Shape |
 |---|---|
-| **Welcome** | H1 `# 👋 Welcome to ApEditor` plus **10** numbered `##` sections: Connect an AI · Open Help anytime · Just write · Comment on a passage · Reference another document · Save a snapshot · Use a saved prompt · Apply or Reject AI edits · Get sentence suggestions while writing · Import text from photos or PDFs. It is a live tutorial, not a changelog. |
+| **Welcome** | H1 `# 👋 Welcome to ApEditor` plus **12** numbered `##` sections: Connect an AI · Write, Preview, or Split · Explore the Graph · Comment on a passage · Apply or Reject AI edits · Reference another document · Use a saved prompt · Get sentence suggestions while writing · Save a snapshot · Import text from photos or PDFs · Keep a copy outside the browser · Help, shortcuts, and settings. It is a live tutorial, not a changelog. |
 | **Ideas** | H1 `# Ideas` plus three bullets: a lighthouse keeper who hears the sea, a field guide to imaginary birds, an essay on why we read in the bath. |
 
 Both are created by `makeDoc(title, content)` with `uuid()` ids at store construction.

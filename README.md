@@ -14,10 +14,25 @@
 > functional specification). See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.5.9](https://img.shields.io/badge/version-0.5.9-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.9)
+[![v0.6.0](https://img.shields.io/badge/version-0.6.0-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.0)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
+
+---
+
+## What's new in v0.6.0
+
+> The 3D view is finally readable while you spin it, and you can actually see the balls in dark mode. Labels gain a typographic hierarchy and a distance fade; dark-mode spheres are lifted off the background; the editor toolbar stops stacking onto three rows; and the first-run Welcome document finally explains the Graph view. Minor release on top of [v0.5.9](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.9).
+
+1. **3D labels are legible while rotating.** They were all the same size, weight, and ink at any distance, painted in DOM order — so orbiting collapsed the graph into overlapping mush. Labels now scale and embolden by node kind (document > heading > term), fade and shrink with camera distance, paint near-over-far, and carry a text halo. **No label is ever hidden**; the hovered one stays at full size so you can always read what you are pointing at.
+2. **Dark-mode 3D spheres are visible.** The palette had been using the flat `ape.*` surface tokens — correct as SVG fills, wrong for a lit 3D canvas. `[[term]]` spheres were rendering at *exactly* the background colour, so they vanished. All three sphere colours are lifted while keeping their original hue and saturation.
+3. **The toolbar is one row again.** Both the row and the graph controls were `flex-wrap`, stacking twice over as the pane resized — Filter / Reset landed on a second line and Import / Save on a third. The row is now `flex-nowrap` and scrolls horizontally, with Import / Save pinned to the right edge.
+4. **Welcome document rewritten** (10 → 12 sections). The Graph view — projections, the Filter, `[[wikilink]]` syntax — was missing from onboarding entirely.
+
+No new dependency, no store-schema change, no migration. Flat and Globe rendering are untouched.
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.0 entry and prior changelogs.
 
 ---
 

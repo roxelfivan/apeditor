@@ -50,6 +50,10 @@ Hover a node to dim everything that is not a neighbor. Click a document to open 
 
 **About Globe.** Only the near half of the sphere is drawn — the far side would otherwise render mirrored onto the screen. So a node on the far side is not shown at all rather than shown wrong; keep turning the globe, or press **Reset** to return to the flat map. This is the standard trade-off for globe views, and it is why the flat map remains the default.
 
+**Reading labels in 3D.** Labels change size by node kind — a document title is largest and boldest, a `[[term]]` smallest — and they fade and shrink as they move away from you, so the near field is clear and the far field settles into texture. Labels nearer the camera always draw on top of the ones behind, and no label is ever removed. Hovering a node keeps its label at full size and brightness. Each label carries a soft halo, so two overlapping labels stay individually readable.
+
+**About the toolbar row.** The editor toolbar is a single row. If the window is too narrow for every control, the row scrolls sideways and **Import** / **Save** stay pinned at the right edge.
+
 ## Bold, italic, underline
 
 Select text, then click **Format** in the toolbar and pick **Bold**, **Italic**, or **Underline** from the menu.

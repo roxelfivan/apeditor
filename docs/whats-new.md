@@ -2,6 +2,20 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## v0.6.0 — Legible 3D, one-row toolbar
+
+**Spin the 3D view without losing the words, and see the balls in dark mode.**
+
+- **3D labels stay readable while you rotate.** Labels now differ by node kind — a document title is largest and boldest, a `[[term]]` is smallest — and they fade and shrink as they move away from you, so the near field reads clearly and the far field settles into texture. Labels nearer the camera always paint on top of the ones behind. **Nothing is ever hidden**, and the label under your pointer stays at full size.
+- **Overlapping labels stay separate.** Each label gets a soft halo in the background colour, the same treatment map labels use. It follows the Light / Dark toggle.
+- **Dark-mode spheres are visible.** They had been using the flat background-surface colours that the 2D map uses, which left `[[term]]` spheres rendering at exactly the same colour as the background. All three sphere colours are now lifted while keeping their original tone, and the current document still stands out in green.
+- **The editor toolbar stays on one row.** It used to wrap, so Filter / Reset moved to a second line and Import / Save to a third as the pane narrowed. The row now scrolls sideways instead, and Import / Save always stay at the right edge.
+- **The Welcome document is rewritten** (12 sections) and now includes the Graph view — the three projections, the Filter, and `[[Page]]` / `[[Page#Heading]]` linking — which was missing from the original.
+
+No new settings, no migration. The Flat map and Globe look exactly as before.
+
+---
+
 ## v0.5.9 — Graph Filter, wider zoom / labels
 
 **Narrow the map, zoom further, click to open.**

@@ -228,6 +228,30 @@ export function GraphViewControls({
     setFilterOpen(true);
   };
 
+  // The toolbar is a horizontal scroller (see the editor toolbar), and the
+  // filter popover is `position: fixed` against the viewport. Scrolling the
+  // toolbar therefore slides the Filter button out from under a popover
+  // whose `left` / `top` were measured once at open — the panel would hang
+  // in empty space mid-toolbar. Re-measuring on scroll and resize keeps it
+  // welded to the button it belongs to.
+  //
+  // Capture-phase, because the scroller is an ancestor rather than the
+  // event's target, and `passive` because this must never block the scroll
+  // it is reacting to.
+  useEffect(() => {
+    if (!filterOpen) return;
+    const remeasure = () => {
+      const rect = filterBtnRef.current?.getBoundingClientRect();
+      if (rect) setAnchor(rect);
+    };
+    window.addEventListener('scroll', remeasure, { capture: true, passive: true });
+    window.addEventListener('resize', remeasure);
+    return () => {
+      window.removeEventListener('scroll', remeasure, { capture: true });
+      window.removeEventListener('resize', remeasure);
+    };
+  }, [filterOpen]);
+
   // Escape closes the popover as well as clearing hover, so the panel
   // is dismissable without reaching for the button again.
   useEffect(() => {
@@ -246,7 +270,12 @@ export function GraphViewControls({
   const canZoomIn = zoom < MAX_GRAPH_ZOOM - 0.001;
   return (
     <div
-      className="inline-flex flex-wrap items-center gap-1 text-[15px] leading-none"
+      // `flex-nowrap`, not `flex-wrap`. The controls sit inside the editor
+      // toolbar's horizontal scroller, so this group is one unbreakable
+      // unit that slides when the pane is narrow. Wrapping it put Filter
+      // and Reset on a second line even when the outer toolbar had room,
+      // because the wrap happened at *this* width, not the pane's.
+      className="inline-flex flex-nowrap items-center gap-1 shrink-0 text-[15px] leading-none"
       data-graph-view-controls
     >
       <button

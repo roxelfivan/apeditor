@@ -1,3 +1,26 @@
+## v0.6.0 — Legible 3D, single-row toolbar, refreshed onboarding
+
+Minor release on top of [v0.5.9](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.9). The 3D Concept projection is now readable while orbiting **and** has visible dark-mode spheres; the editor toolbar no longer stacks onto multiple rows; and the first-run Welcome document finally covers the Graph view.
+
+### Fixed
+
+- **3D labels were typographically identical.** Document / heading / term all rendered at the same size, weight, and ink. Labels now follow the sphere radii: document `1.0` / `700`, heading `0.92` / `600`, term `0.82` / `500`, with the current document pinned to full size and bold.
+- **3D had no depth cue at all.** Flat and Globe fade by `depthScale`; the 3D layer did not, so a node 50 units away and one 3000 units away looked identical. Labels now fade (`1 → 0.25`) and shrink (`1 → 0.7`) with camera distance. The hovered node opts out.
+- **DOM order decided occlusion.** No `z-index` meant rotating shuffled which label won an overlap. Nearest-to-camera now paints on top, derived from the same ramp position the fade uses.
+- **Dark-mode 3D spheres were invisible.** The palette used the `ape.*` surface tokens — right as SVG fills, wrong for a lit 3D canvas. `term` was *byte-identical* to the background (`#11171B`), rendering at `rgb(22,22,22)` on `rgb(17,23,27)`. Colours lifted to 3.71:1 / 2.43:1 / 2.03:1 with hue and saturation preserved.
+- **Overlapping words merged into a blob.** Labels get a three-pass text halo in the canvas surface colour, following the theme toggle.
+- **Editor toolbar stacked onto 2–3 rows.** Both the row and the graph controls were `flex-wrap`, stacking twice over as pane width changed. Both are now `flex-nowrap` with a horizontal scroller; Import / Save stay pinned right.
+
+### Added
+
+- **Welcome document rewritten**, 10 → 12 sections. The Graph view was absent from onboarding entirely; JSON/Markdown export and the Re-link / Dismiss stale-comment flow were also missing. The AI section no longer implies a key is required.
+
+### Internal
+
+- See [`.release-notes-v0.6.0.md`](.release-notes-v0.6.0.md) for the full surface list.
+- `package.json` version bumped to `0.6.0`.
+- `npm run test:graph` — **83** cases.
+
 ## v0.5.9 — Graph scope filter, wider zoom / labels, deep-tier compression
 
 Patch release on top of [v0.5.8](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.8). The Graph view gains a document / section **Filter**, wider zoom (0.25×–12×) and label (6–48 px) ranges that also fix a silent Concept distance clamp, depth-compressed 3D tiers for tall path headings, and click fixes so a Graph node opens the document in Split.

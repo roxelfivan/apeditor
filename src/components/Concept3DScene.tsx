@@ -30,6 +30,8 @@ import type * as THREE_TYPES from 'three';
 import {
   assignConceptHeights,
   conceptCameraPosition,
+  conceptLabelDepth,
+  conceptLabelStyle,
   conceptPoseFromCamera,
   layoutToWorld,
   MAX_CONCEPT_DISTANCE,
@@ -73,7 +75,21 @@ export interface ConceptPalette {
   heading: number;
   term: number;
   current: number;
+  /**
+   * Default label ink. Also the heading label colour — headings are the
+   * bulk of the graph, and tinting each by kind would trade legibility for
+   * a distinction the sphere radii already make.
+   */
   label: string;
+  /** Label ink for `[[term]]` satellites — the muted ramp, matching `edge`. */
+  labelTerm: string;
+  /**
+   * The canvas surface the labels float on, used for the text halo.
+   * Taken from the Graph wrapper's own background (`paper.base` /
+   * `ape.base`) so a halo is invisible where it should be and opaque
+   * enough to cut a glyph out of whatever it overlaps.
+   */
+  halo: string;
 }
 
 /** Parse a `R G B` CSS custom property into a packed 0xRRGGBB number. */
@@ -105,11 +121,69 @@ export function readConceptPalette(): ConceptPalette {
     floor: readTriplet(css, '--cyber-muted', dark ? 0xa8aea8 : 0x5c574f),
     // `cyber-clay` / `cyber-cyan` and the paper surfaces, from tailwind.config.
     current: readHex(dark ? '#6FBF99' : '#1B4636', 0x1b4636),
-    document: readHex(dark ? '#222932' : '#FFFCF8', dark ? 0x222932 : 0xfffcf8),
-    heading: readHex(dark ? '#1A2026' : '#EBE6DC', dark ? 0x1a2026 : 0xebe6dc),
-    term: readHex(dark ? '#11171B' : '#F4F1EA', dark ? 0x11171b : 0xf4f1ea),
+    // Dark-mode sphere colours are **lifted off the background**, not the
+    // `ape.*` surfaces the SVG path uses. Measured: the old values sat at
+    // 1.23:1 / 1.10:1 / 1.00:1 against the `ape.base` canvas, and `term`
+    // was *byte-identical* to the background (`#11171B`), so those spheres
+    // rendered at rgb(22,22,22) on an rgb(17,23,27) field — invisible.
+    //
+    // These three keep the original hue and saturation and raise only
+    // lightness, so the cool blue-grey family is preserved while every
+    // sphere clears the floor. `document` is the lightest because a hub is
+    // the anchor you navigate by.
+    document: readHex(dark ? '#5F738C' : '#FFFCF8', dark ? 0x5f738c : 0xfffcf8),
+    heading: readHex(dark ? '#465767' : '#EBE6DC', dark ? 0x465767 : 0xebe6dc),
+    term: readHex(dark ? '#3A4C58' : '#F4F1EA', dark ? 0x3a4c58 : 0xf4f1ea),
     label: dark ? '#F4F1EA' : '#171614',
+    // `cyber-muted` / `paper.inkSoft` — the same warm grey the edges use.
+    labelTerm: dark ? '#A8AEA8' : '#5C574F',
+    // `ape.base` / `paper.base`, matching `GraphView`'s own wrapper
+    // background. A halo in any other colour would leave a visible fringe.
+    halo: dark ? '#11171B' : '#F4F1EA',
   };
+}
+
+/**
+ * Label colour for a node, by kind.
+ *
+ * Documents already read as moss-green via `palette.current`, and the
+ * current document is the one label that must survive any orbit angle, so
+ * it keeps that ink. Terms drop to the muted ramp so a dense wikilink cloud
+ * sits back behind the outline it points into.
+ */
+/**
+ * Label colour for a node, by kind, as a CSS colour string.
+ *
+ * Documents already read as moss-green via `palette.current`, and the
+ * current document is the one label that must survive any orbit angle, so
+ * it keeps that ink — but `palette.current` is a *packed* number for
+ * three.js materials, and the label layer is DOM. It is re-emitted as hex
+ * rather than reusing `label` so the two surfaces keep the same accent.
+ *
+ * Terms drop to the muted ramp so a dense wikilink cloud sits back behind
+ * the outline it points into.
+ */
+function labelColor(
+  kind: GraphNodeKind,
+  palette: ConceptPalette,
+  isCurrent: boolean
+): string {
+  if (isCurrent) return `#${palette.current.toString(16).padStart(6, '0')}`;
+  if (kind === 'term') return palette.labelTerm;
+  return palette.label;
+}
+
+/**
+ * The halo painted behind a label's glyphs.
+ *
+ * Three passes at decreasing blur: the two 3px copies are a solid-ish core
+ * that fully separates the glyph from a neighbour, and the 1px copy softens
+ * the edge so the halo does not read as a box. This is the standard map
+ * label treatment — the cheapest thing that keeps two overlapping words
+ * individually readable without a background plate.
+ */
+function labelHaloCss(halo: string): string {
+  return `0 0 3px ${halo}, 0 0 3px ${halo}, 0 0 1px ${halo}`;
 }
 
 /** Fill colour for a node, given the palette and current-document state. */
@@ -497,9 +571,37 @@ export default function Concept3DScene({
           // lazy-loaded, so it cannot read the SVG's constants at render
           // time without a static import cycle — the literals are the
           // duplication, and `label: the 3D layer honours the SVG label
-          // range` is what keeps them honest.
+          // range` is what keeps them honest. Per-kind scaling happens
+          // *after* this clamp, never folded into it.
           const fontPx = Math.max(6, Math.min(48, s.labelPx));
           const maxChars = Math.max(10, Math.min(22, Math.round((18 * 16) / s.labelPx)));
+
+          // Create before projecting. A label appended *after* the
+          // positioning loop skips its first frame and flashes at the
+          // layer's origin; both loops read only `s.nodes`, so hoisting
+          // this one is safe and costs a node id.
+          for (const n of s.nodes) {
+            if (labelEls.has(n.id)) continue;
+            const el = document.createElement('div');
+            el.dataset.graphNodeLabel = n.id;
+            el.style.position = 'absolute';
+            el.style.whiteSpace = 'pre';
+            el.style.lineHeight = '1.2';
+            el.style.pointerEvents = 'none';
+            el.style.userSelect = 'none';
+            el.style.transform = 'translate(-50%, -50%)';
+            el.style.textShadow = labelHaloCss(palette.halo);
+            labelHost.appendChild(el);
+            labelEls.set(n.id, el);
+          }
+          // Drop labels for nodes that no longer exist.
+          const liveIds = new Set(s.nodes.map((n) => n.id));
+          for (const [id, el] of labelEls) {
+            if (liveIds.has(id)) continue;
+            el.remove();
+            labelEls.delete(id);
+          }
+
           for (const n of s.nodes) {
             const el = labelEls.get(n.id);
             const entry = nodeMeshes.get(n.id);
@@ -510,11 +612,19 @@ export default function Concept3DScene({
               n.y + n.labelDy,
               slot.y
             );
-            const p = new THREE.Vector3(
+            const world = new THREE.Vector3(
               labelWorld.x,
               labelWorld.y,
               labelWorld.z
-            ).project(camera);
+            );
+            // View-space distance, measured **before** `project` — the
+            // projection matrix mutates the vector in place to NDC, so
+            // afterwards this is meaningless. This is the whole depth cue
+            // the 3D layer was missing: without it a node 50 units away
+            // and one 3000 units away render identically, which is why
+            // orbiting piled every distance onto one plane.
+            const dist = camera.position.distanceTo(world);
+            const p = world.project(camera);
             const lit = !s.hotIds || s.hotIds.has(n.id);
             // `p.z > 1` is the standard behind-the-camera test after project.
             if (p.z > 1) {
@@ -524,34 +634,34 @@ export default function Concept3DScene({
             if (!el.isConnected) labelHost.appendChild(el);
             const sx = (p.x * 0.5 + 0.5) * vw;
             const sy = (-p.y * 0.5 + 0.5) * vh;
+
+            // Typographic hierarchy: a document outranks a heading
+            // outranks a term, matching the sphere radii. The depth ramp
+            // then fades and shrinks with distance, as a ratio of the
+            // orbit radius so it is zoom-invariant.
+            const isCurrent =
+              n.kind === 'document' && n.documentId === s.currentDocumentId;
+            const style = conceptLabelStyle(n.kind, isCurrent, fontPx);
+            const depth = conceptLabelDepth(dist, s.pose.distance);
+            // The hovered node opts out of the fade, rendering at full
+            // size and full opacity. Fading the node the pointer is *on*
+            // would hide precisely the thing the user aimed at. Everything
+            // else keeps the ramp, and z-order settles the rest.
+            const focused = n.id === s.hoverId;
+            const size = focused ? style.fontPx : style.fontPx * depth.scale;
+
             el.textContent = wrapLines(n.label, maxChars).join('\n');
-            el.style.fontSize = `${fontPx}px`;
-            el.style.color = palette.label;
-            el.style.opacity = lit ? '1' : '0.25';
+            el.style.fontSize = `${size}px`;
+            el.style.fontWeight = String(style.weight);
+            el.style.color = labelColor(n.kind, palette, isCurrent);
+            el.style.opacity = String(focused ? 1 : lit ? depth.opacity : 0.25);
+            // Nearest label paints last, so a node in front always wins an
+            // overlap instead of whichever node happened to be appended
+            // first. Derived from `depth.t` — the same number the fade uses
+            // — so a label can never rank behind one it outranks visually.
+            el.style.zIndex = String(Math.round(2000 * (1 - depth.t)));
             el.style.left = `${sx}px`;
             el.style.top = `${sy}px`;
-          }
-          // Drop labels for nodes that no longer exist.
-          const liveIds = new Set(s.nodes.map((n) => n.id));
-          for (const [id, el] of labelEls) {
-            if (liveIds.has(id)) continue;
-            el.remove();
-            labelEls.delete(id);
-          }
-          // Add labels for nodes that appeared.
-          for (const n of s.nodes) {
-            if (labelEls.has(n.id)) continue;
-            const el = document.createElement('div');
-            el.dataset.graphNodeLabel = n.id;
-            el.style.position = 'absolute';
-            el.style.whiteSpace = 'pre';
-            el.style.lineHeight = '1.2';
-            el.style.fontWeight = '500';
-            el.style.pointerEvents = 'none';
-            el.style.userSelect = 'none';
-            el.style.transform = 'translate(-50%, -50%)';
-            labelHost.appendChild(el);
-            labelEls.set(n.id, el);
           }
         }
       };
@@ -699,11 +809,14 @@ export default function Concept3DScene({
       });
 
       // Theme flips change every colour in the scene; re-read rather than
-      // making the user remount the view.
+      // making the user remount the view. The label halo has to follow,
+      // or a light-mode halo stays painted over dark-mode glyphs.
       const themeObserver = new MutationObserver(() => {
         palette = readConceptPalette();
         edgeMat.color.setHex(palette.edge);
         floorMat.color.setHex(palette.floor);
+        const halo = labelHaloCss(palette.halo);
+        for (const el of labelEls.values()) el.style.textShadow = halo;
       });
       themeObserver.observe(document.documentElement, {
         attributes: true,
