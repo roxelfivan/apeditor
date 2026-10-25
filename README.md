@@ -23,9 +23,11 @@
 
 ## What's new in v0.6.1
 
-> The Format menu works again after the one-row toolbar. Patch on top of [v0.6.0](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.0).
+> The Format menu works again, Split keeps text beside Graph, and a Graph click scrolls to the passage. Patch on top of [v0.6.0](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.0).
 
 1. **Format dropdown is visible.** v0.6.0's horizontal toolbar scroller clipped the absolutely positioned Format menu — it mounted but you could not see or click it. The menu is now `position: fixed` and clamped to the viewport, same pattern as Import / Export and Filter.
+2. **Split = Write/Preview | Graph.** Left pane toggles Write or Preview; right pane is Graph. View select order is Write → Preview → Graph → Split.
+3. **Graph node clicks scroll Write** to the selected heading / `[[term]]`, with the mirror layer kept in sync.
 
 See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.1 entry and prior changelogs.
 

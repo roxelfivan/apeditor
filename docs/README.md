@@ -8,7 +8,7 @@ This guide is for people using the app. It covers every screen and everyday task
 
 ## What you can do
 
-- Write Markdown in **Write**, **Preview**, **Split**, or **Graph** view
+- Write Markdown in **Write**, **Preview**, **Graph**, or **Split** view (Split = text + Graph)
 - See [What's new](whats-new.md) for the current release
 - Keep many documents in the sidebar
 - Comment on a passage, then **Send to AI** in one batch
@@ -21,7 +21,7 @@ This guide is for people using the app. It covers every screen and everyday task
 
 ## Start here
 
-1. [What's new](whats-new.md) — current release (Format menu fix in v0.6.1)
+1. [What's new](whats-new.md) — current release (Format + Split = text | Graph in v0.6.1)
 2. [Getting started](getting-started.md) — first launch, connect AI, first document
 3. [Your workspace](workspace.md) — layout, theme, panels, Help
 4. [Documents](documents.md) — create, rename, switch, delete

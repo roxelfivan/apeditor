@@ -63,29 +63,34 @@ Additional details:
 `viewMode: 'write' | 'preview' | 'split' | 'graph'`, stored and persisted.
 
 ```ts
-const showWrite     = viewMode === 'write'   || viewMode === 'split';
-const showPreview   = viewMode === 'preview' || viewMode === 'split';
-const showGraph     = viewMode === 'graph';
-const showWriteTools = !showGraph;
-const isSplit       = showWrite && showPreview;
+const isSplit = viewMode === 'split';
+const showWrite =
+  viewMode === 'write' || (isSplit && splitLeftMode === 'write');
+const showPreview =
+  viewMode === 'preview' || (isSplit && splitLeftMode === 'preview');
+const showGraph = viewMode === 'graph' || isSplit;
+const showWriteTools = showWrite;
 ```
+
+`splitLeftMode: 'write' | 'preview'` lives on `layout` (persisted). It only affects Split: the left pane shows Write or Preview; the right pane is always Graph. The view-mode `<select>` option order is **Write → Preview → Graph → Split**.
 
 ### Toolbar visibility matrix
 
-| Control | write | preview | split | graph |
-|---|:-:|:-:|:-:|:-:|
-| View-mode `<select>` | ✅ | ✅ | ✅ | ✅ |
-| `GraphViewControls` | — | — | — | ✅ |
-| **Format** dropdown (B/I/U + Size ±) | ✅ | ✅ | ✅ | — |
-| **Comment** | ✅ | ✅ | ✅ | — |
-| Predict | ✅ | ✅ | ✅ | — |
-| Debug status pill / counters | ✅\* | ✅\* | ✅\* | — |
-| File actions | ✅ | ✅ | ✅ | ✅ |
-| Save revision | ✅ | ✅ | ✅ | ✅ |
+| Control | write | preview | split (left Write) | split (left Preview) | graph |
+|---|:-:|:-:|:-:|:-:|:-:|
+| View-mode `<select>` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Left-pane Write \| Preview tabs | — | — | ✅ | ✅ | — |
+| `GraphViewControls` | — | — | ✅ | ✅ | ✅ |
+| **Format** dropdown (B/I/U + Size ±) | ✅ | — | ✅ | — | — |
+| **Comment** | ✅ | — | ✅ | — | — |
+| Predict | ✅ | — | ✅ | — | — |
+| Debug status pill / counters | ✅\* | — | ✅\* | — | — |
+| File actions | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Save revision | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 \* only when `debugMode` is on.
 
-In `graph` mode the text panes are replaced entirely; Format, Comment, and Predict hide because they need the textarea. File actions and Save stay.
+In full `graph` mode the text panes are replaced entirely; Format, Comment, and Predict hide because they need the textarea. In Split they appear only when the left pane is Write. File actions and Save stay.
 
 ### Pane rendering
 
@@ -93,8 +98,8 @@ In `graph` mode the text panes are replaced entirely; Format, Comment, and Predi
 |---|---|
 | **write** | One write pane, `flex-1`, no divider border |
 | **preview** | Only `<ReactMarkdown>` in `flex-1 overflow-y-auto p-4 prose-md` at `editorFontSize`, `lineHeight: 1.55`. No textarea, no margin column, no comment UI |
-| **split** | Write pane + preview pane side by side. Write pane gets `flex: 0 0 {pct}%` **and** `minWidth: 20%` / `maxWidth: 80%`, plus a right border. A `ResizeHandle` renders only when `isSplit && !isNarrow` |
-| **graph** | `<GraphView key={graphEpoch} labelPx zoom projection />` |
+| **split** | Left Write **or** Preview (toggle) + right Graph. Left pane gets `flex: 0 0 {pct}%` **and** `minWidth: 20%` / `maxWidth: 80%`, plus a right border and a Write \| Preview tablist. A `ResizeHandle` renders only when `isSplit && !isNarrow` |
+| **graph** | `<GraphView key={graphEpoch} labelPx zoom projection />` full pane |
 
 `graphEpoch` is a remount key. `GraphViewControls`'s **Reset** bumps it, which is how the drag override map is cleared.
 
@@ -319,7 +324,8 @@ Both composer and popover use it. The hard ceiling on `maxTop` matters: without 
 layout: {
   sidebarWidth: number;    // px
   chatWidth: number;       // px
-  editorSplitPct: number;  // % of the editor split row
+  editorSplitPct: number;  // % of the editor split row (left pane; Graph takes the rest)
+  splitLeftMode: 'write' | 'preview';  // Split left content; default 'write'
   previewSizes: Record<string, { w: number; h: number }>;
 }
 ```

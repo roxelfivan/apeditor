@@ -62,16 +62,89 @@ const CM_Z_HINT_KEY = 'apeditor:cm-z-hint';
  * Optional `preserveScroll` additionally restores the textarea's
  * internal `scrollTop`/`scrollLeft` after the focus/selection change
  * in case the browser tried to scroll the textarea itself.
+ *
+ * Optional `scrollIntoView` (Graph node clicks) scrolls the textarea so
+ * `start` sits near the top quarter of the viewport. It wins over
+ * `preserveScroll` — keeping the old scroll would leave the selection
+ * off-screen after a click on a far heading.
  */
+function scrollTextareaToOffset(ta: HTMLTextAreaElement, offset: number) {
+  const cs = getComputedStyle(ta);
+  // Temporary probe used only to measure the y-offset of `offset` under
+  // the textarea's wrap metrics. Not the live `.cm-mirror` overlay.
+  const probe = document.createElement('div');
+  probe.setAttribute('aria-hidden', 'true');
+  const copy = [
+    'boxSizing',
+    'width',
+    'font',
+    'fontSize',
+    'fontFamily',
+    'fontWeight',
+    'fontStyle',
+    'letterSpacing',
+    'lineHeight',
+    'paddingTop',
+    'paddingRight',
+    'paddingBottom',
+    'paddingLeft',
+    'borderTopWidth',
+    'borderRightWidth',
+    'borderBottomWidth',
+    'borderLeftWidth',
+    'whiteSpace',
+    'wordWrap',
+    'overflowWrap',
+    'tabSize',
+  ] as const;
+  for (const prop of copy) {
+    probe.style[prop] = cs[prop];
+  }
+  probe.style.position = 'absolute';
+  probe.style.visibility = 'hidden';
+  probe.style.pointerEvents = 'none';
+  probe.style.top = '0';
+  probe.style.left = '-9999px';
+  probe.style.height = 'auto';
+  probe.style.overflow = 'hidden';
+  probe.style.width = `${ta.clientWidth}px`;
+  probe.style.whiteSpace = 'pre-wrap';
+  probe.style.wordWrap = 'break-word';
+  const before = ta.value.slice(0, Math.max(0, Math.min(offset, ta.value.length)));
+  probe.textContent = before;
+  const marker = document.createElement('span');
+  marker.textContent = '\u200b';
+  probe.appendChild(marker);
+  document.body.appendChild(probe);
+  const markerTop = marker.offsetTop;
+  document.body.removeChild(probe);
+  const pad = ta.clientHeight * 0.25;
+  const next = Math.max(0, markerTop - pad);
+  if (Math.abs(ta.scrollTop - next) > 1) {
+    ta.scrollTop = next;
+  }
+  // Visible words live on `.cm-mirror` (textarea text is transparent).
+  // Keep the overlay locked to the textarea or the selection highlight
+  // scrolls alone while the words stay put.
+  const layer = ta
+    .closest('[data-cm-wrapper]')
+    ?.querySelector<HTMLElement>('.cm-mirror');
+  if (layer) {
+    layer.scrollTop = ta.scrollTop;
+    layer.scrollLeft = ta.scrollLeft;
+  }
+}
+
 function restoreCaret(
   ta: HTMLTextAreaElement | null,
   start: number,
   end: number,
-  options?: { preserveScroll?: boolean }
+  options?: { preserveScroll?: boolean; scrollIntoView?: boolean }
 ) {
   if (!ta) return;
   const scrollTop = options?.preserveScroll ? ta.scrollTop : 0;
   const scrollLeft = options?.preserveScroll ? ta.scrollLeft : 0;
+  const wantScroll = !!options?.scrollIntoView;
   queueMicrotask(() => {
     try {
       ta.focus({ preventScroll: true });
@@ -83,7 +156,9 @@ function restoreCaret(
     } catch {
       /* textarea may be temporarily detached between commit and microtask */
     }
-    if (options?.preserveScroll) {
+    if (wantScroll) {
+      scrollTextareaToOffset(ta, start);
+    } else if (options?.preserveScroll) {
       if (ta.scrollTop !== scrollTop) ta.scrollTop = scrollTop;
       if (ta.scrollLeft !== scrollLeft) ta.scrollLeft = scrollLeft;
     }
@@ -126,6 +201,7 @@ export function Editor() {
     MIN_EDITOR_SPLIT_PCT,
     MAX_EDITOR_SPLIT_PCT
   );
+  const splitLeftMode = useStore((s) => s.layout.splitLeftMode) ?? 'write';
   const setLayout = useStore((s) => s.setLayout);
   const bumpEditorFontSize = useStore((s) => s.bumpEditorFontSize);
   const updateContent = useStore((s) => s.updateDocumentContent);
@@ -401,7 +477,13 @@ export function Editor() {
   // textarea selection rectangle matches the adopted replacement.
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ start: number; end: number }>).detail;
+      const detail = (
+        e as CustomEvent<{
+          start: number;
+          end: number;
+          scrollIntoView?: boolean;
+        }>
+      ).detail;
       if (
         !detail ||
         typeof detail.start !== 'number' ||
@@ -410,26 +492,33 @@ export function Editor() {
         return;
       }
       // Apply, ChatPanel *and* the Graph view (when a heading or `[[term]]`
-      // is clicked) all dispatch this. In Graph view the textarea is
-      // unmounted, so we must leave the view first and defer the caret
-      // restore one frame — the textarea's ref does not exist until
-      // React has committed the new view-mode render.
-      if (viewMode === 'graph') {
-        setViewMode('split');
+      // is clicked) all dispatch this. The textarea is unmounted in full
+      // Graph and when Split's left pane is Preview, so we must land on
+      // Write (Split + left Write) first and defer the caret restore one
+      // frame — the textarea's ref does not exist until React has
+      // committed the new layout. Graph passes `scrollIntoView: true` so
+      // the selection is scrolled on-screen; Apply / Chat keep the
+      // previous scroll position.
+      const scrollIntoView = !!detail.scrollIntoView;
+      const needsWritePane =
+        viewMode === 'graph' ||
+        (viewMode === 'split' && splitLeftMode === 'preview');
+      const caretOpts = scrollIntoView
+        ? { scrollIntoView: true as const }
+        : { preserveScroll: true as const };
+      if (needsWritePane) {
+        if (viewMode === 'graph') setViewMode('split');
+        if (splitLeftMode !== 'write') setLayout({ splitLeftMode: 'write' });
         requestAnimationFrame(() => {
-          restoreCaret(textareaRef.current, detail.start, detail.end, {
-            preserveScroll: true,
-          });
+          restoreCaret(textareaRef.current, detail.start, detail.end, caretOpts);
         });
         return;
       }
-      restoreCaret(textareaRef.current, detail.start, detail.end, {
-        preserveScroll: true,
-      });
+      restoreCaret(textareaRef.current, detail.start, detail.end, caretOpts);
     };
     window.addEventListener('mvp:select-range', handler);
     return () => window.removeEventListener('mvp:select-range', handler);
-  }, [viewMode]);
+  }, [viewMode, splitLeftMode, setViewMode, setLayout]);
 
   // Listen for OCR-insert events from the import media button. Inserts
   // the text at the current caret position if the textarea has been
@@ -630,7 +719,10 @@ export function Editor() {
       window.removeEventListener('resize', syncWidth);
       if (ro) ro.disconnect();
     };
-  }, [doc?.id, viewMode]);
+    // `splitLeftMode` remounts the textarea inside Split without changing
+    // `viewMode`; re-bind or the scroll listener stays on a detached node
+    // and the mirror (visible words) stops tracking.
+  }, [doc?.id, viewMode, splitLeftMode]);
 
   // Live measurement of each comment's first-line y-offset for the
   // right-margin badges. Recomputes on content / comments / scroll.
@@ -1281,12 +1373,15 @@ export function Editor() {
     );
   }
 
-  const showWrite = viewMode === 'write' || viewMode === 'split';
-  const showPreview = viewMode === 'preview' || viewMode === 'split';
-  const showGraph = viewMode === 'graph';
-  const showWriteTools = !showGraph;
-
-  const isSplit = showWrite && showPreview;
+  // Split = left Write|Preview (toggle) + right Graph. Standalone Write /
+  // Preview / Graph stay full-pane. See func_spec/05-editor-and-writing.md.
+  const isSplit = viewMode === 'split';
+  const showWrite =
+    viewMode === 'write' || (isSplit && splitLeftMode === 'write');
+  const showPreview =
+    viewMode === 'preview' || (isSplit && splitLeftMode === 'preview');
+  const showGraph = viewMode === 'graph' || isSplit;
+  const showWriteTools = showWrite;
 
   return (
     <div
@@ -1333,8 +1428,8 @@ export function Editor() {
           >
             <option value="write">Write</option>
             <option value="preview">Preview</option>
-            <option value="split">Split</option>
             <option value="graph">Graph</option>
+            <option value="split">Split</option>
           </select>
           <svg
             aria-hidden="true"
@@ -1703,7 +1798,7 @@ export function Editor() {
         ref={splitRowRef}
         className={`flex-1 flex min-h-0 ${isNarrow && isSplit ? 'flex-col' : ''}`}
       >
-        {showWrite && (
+        {(showWrite || (isSplit && showPreview)) && (
           <div
             ref={writePaneRef}
             className={`relative min-w-0 flex flex-col ${
@@ -1723,6 +1818,42 @@ export function Editor() {
                 : undefined
             }
           >
+            {/* Split left-pane mode: Write | Preview. Not a fifth viewMode —
+                the main select stays on Split; Graph stays on the right. */}
+            {isSplit && (
+              <div
+                role="tablist"
+                aria-label="Split left pane"
+                className="flex shrink-0 items-center gap-1 px-2 py-1.5 border-b border-paper-hairline dark:border-cyber-border bg-paper-base dark:bg-ape-base"
+              >
+                {(
+                  [
+                    { id: 'write', label: 'Write' },
+                    { id: 'preview', label: 'Preview' },
+                  ] as const
+                ).map(({ id, label }) => {
+                  const active = splitLeftMode === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setLayout({ splitLeftMode: id })}
+                      className={`h-7 px-2.5 rounded text-[13px] leading-none transition-colors ${
+                        active
+                          ? 'bg-paper-elevated dark:bg-ape-elevated text-paper-ink dark:text-cyber-primary border border-cyber-clay dark:border-cyber-cyan'
+                          : 'border border-transparent text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {showWrite && (
+            <>
             <div className="flex-1 flex min-h-0 relative max-sm:flex-col">
               {/* Textarea + mirror overlay. The mirror sits *behind*
                   the textarea so the highlights paint under the user's
@@ -2116,6 +2247,21 @@ export function Editor() {
                 </div>
               </div>
             )}
+            </>
+            )}
+            {showPreview && isSplit && (
+              <div
+                className="flex-1 min-w-0 overflow-y-auto p-4 prose-md bg-paper-base dark:bg-ape-base"
+                style={{ fontSize: `${editorFontSize}px`, lineHeight: 1.55 }}
+              >
+                <ReactMarkdown
+                  remarkPlugins={remarkPlugins}
+                  rehypePlugins={rehypePlugins}
+                >
+                  {previewMarkdown}
+                </ReactMarkdown>
+              </div>
+            )}
             {isSplit && !isNarrow && (
               <ResizeHandle
                 handle="right"
@@ -2124,7 +2270,7 @@ export function Editor() {
             )}
           </div>
         )}
-        {showPreview && (
+        {showPreview && !isSplit && (
           <div
               className="flex-1 min-w-0 overflow-y-auto p-4 prose-md bg-paper-base dark:bg-ape-base"
               style={{ fontSize: `${editorFontSize}px`, lineHeight: 1.55 }}

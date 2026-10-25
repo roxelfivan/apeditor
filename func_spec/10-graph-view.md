@@ -6,7 +6,7 @@
 
 ## 1. What it is
 
-Graph replaces the text panes in the editor's view dropdown. It is a **symbolic** map, not a vector index — there is no embedding, no similarity search, and no indexing step. Everything is derived from text you already have.
+Graph is available as a full-pane viewMode and as the **right pane of Split** (left pane is Write or Preview). It is a **symbolic** map, not a vector index — there is no embedding, no similarity search, and no indexing step. Everything is derived from text you already have.
 
 | Property | Value |
 |---|---|
@@ -15,7 +15,7 @@ Graph replaces the text panes in the editor's view dropdown. It is a **symbolic*
 | Cost | Zero network calls, zero new dependencies |
 | Persistence | **None.** It is a pure derivation of store state, recomputed on render |
 
-In `graph` mode, Format / Comment / Predict hide because they need the textarea. File actions and Save revision stay.
+In full `graph` mode, Format / Comment / Predict hide because they need the textarea. In Split they appear when the left pane is Write. File actions and Save revision stay. A short click on a heading / term from full Graph switches to Split with left Write so the caret can land; from Split with Write already open, `viewMode` does not change.
 
 **`viewMode` is unchanged by the Globe and Concept work.** It remains `'write' | 'preview' | 'split' | 'graph'`. A projection is a navigation aid *within* the Graph view, not a fifth pane:
 
@@ -740,7 +740,7 @@ Colours resolve from the theme's CSS custom properties rather than a hardcoded h
 | 7 | `edgeCaption(kind)` is the only place edge labels are decided; `ProposedEditCard` and `CommentLayer` have no relationship to it. |
 | 8 | `countProperEdgeCrossings` skips edge pairs sharing an endpoint — without that, every node with two children would count as a crossing. |
 | 9 | `heading-path:` nodes are synthetic; they have `documentId = null` and `start = end = null`, so clicking them does nothing. |
-| 10 | Graph mode hides Format / Comment / Predict because they need the textarea. If you add a toolbar control that works without the textarea, add it to the `showGraph` branch too. |
+| 10 | Format / Comment / Predict follow `showWrite`, not `showGraph`. Graph controls follow `showGraph` (full Graph **or** Split). Do not hide write tools merely because Graph is visible. |
 | 11 | Concept heights come from `headingDepthByNode` (**tree** depth), never from `assignShells`. The shell map collapses a lone page H1 onto the nucleus ring, so reusing it would render Welcome — an H1 plus ten `##` — one tier flat. |
 | 12 | `headingDepthByNode` seeds the **children** of each root at depth `0`, never the roots themselves. A root's parent is a document or a `heading-path:` node, neither of which is a heading. |
 | 13 | The 3D scene forwards pointer events to `GraphView`; it must not start a drag of its own. Two drag models would drift the moment the threshold or the override anchor changed. |

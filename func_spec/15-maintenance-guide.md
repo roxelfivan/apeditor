@@ -112,8 +112,8 @@ Both are picked up by `import.meta.glob(..., { query: '?raw' })` at build time. 
 ### 3.4 Add a view mode
 
 1. Extend the `viewMode` union in [`store/types.ts`](../src/store/types.ts).
-2. Add a render branch in `Editor.tsx` and derive `showWrite` / `showPreview` / `showGraph`.
-3. Update the toolbar `<select>` options.
+2. Add a render branch in `Editor.tsx` and derive `showWrite` / `showPreview` / `showGraph` (remember Split already composes left Write|Preview + right Graph via `splitLeftMode`).
+3. Update the toolbar `<select>` options (current order: Write → Preview → Graph → Split).
 4. Update the toolbar visibility matrix in [Editor & writing §2](05-editor-and-writing.md#2-view-modes).
 
 ### 3.5 Refactor `Editor.tsx`

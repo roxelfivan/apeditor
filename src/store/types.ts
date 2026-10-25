@@ -122,8 +122,13 @@ export interface StoreState {
   layout: {
     sidebarWidth: number;
     chatWidth: number;
-    /** Write-pane width as % of the editor Split row (Preview takes the rest). */
+    /** Left-pane width as % of the editor Split row (Graph takes the rest). */
     editorSplitPct: number;
+    /**
+     * Which content the left pane shows in Split mode. Right pane is
+     * always Graph. Standalone Write / Preview viewModes are unchanged.
+     */
+    splitLeftMode: 'write' | 'preview';
     previewSizes: Record<string, { w: number; h: number }>;
   };
 
@@ -210,6 +215,7 @@ export interface StoreState {
       sidebarWidth: number;
       chatWidth: number;
       editorSplitPct: number;
+      splitLeftMode: 'write' | 'preview';
     }>
   ) => void;
   setPreviewSize: (

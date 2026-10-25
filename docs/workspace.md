@@ -40,7 +40,7 @@ Drag the divider on the **right edge of the sidebar** to change its width.
 
 Drag the divider on the **left edge of Chat** to change Chat width.
 
-In **Split** view, drag the divider between Write and Preview. Your split (between 20% and 80% Write) is remembered.
+In **Split** view, drag the divider between the left pane (Write or Preview) and Graph. Your split (between 20% and 80% left) is remembered, as is whether the left pane was Write or Preview.
 
 Settings, comment popovers, and proposed-edit cards can also be resized by dragging their edges. Those sizes are remembered in this browser.
 

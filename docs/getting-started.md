@@ -46,7 +46,7 @@ Type in the center pane. Your work auto-saves in the browser. Next to the title 
 
 ## Ask the AI to help
 
-1. Highlight a sentence in **Write** (or the Write side of **Split**).
+1. Highlight a sentence in **Write** (or Split with the left pane on **Write**).
 2. In Chat, leave **include selection** checked (it is on by default). Check **selection only** if you do not want the rest of the document sent.
 3. Type a request, for example `Make this more concise.`
 4. Optionally type `@` to attach **another** document or its headings — see [Reference other documents](reference-other-documents.md).
@@ -64,6 +64,6 @@ Click **?** in the top bar (or press `Ctrl+/` / `⌘/`) to open this user guide 
 
 - [Your workspace](workspace.md) — hide panels, change theme, resize columns
 - [What's new](whats-new.md) — current release
-- [Writing](writing.md) — Write / Preview / Split / Graph, bold/italic/underline, Predict
+- [Writing](writing.md) — Write / Preview / Graph / Split, bold/italic/underline, Predict
 - [Reference other documents (`@`)](reference-other-documents.md) — attach other docs to a turn
 - [Settings](settings.md) — system message, temperature, UI font size

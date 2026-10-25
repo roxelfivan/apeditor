@@ -89,6 +89,7 @@ export const useStore = create<StoreState>()(
         sidebarWidth: 240,
         chatWidth: 384,
         editorSplitPct: DEFAULT_EDITOR_SPLIT_PCT,
+        splitLeftMode: 'write',
         previewSizes: {},
       },
       editorFocus: {},
@@ -536,6 +537,7 @@ export const useStore = create<StoreState>()(
           const sw = state.layout?.sidebarWidth;
           const cw = state.layout?.chatWidth;
           const esp = state.layout?.editorSplitPct;
+          const slm = state.layout?.splitLeftMode;
           const api0 = state.api;
           const repairs: Partial<StoreState> = {};
           const layoutPatch: Record<string, unknown> = {};
@@ -556,6 +558,12 @@ export const useStore = create<StoreState>()(
               MIN_EDITOR_SPLIT_PCT,
               MAX_EDITOR_SPLIT_PCT
             );
+          }
+          // Pre-Split-as-Graph snapshots have no splitLeftMode (Split used
+          // to be Write|Preview). Default to Write so Graph click-to-open
+          // can land on a mounted textarea.
+          if (slm !== 'write' && slm !== 'preview') {
+            layoutPatch.splitLeftMode = 'write';
           }
           if (Object.keys(layoutPatch).length > 0) {
             repairs.layout = { ...state.layout, ...layoutPatch } as StoreState['layout'];

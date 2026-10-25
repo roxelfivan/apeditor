@@ -198,7 +198,7 @@ This is the only state container. Single source of truth for everything except: 
 | `includeSelection`, `sendSelectionOnly`, `persistApiKey`, `debugMode` | — | yes | Toggles |
 | `theme` | — | yes | `'light' \| 'dark'` |
 | `api` | — | yes | `ApiConfig` — provider, key, endpoint, model, system message, rationale override |
-| `layout` | — | yes | `sidebarWidth`, `chatWidth`, `editorSplitPct`, `previewSizes` map |
+| `layout` | — | yes | `sidebarWidth`, `chatWidth`, `editorSplitPct`, `splitLeftMode`, `previewSizes` map |
 | `editorFocus` | `documentId` | **no** | `{ focused, selectionStart, selectionEnd }` per doc — populated by `Editor.tsx` on every focus/select/keyup |
 | `comments` | `documentId` | yes | One `Comment[]` per doc; each `Comment` has its own `rounds[]` history |
 | `commentUndoStack` | — | **no** | `CommentOp[]`, capped at `COMMENT_UNDO_STACK_LIMIT` (20) |
@@ -220,7 +220,7 @@ This is the only state container. Single source of truth for everything except: 
 `useStore.ts:1023-1170` runs on every load. Notable:
 
 - **API provider coercion** — unknown providers reset to `'minimax'`.
-- **Layout bounds clamping** — stale sidebar/chat widths + `editorSplitPct` are clamped to current bounds.
+- **Layout bounds clamping** — stale sidebar/chat widths + `editorSplitPct` are clamped to current bounds; missing `splitLeftMode` defaults to `'write'`.
 - **Comment shape migration** — pre-`rounds` comments are wrapped in a single `CommentRound` from the flat fields.
 - **Stale system message / rationale override detection** — older built-in defaults normalize back to `undefined` so future updates stay live.
 - **`debugMode` / `uiFontSize` defaults** — older payloads get the current default.

@@ -42,7 +42,7 @@ ApEditor is built for a single, narrow audience:
 | Capability | Where it lives |
 |---|---|
 | Multiple documents: create, rename, switch, delete | [`Sidebar.tsx`](../src/components/Sidebar.tsx) |
-| Four editor views — **Write**, **Preview**, **Split**, **Graph** | [`Editor.tsx`](../src/components/Editor.tsx) |
+| Four editor views — **Write**, **Preview**, **Graph**, **Split** (Split = Write/Preview left + Graph right) | [`Editor.tsx`](../src/components/Editor.tsx) |
 | Markdown rendering with GFM, raw HTML, sanitization | [`utils/markdown.ts`](../src/utils/markdown.ts) |
 | Bold / Italic / Underline + font size (10–24 px) | `wrapSelection` in [`Editor.tsx`](../src/components/Editor.tsx) |
 | **Predict** — inline sentence completion, opt-in | [`useInlineCompletion.ts`](../src/hooks/useInlineCompletion.ts) |
@@ -151,7 +151,7 @@ Full changelogs are in [`RELEASE_NOTES.md`](../RELEASE_NOTES.md). The shape of t
 
 | Version | What changed |
 |---|---|
-| v0.6.1 | **Format menu visible again.** The v0.6.0 one-row toolbar scroller (`overflow-x: auto`) forced a computed `overflow-y: auto` and clipped the absolutely positioned Format dropdown — mounted but invisible. The menu is now `position: fixed`, anchored to its trigger and clamped to the viewport (same contract as `FileActionsButton` and the Graph Filter). |
+| v0.6.1 | **Format menu, Split = Write/Preview \| Graph, Graph click scrolls Write.** Format dropdown is `position: fixed` (escapes the toolbar scroller clip). Split's left pane toggles Write/Preview (`layout.splitLeftMode`); right pane is Graph; select order Write → Preview → Graph → Split. Graph `mvp:select-range` uses `scrollIntoView` and keeps `.cm-mirror` locked to the textarea. |
 | v0.6.0 | **Legible 3D, single-row toolbar, refreshed onboarding.** Concept labels gain a typographic hierarchy by kind, a zoom-invariant camera-distance ramp, near-over-far z-order, and a text halo — all presentation, nothing is ever hidden. Dark-mode sphere colours are lifted off the background (`term` was byte-identical to it). The editor toolbar and `GraphViewControls` stop double-wrapping and become one `flex-nowrap` scrolling row with Import / Save pinned right. The Welcome starter document is rewritten, 10 → 12 sections, and now covers the Graph view. |
 | v0.5.9 | **Graph scope filter, wider zoom / labels, deep-tier compression, sibling helix.** A Filter popover prunes documents and sections before layout (Flat / Globe / Concept inherit it). Zoom 0.25×–12× and labels 6–48 px; Concept distance is derived from the zoom ceiling. Heading tiers past depth 6 compress geometrically; wide sibling rings helix onto extra stories. Graph / 3D clicks switch to Split so the caret restore lands. |
 | v0.5.8 | **Graph 3D: spread the stack, free navigation.** The Concept projection's extrusion step was small enough that a tall document rendered as one horizontal slab; terms and headings shared the same positive y-axis. v0.5.8 spreads the tiers (135 units per step, base at 270) and drops `[[term]]` satellites onto an underground ring at `y = -200`. `three.js`'s `OrbitControls` is mounted for free 3D navigation: wheel zoom, shift+drag pan, two-finger pinch / pan, and arrow-key pan / +/- dolly. The hook remains the single source of truth for the camera pose. |

@@ -94,20 +94,22 @@ If you'd rather not use a key, pick **Google AI Mode (no key)**, which
 opens Google in a new tab instead; paste an answer back with
 \`⌘/Ctrl + Enter\`. The whole app works fine with no AI at all.
 
-## 2. ✍️ Write, Preview, or Split
+## 2. ✍️ Write, Preview, Graph, or Split
 
-**Pick a mode from the editor dropdown.** **Write** is a plain
-textarea, **Preview** renders your Markdown, and **Split** shows both.
+**Pick a mode from the editor dropdown** (Write → Preview → Graph →
+Split). **Write** is a plain textarea, **Preview** renders your
+Markdown, **Graph** is the full-pane map, and **Split** keeps Write or
+Preview on the left (use the tabs) with Graph on the right.
 \`⌘/Ctrl + B\` / \`I\` / \`U\` bold, italicise, and underline while
 you type; the **Format** menu also adjusts the text size.
 
 ## 3. 🕸️ Explore the Graph
 
-**Pick Graph** in the same dropdown to see your workspace as a map of
-documents, headings, and links — built entirely in your browser. Link
-pages with \`[[Page]]\`, point at a section with \`[[Page#Heading]]\`,
-and pull in another document by typing \`@\` followed by its name.
-Three projections share one graph:
+**Pick Graph** for a full map, or **Split** to keep writing beside it.
+Both show your workspace as documents, headings, and links — built
+entirely in your browser. Link pages with \`[[Page]]\`, point at a
+section with \`[[Page#Heading]]\`, and pull in another document by
+typing \`@\` followed by its name. Three projections share one graph:
 
 - **Graph** — a flat map. Drag the background to pan.
 - **Globe** — the same nodes wrapped on a sphere. Drag to spin it.

@@ -231,8 +231,9 @@ PaddleOCR is a **module-level singleton** (`enginePromise`) — models load once
 Pure and synchronous; no store writes, no network, no React.
 
 ```
-viewMode === 'graph'
+viewMode === 'graph' || viewMode === 'split'
   → Editor renders <GraphView key={graphEpoch} labelPx zoom scope />
+     (full pane in graph; right pane in split, with Write|Preview on the left)
   → buildWorkspaceGraph(documents, commentsByDoc)
       Pass 0  one node per document                          doc:<id>
       Pass 1  one node per real heading (level > 0)          heading:<docId>:<start>
@@ -276,10 +277,12 @@ viewMode === 'graph'
           wheel / shift+drag / arrows / touch → OrbitControls, mirroring
           the pose through setConceptPose so the toolbar zoom + Reset
           still read from the same source
-      node click → setViewMode('split') + mvp:select-range (textarea remounts)
+      node click → mvp:select-range; if full graph, also setViewMode('split')
+                   Editor ensures splitLeftMode === 'write' then rAF restoreCaret
+                   (when Split already has Write on the left, viewMode stays put)
 ```
 
-`viewMode` is still `'write' | 'preview' | 'split' | 'graph'` — the three projections are an inner toggle within the Graph view, not three panes.
+`viewMode` is still `'write' | 'preview' | 'split' | 'graph'` — the three projections are an inner toggle within the Graph view, not three panes. Split's right pane hosts the same GraphView.
 
 See [Graph view](10-graph-view.md) for the full algorithm and the exported test helpers.
 

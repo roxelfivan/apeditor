@@ -4,7 +4,7 @@ Comments let you mark a passage, write what you want changed, and send every not
 
 ## Add a comment
 
-1. In **Write** (or the Write side of **Split**), select the passage.
+1. In **Write** (or Split with the left pane on **Write**), select the passage.
 2. Click **Comment** on the toolbar. The button is disabled until you have a selection.
 3. Type in the composer (**Write a comment… type @ to reference a document**).
    - Type `@` to attach another document or its headings — see [Reference other documents](reference-other-documents.md).

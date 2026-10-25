@@ -2,11 +2,13 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
-## v0.6.1 — Format menu visible again
+## v0.6.1 — Format menu, Split beside Graph
 
-**The Format dropdown works after the one-row toolbar.**
+**Format works again, and Split keeps writing next to the map.**
 
 - **Format menu is visible and clickable.** Making the toolbar a horizontal scroller in v0.6.0 clipped the Format menu — it opened in the accessibility tree but sat below the scroller edge, so you could not see Bold / Italic / Underline / Size. The menu now floats above the page (`position: fixed`) and stays on screen, the same way Import / Export and Filter already do.
+- **Split is Write or Preview on the left, Graph on the right.** Use the tabs at the top of the left pane to switch Write / Preview; the choice is remembered. Full Write, Preview, and Graph modes are unchanged. The view dropdown order is Write → Preview → Graph → Split.
+- **Clicking a Graph heading or term scrolls the Write pane** to that passage (Flat, Globe, and 3D). Words and the selection stay locked together while you scroll.
 
 No new settings, no migration.
 

@@ -605,7 +605,9 @@ const isSphere = projection === 'sphere';
       selectionEnd: end,
     });
     window.dispatchEvent(
-      new CustomEvent('mvp:select-range', { detail: { start, end } })
+      new CustomEvent('mvp:select-range', {
+        detail: { start, end, scrollIntoView: true },
+      })
     );
   };
 
@@ -617,13 +619,11 @@ const isSphere = projection === 'sphere';
     } else {
       return;
     }
-    // A click from inside the Graph view is the user's "open" gesture —
-    // switch out of `graph` so the document / range is actually visible.
-    // The textarea is unmounted while we're in `graph`, so without this
-    // the action reduces to a layout shift that the user can't follow up
-    // on (`mvp:select-range`'s `restoreCaret` would no-op for the same
-    // reason). `setViewMode` is read once at render time, so the click
-    // handler uses the value it had at the previous render commit.
+    // A click from inside full Graph is the user's "open" gesture —
+    // leave `graph` for Split so Write can mount beside the map.
+    // Split already keeps Graph on the right; `mvp:select-range` flips
+    // the left pane to Write when needed and restores the caret.
+    // When already in Split with Write on the left, viewMode stays put.
     if (viewMode === 'graph') {
       setViewMode('split');
     }

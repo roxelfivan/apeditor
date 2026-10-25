@@ -1,17 +1,17 @@
 # Writing
 
-The center pane is your Markdown editor. You always edit plain Markdown; Preview and Split show how it will look. Graph maps the workspace from that Markdown.
+The center pane is your Markdown editor. You always edit plain Markdown; Preview shows how it will look. Graph maps the workspace from that Markdown. Split keeps both a text pane and Graph side by side.
 
-## Write, Preview, Split, and Graph
+## Write, Preview, Graph, and Split
 
-Use the dropdown on the left of the editor toolbar:
+Use the dropdown on the left of the editor toolbar (order: Write → Preview → Graph → Split):
 
 | Mode | What you see |
 | --- | --- |
 | **Write** | Editable text. Placeholder: *Start writing in Markdown…* |
 | **Preview** | Rendered Markdown (headings, lists, links, tables, and so on). `[[wikilinks]]` appear as purple labels without brackets. |
-| **Split** | Write on the left, Preview on the right. Drag the divider. |
-| **Graph** | A map of your documents, headings, `[[wikilinks]]`, and `@` mentions. Format, Comment, and Predict hide — there is no textarea. |
+| **Graph** | A full-pane map of your documents, headings, `[[wikilinks]]`, and `@` mentions. Format, Comment, and Predict hide — there is no textarea. |
+| **Split** | Left pane is Write or Preview (tabs at the top of that pane); right pane is Graph. Drag the divider. |
 
 An empty Preview shows *Nothing to preview yet.*
 
@@ -19,7 +19,7 @@ An empty Preview shows *Nothing to preview yet.*
 
 In **Write**, keep the Obsidian-style syntax: `[[Name]]`, `[[Name|label]]`, or `[[Name#Heading]]`.
 
-In **Preview** and the Preview side of **Split**, those links render as purple text without `[[` `]]`:
+In **Preview** and when Split’s left pane is **Preview**, those links render as purple text without `[[` `]]`:
 
 | You write | Preview shows |
 | --- | --- |
@@ -29,7 +29,7 @@ In **Preview** and the Preview side of **Split**, those links render as purple t
 
 The same `[[…]]` still feeds the Graph (edges and term nodes). `@` mention chips in comments are unrelated and stay as chips.
 
-You can comment only in **Write** or on the Write side of **Split**. Select text there, then use **Comment**.
+You can comment only in **Write** or when Split’s left pane is **Write**. Select text there, then use **Comment**.
 
 ### Graph and `[[term]]`
 
@@ -40,7 +40,7 @@ Graph compiles what is already in the workspace. It does not ask an AI to invent
 - Hover a node or its label to read the **full title** in the bar at the top of Graph (labels wrap on the canvas; long lines still get a tooltip). The initial map is atomic: the open document is the nucleus, headings sit on concentric shells, and `[[wikilink]]` / other-doc satellites park on the same ray as their source so lines do not cross through the ring.
 - **−** / **+** on the Graph toolbar change only Graph label size (6–48 px, default 16). **Zoom −** / **Zoom +** scale the whole map (25–1200%). **Filter** chooses which documents and headings appear. **Reset** restores label size, zoom, projection, filter, and node positions, then redraws the map.
 - **Graph / Globe / 3D** on the Graph toolbar switches how the same map is seen. **Graph** is the flat map. **Globe** wraps it onto a sphere. **3D** extrudes headings upward (deep stacks compress so they stay readable).
-- Drag a node (or its label) to rearrange it. A short click opens the document in **Split** and selects the heading / `[[term]]`. Positions last until **Reset** or you leave Graph.
+- Drag a node (or its label) to rearrange it. A short click from full Graph opens **Split** with Write on the left and selects the heading / `[[term]]`. From Split with Write already open, the selection lands without leaving Split. Positions last until **Reset** or you leave Graph.
 - Drag **empty space** to navigate: in **Graph** it pans the map (at any zoom), in **Globe** it turns the globe, in **3D** it orbits. Dragging across the whole pane in Globe turns it a half revolution.
 - Write `[[Name]]` (optional `[[Name|label]]` or `[[Name#Heading]]`) to add a wikilink, the same syntax as Obsidian / LLM wiki.
 - If `Name` matches another document title, Graph draws a line to that document (or heading). If it does not, Graph adds a **term** node. Click it to select that `[[…]]` span.

@@ -110,7 +110,8 @@ All three are `Record<documentId, …>`. They are deleted with the document.
 |---|---|---|:-:|---|
 | `layout.sidebarWidth` | `number` | `240` | ✅ | `160`–`480` px |
 | `layout.chatWidth` | `number` | `384` | ✅ | `280`–`max(720, innerWidth × 2/3)` |
-| `layout.editorSplitPct` | `number` | `50` | ✅ | `20`–`80` % |
+| `layout.editorSplitPct` | `number` | `50` | ✅ | `20`–`80` % (left pane of Split; Graph takes the rest) |
+| `layout.splitLeftMode` | `'write' \| 'preview'` | `'write'` | ✅ | Left pane content in Split; missing values rehydrate to `'write'` |
 | `layout.previewSizes` | `Record<string, {w,h}>` | `{}` | ✅ | Per ProposedEditCard, keyed `${messageId}:${editId}` |
 
 > `previewSizes` is persisted but is **not** part of `setLayout`'s signature. It has its own `setPreviewSize(key, patch)` action.
@@ -198,7 +199,7 @@ Steps, in execution order:
 | # | Repair | Detail |
 |---|---|---|
 | 1 | Theme | `applyThemeClass(state.theme)` synchronously, before the microtask |
-| 2 | Layout clamps | Only assigns when out of range: `sidebarWidth` → `160`–`480`, `chatWidth` → `280`–`720`, `editorSplitPct` → `50` if not a finite number, else `20`–`80` |
+| 2 | Layout clamps | Only assigns when out of range: `sidebarWidth` → `160`–`480`, `chatWidth` → `280`–`720`, `editorSplitPct` → `50` if not a finite number, else `20`–`80`; `splitLeftMode` → `'write'` when missing or invalid |
 | 3 | `api` patch | Adds `provider: 'minimax'` if the key is missing; runs `normalizeRationaleRulesOverride` and `normalizeSystemMessage` |
 | 4 | Microtask queued | Later steps below keep mutating the same `repairs` object |
 | 5 | `comments` | Drops any `comments[docId]` that is not an array. For each comment, `ensureRoundsShape` wraps flat legacy comments in a single `CommentRound` built from the top-level fields, with a fresh `uuid()` and `applied: []` |
@@ -383,7 +384,7 @@ The env vars seed **defaults only**. The Settings modal always wins.
 
 | Title | Shape |
 |---|---|
-| **Welcome** | H1 `# 👋 Welcome to ApEditor` plus **12** numbered `##` sections: Connect an AI · Write, Preview, or Split · Explore the Graph · Comment on a passage · Apply or Reject AI edits · Reference another document · Use a saved prompt · Get sentence suggestions while writing · Save a snapshot · Import text from photos or PDFs · Keep a copy outside the browser · Help, shortcuts, and settings. It is a live tutorial, not a changelog. |
+| **Welcome** | H1 `# 👋 Welcome to ApEditor` plus **12** numbered `##` sections: Connect an AI · Write, Preview, Graph, or Split · Explore the Graph · Comment on a passage · Apply or Reject AI edits · Reference another document · Use a saved prompt · Get sentence suggestions while writing · Save a snapshot · Import text from photos or PDFs · Keep a copy outside the browser · Help, shortcuts, and settings. It is a live tutorial, not a changelog. |
 | **Ideas** | H1 `# Ideas` plus three bullets: a lighthouse keeper who hears the sea, a field guide to imaginary birds, an essay on why we read in the bath. |
 
 Both are created by `makeDoc(title, content)` with `uuid()` ids at store construction.

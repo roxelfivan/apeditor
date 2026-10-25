@@ -1,10 +1,15 @@
-## v0.6.1 — Format menu visible again
+## v0.6.1 — Format menu, Split = Write/Preview | Graph
 
-Patch on top of [v0.6.0](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.0). The Format dropdown was clipped by the one-row toolbar scroller and appeared mounted but invisible.
+Patch on top of [v0.6.0](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.0). The Format dropdown is visible again; Split keeps text beside Graph; Graph node clicks scroll the Write pane to the selected passage.
 
 ### Fixed
 
 - **Format menu was clipped.** The toolbar's `overflow-x: auto` forces a computed `overflow-y: auto`, so an absolutely positioned dropdown below the trigger sat outside the clip rect (~145 px tall under a ~32 px scroller). The menu is now `position: fixed`, anchored to the trigger and clamped to the viewport (same pattern as Import / Export and Filter).
+- **Graph clicks left the selection off-screen.** `mvp:select-range` from Graph now passes `scrollIntoView: true`; the Write pane scrolls so the range sits near the top quarter. The `.cm-mirror` overlay (visible words) is synced with the textarea on that scroll, and the scroll listener rebinds when Split remounts Write.
+
+### Changed
+
+- **Split = Write/Preview | Graph.** Left pane toggles Write or Preview (`layout.splitLeftMode`, persisted); right pane is Graph. View select order is Write → Preview → Graph → Split. Format / Comment / Predict follow Write; Graph controls show whenever Graph is visible. Full Graph still opens Split + Write on a heading click when needed.
 
 ### Internal
 
