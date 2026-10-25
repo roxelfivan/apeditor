@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { v4 as uuid } from 'uuid';
 import { useStore, useCurrentDocument } from '@/store/useStore';
@@ -225,6 +225,12 @@ export function Editor() {
   // this toolbar previously.
   const [formatMenuOpen, setFormatMenuOpen] = useState(false);
   const formatMenuRef = useRef<HTMLDivElement>(null);
+  // The trigger button and the menu panel are measured separately so the
+  // panel can be positioned `fixed` against the button's box. The panel
+  // lives inside `formatMenuRef` but must not be clipped by the toolbar
+  // scroller — see the layout effect below.
+  const formatMenuBtnRef = useRef<HTMLButtonElement>(null);
+  const formatMenuPanelRef = useRef<HTMLDivElement | null>(null);
   const [undoToast, setUndoToast] = useState<{
     message: string;
     at: number;
@@ -1004,6 +1010,59 @@ export function Editor() {
     return () => window.removeEventListener('pointerdown', handler);
   }, [formatMenuOpen]);
 
+  // Position the Format menu as a `position: fixed` panel anchored to its
+  // trigger button.
+  //
+  // **Why `fixed` and not `absolute`.** The editor toolbar is a horizontal
+  // scroller (`overflow-x: auto`). The CSS overflow rules force a computed
+  // `overflow-y: auto` whenever one axis is not `visible`, so the scroller
+  // clips its overflowing children. An `absolute` dropdown inside it is
+  // therefore mounted but invisible — measured: the menu laid out 145px tall
+  // starting 3px below a 32px-tall scroller, and hit-testing never reached
+  // it. `fixed` positions against the viewport and escapes the clipping
+  // ancestor, which is exactly how `FileActionsButton`'s popover already
+  // behaves from this same toolbar.
+  //
+  // The clamp mirrors `clampPopoverToViewport` in `FileActionsButton.tsx`:
+  // prefer below the button, flip above when there is not enough room, and
+  // keep both edges on screen.
+  useLayoutEffect(() => {
+    if (!formatMenuOpen) return;
+    const panel = formatMenuPanelRef.current;
+    const anchor = formatMenuBtnRef.current;
+    if (!panel || !anchor) return;
+    const apply = () => {
+      const pad = 8;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const ar = anchor.getBoundingClientRect();
+      const w = panel.offsetWidth;
+      const h = panel.offsetHeight;
+      let left = ar.left;
+      if (left + w > vw - pad) left = vw - pad - w;
+      if (left < pad) left = pad;
+      let top = ar.bottom + 4;
+      if (top + h > vh - pad) {
+        // Not enough room below — try above the button, else pin to the
+        // viewport bottom so the menu is never pushed out of sight.
+        const above = ar.top - 4 - h;
+        top = above >= pad ? above : Math.max(pad, vh - pad - h);
+      }
+      panel.style.position = 'fixed';
+      panel.style.left = `${Math.round(left)}px`;
+      panel.style.top = `${Math.round(top)}px`;
+    };
+    apply();
+    // Re-apply on anything that can move the trigger: window resize, the
+    // toolbar scrolling sideways, or the page scrolling under it.
+    window.addEventListener('resize', apply);
+    window.addEventListener('scroll', apply, true);
+    return () => {
+      window.removeEventListener('resize', apply);
+      window.removeEventListener('scroll', apply, true);
+    };
+  }, [formatMenuOpen]);
+
   // Listen for `mvp:mark-comments-sent` events from the chat panel so
   // the editor can flip the comments to their `sent` state.
   useEffect(() => {
@@ -1319,14 +1378,28 @@ export function Editor() {
             toolbar controls (h-9, hairline border) and reveals a
             menu with all five actions. Each menu item closes the
             menu after invoking its action; clicks outside the menu
-            (see the effect near the comment composer) also close it. */}
+            (see the effect near the comment composer) also close it.
+
+            The menu itself is rendered `position: fixed` (see the
+            `formatMenuStyle` computation below) rather than
+            `absolute` inside this `relative` wrapper. The editor
+            toolbar is a horizontal scroller — `overflow-x: auto` — and
+            per the CSS overflow rules that forces a computed
+            `overflow-y: auto` on the same element, so an absolutely
+            positioned child is **clipped** by the scroller. The menu
+            rendered 145px tall below a 32px-tall scroller, which meant
+            it was mounted but completely invisible. `fixed` escapes the
+            clipping ancestor entirely, which is the same reason
+            `FileActionsButton`'s popover already works from this very
+            toolbar. */}
         <div
           ref={formatMenuRef}
           data-format-menu
-          className="relative inline-block text-[15px] leading-none"
+          className="relative inline-block shrink-0 text-[15px] leading-none"
         >
           <button
             type="button"
+            ref={formatMenuBtnRef}
             onClick={() => setFormatMenuOpen((v) => !v)}
             aria-haspopup="menu"
             aria-expanded={formatMenuOpen}
@@ -1354,7 +1427,14 @@ export function Editor() {
             <div
               role="menu"
               aria-label="Format menu"
-              className="absolute left-0 top-full mt-1 min-w-[180px] rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-panel shadow-lg z-50 py-1"
+              ref={formatMenuPanelRef}
+              // `fixed` — not `absolute`. The toolbar is a horizontal
+              // scroller, and `overflow-x: auto` forces a computed
+              // `overflow-y: auto`, which clipped the absolutely positioned
+              // menu entirely. `left` / `top` are set by the layout effect
+              // above, which anchors the panel to the button and clamps it
+              // to the viewport.
+              className="fixed z-50 min-w-[180px] rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-panel shadow-lg py-1"
             >
               <button
                 type="button"

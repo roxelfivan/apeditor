@@ -1,3 +1,16 @@
+## v0.6.1 — Format menu visible again
+
+Patch on top of [v0.6.0](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.0). The Format dropdown was clipped by the one-row toolbar scroller and appeared mounted but invisible.
+
+### Fixed
+
+- **Format menu was clipped.** The toolbar's `overflow-x: auto` forces a computed `overflow-y: auto`, so an absolutely positioned dropdown below the trigger sat outside the clip rect (~145 px tall under a ~32 px scroller). The menu is now `position: fixed`, anchored to the trigger and clamped to the viewport (same pattern as Import / Export and Filter).
+
+### Internal
+
+- See [`.release-notes-v0.6.1.md`](.release-notes-v0.6.1.md) for the full surface list.
+- `package.json` version bumped to `0.6.1`.
+
 ## v0.6.0 — Legible 3D, single-row toolbar, refreshed onboarding
 
 Minor release on top of [v0.5.9](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.9). The 3D Concept projection is now readable while orbiting **and** has visible dark-mode spheres; the editor toolbar no longer stacks onto multiple rows; and the first-run Welcome document finally covers the Graph view.

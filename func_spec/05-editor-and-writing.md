@@ -158,6 +158,7 @@ The **Format** dropdown contains five `role="menuitem"` buttons — Bold, Italic
 | Authoritative clamp | `bumpEditorFontSize` in `store.ts`: `clamp(current + delta, 10, 24)` |
 | UI disabled state | `Size +` disabled at `>= 24`; `Size −` disabled at `<= 10`. The label uses the Unicode minus `−`, not a hyphen. |
 | Applies to | the `data-cm-wrapper`, the `<textarea>`, the preview pane, and the Predict panel body — **not** the toolbar chrome or `uiFontSize` |
+| Positioning (v0.6.1) | The menu panel is `position: fixed`, not `absolute` inside the trigger wrapper. The toolbar scroller (`overflow-x: auto`) forces a computed `overflow-y: auto`, which clips overflowing children — an absolute menu mounts but is invisible. A `useLayoutEffect` anchors `left` / `top` to the trigger button and clamps both edges to the viewport; it re-runs on `resize` and capture-phase `scroll`. Same contract as `FileActionsButton` and the Graph Filter. |
 
 > The two clamps must stay in sync. Changing the range means changing both the store clamp and the two `disabled` expressions in `Editor.tsx`.
 

@@ -14,10 +14,20 @@
 > functional specification). See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.6.0](https://img.shields.io/badge/version-0.6.0-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.0)
+[![v0.6.1](https://img.shields.io/badge/version-0.6.1-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.1)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
+
+---
+
+## What's new in v0.6.1
+
+> The Format menu works again after the one-row toolbar. Patch on top of [v0.6.0](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.0).
+
+1. **Format dropdown is visible.** v0.6.0's horizontal toolbar scroller clipped the absolutely positioned Format menu — it mounted but you could not see or click it. The menu is now `position: fixed` and clamped to the viewport, same pattern as Import / Export and Filter.
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.1 entry and prior changelogs.
 
 ---
 

@@ -459,7 +459,7 @@ Both are now `flex-nowrap`, and the toolbar row scrolls horizontally instead:
 
 `min-w-0` on the scroller is load-bearing: a flex item keeps its intrinsic content width by default, so without it `overflow-x` never engages and the pinned cluster gets shoved out instead of the row scrolling.
 
-**The Filter popover is `position: fixed`**, so scrolling the toolbar would slide the button out from under a popover whose `left` / `top` were measured once at open. `GraphViewControls` re-measures the anchor on capture-phase `scroll` and on `resize`; `GraphScopeFilter`'s existing `clampToViewport` then re-clamps, because it is keyed on `anchor`. Capture-phase is required — the scroller is an *ancestor* of the button, not the event target.
+**The Filter popover is `position: fixed`**, so scrolling the toolbar would slide the button out from under a popover whose `left` / `top` were measured once at open. `GraphViewControls` re-measures the anchor on capture-phase `scroll` and on `resize`; `GraphScopeFilter`'s existing `clampToViewport` then re-clamps, because it is keyed on `anchor`. Capture-phase is required — the scroller is an *ancestor* of the button, not the event target. The **Format** menu in `Editor.tsx` follows the same fixed + re-measure contract (fixed in v0.6.1 after the scroller clipped an absolute dropdown).
 
 ## 9b. Globe projection
 
