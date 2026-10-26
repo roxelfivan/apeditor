@@ -189,7 +189,8 @@ This is the only state container. Single source of truth for everything except: 
 | Slice | Keyed by | Persisted? | Notes |
 |---|---|---|---|
 | `documents`, `currentDocumentId` | — | yes | The doc list + active doc |
-| `chats` | `documentId` | yes | Per-doc chat history |
+| `chats` | `documentId` | yes | Per-doc live chat history (sent to the model) |
+| `chatArchives` | `documentId` | yes | Parked conversations; not sent until restored |
 | `revisions` | `documentId` | yes | Per-doc saved snapshots |
 | `prompts` | — | yes | User-saved prompt library |
 | `viewMode` | — | yes | `'write' \| 'preview' \| 'split' \| 'graph'` |
@@ -209,7 +210,7 @@ This is the only state container. Single source of truth for everything except: 
 |---|---|
 | Documents | `createDocument`, `renameDocument`, `deleteDocument`, `setCurrentDocument`, `updateDocumentContent` |
 | Revisions | `saveRevision`, `deleteRevision`, `restoreRevision` |
-| Chats | `appendMessage`, `updateLastAssistant`, `clearChat` |
+| Chats | `appendMessage`, `updateLastAssistant`, `clearChat`, `archiveChat`, `archiveOldChat`, `restoreArchivedChat`, `deleteArchivedChat` |
 | Prompts | `addPrompt`, `updatePrompt`, `deletePrompt` |
 | View / UI | `setViewMode`, `bumpEditorFontSize`, `setUiFontSize`, `setChatOpen`, `setSidebarCollapsed`, `setChatCollapsed`, `setTopbarCollapsed`, `setIncludeSelection`, `setDebugMode`, `toggleTheme` |
 | API | `setApi`, `setLayout`, `setPreviewSize`, `setEditorFocus` |

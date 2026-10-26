@@ -26,6 +26,7 @@
  */
 
 import type {
+  ArchivedChat,
   ChatMessage,
   Comment,
   CommentRound,
@@ -60,6 +61,12 @@ export interface DocumentBackup {
   document: DocumentRecord;
   comments: Comment[];
   chats: ChatMessage[];
+  /**
+   * Parked conversations. Always emitted (empty array when none) so
+   * the file shape stays predictable. Older v1 files omit the field;
+   * parse treats that as `[]`.
+   */
+  chatArchives: ArchivedChat[];
   revisions: Revision[];
 }
 
@@ -72,6 +79,7 @@ export interface ParsedDocumentBackup {
   document: DocumentRecord;
   comments: Comment[];
   chats: ChatMessage[];
+  chatArchives: ArchivedChat[];
   revisions: Revision[];
   meta: {
     schema: typeof BACKUP_SCHEMA;
@@ -122,7 +130,8 @@ export class BackupParseError extends Error {
 /**
  * Build a `DocumentBackup` from the live store slices for `documentId`.
  *
- * Empty `comments` / `chats` / `revisions` arrays are still emitted so
+ * Empty `comments` / `chats` / `chatArchives` / `revisions` arrays are
+ * still emitted so
  * the file shape stays predictable (downstream code never has to guard
  * for `undefined`).
  *
@@ -134,6 +143,7 @@ export function buildDocumentBackup(args: {
   documents: DocumentRecord[];
   comments: Record<string, Comment[]>;
   chats: Record<string, ChatMessage[]>;
+  chatArchives?: Record<string, ArchivedChat[]>;
   revisions: Record<string, Revision[]>;
   appVersion?: string;
 }): DocumentBackup | null {
@@ -147,6 +157,7 @@ export function buildDocumentBackup(args: {
     document,
     comments: args.comments[args.documentId] ?? [],
     chats: args.chats[args.documentId] ?? [],
+    chatArchives: args.chatArchives?.[args.documentId] ?? [],
     revisions: args.revisions[args.documentId] ?? [],
   };
 }
@@ -438,6 +449,29 @@ function parseChatMessage(value: unknown): ChatMessage {
   };
 }
 
+function parseArchivedChat(value: unknown): ArchivedChat {
+  if (!isPlainObject(value)) {
+    throw new BackupParseError('Backup archived chat is not an object');
+  }
+  const messagesRaw = requireArray(value, 'messages');
+  const messages = messagesRaw.map((m, i) => {
+    try {
+      return parseChatMessage(m);
+    } catch (err) {
+      throw new BackupParseError(
+        `Backup archived chat messages[${i}]: ${(err as Error).message}`,
+        err
+      );
+    }
+  });
+  return {
+    id: requireNonEmptyString(value, 'id'),
+    title: requireString(value, 'title'),
+    archivedAt: requireNumber(value, 'archivedAt'),
+    messages,
+  };
+}
+
 function parseRevision(value: unknown): Revision {
   if (!isPlainObject(value)) {
     throw new BackupParseError('Backup revision is not an object');
@@ -504,6 +538,10 @@ export function parseDocumentBackup(raw: string): ParsedDocumentBackup {
   // with a stable error rather than a TypeError later.
   const commentsRaw = requireArray(parsed, 'comments');
   const chatsRaw = requireArray(parsed, 'chats');
+  const chatArchivesRaw =
+    parsed.chatArchives === undefined
+      ? []
+      : requireArray(parsed, 'chatArchives');
   const revisionsRaw = requireArray(parsed, 'revisions');
 
   const comments = commentsRaw.map((c, i) => {
@@ -522,6 +560,16 @@ export function parseDocumentBackup(raw: string): ParsedDocumentBackup {
     } catch (err) {
       throw new BackupParseError(
         `Backup chats[${i}]: ${(err as Error).message}`,
+        err
+      );
+    }
+  });
+  const chatArchives = chatArchivesRaw.map((a, i) => {
+    try {
+      return parseArchivedChat(a);
+    } catch (err) {
+      throw new BackupParseError(
+        `Backup chatArchives[${i}]: ${(err as Error).message}`,
         err
       );
     }
@@ -570,6 +618,7 @@ export function parseDocumentBackup(raw: string): ParsedDocumentBackup {
     document,
     comments,
     chats,
+    chatArchives,
     revisions,
     meta: {
       schema: BACKUP_SCHEMA,

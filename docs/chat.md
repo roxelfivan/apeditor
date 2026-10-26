@@ -4,13 +4,27 @@ Chat is the right-hand panel. Use it for free-form questions, selection-based re
 
 ## Header
 
-- **Chat** plus the current model name (or `google-ai-mode`)
-- **Clear** — empties this document’s conversation (disabled when empty)
+- **Chat** (with **+** / **−**) plus the current model name (or `google-ai-mode`). Click **Chat** to tuck the conversation away so only the header and input remain. That preference persists across reloads.
+- **Expand all** / **Collapse older** — when there is more than one turn, expand every prompt/reply or collapse all but the latest. Older turns start collapsed; the latest stays open.
+- **History** — browse the live thread and archived conversations for this document
+- **Archive** — park the live conversation and start a new empty chat (disabled when empty). Archived threads are **not** sent to the model on the next prompt.
+- **Clear** — deletes this document’s **live** conversation without archiving (disabled when empty)
 - **×** — hides the panel (show it again from the right-edge chevron)
 
 You can drag the left edge of the panel to resize its width, and drag the thin divider between the messages area and the input area to give the messages more or less room. Both splits persist across reloads.
 
 If you have never sent a message, Chat shows: *Ask anything, or highlight text in the editor and send a prompt from the library.*
+
+## History and archive
+
+**History** opens an overlay (same idea as revision history):
+
+- **Current** is the live thread. **Archive current** parks it. **Archive older than 7 days** moves only messages whose timestamps fall on or before that cutoff; newer messages stay live.
+- Each archived session lists a title (first line of the first user message), the archive date, and a message count. Open one to read it. Turns are collapsible; proposed-edit cards are not interactive here.
+- **Restore as current** makes that archive the live chat. If Current is not empty, it is archived first.
+- **Delete archive** removes that parked thread after a confirm. **Clear** still only wipes Current.
+
+JSON backup export/import includes archived chats. Older backup files without that field import with an empty archive list.
 
 ## Send a message (Minimax or OpenAI)
 

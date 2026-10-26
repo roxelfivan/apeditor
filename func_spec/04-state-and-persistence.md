@@ -51,7 +51,8 @@ All three are `Record<documentId, …>`. They are deleted with the document.
 
 | Field | Type | Default | P | Notes |
 |---|---|---|:-:|---|
-| `chats` | `Record<string, ChatMessage[]>` | `{}` | ✅ | Cleared per-document by `clearChat` |
+| `chats` | `Record<string, ChatMessage[]>` | `{}` | ✅ | Live thread. Cleared per-document by `clearChat`. Sent to the model. |
+| `chatArchives` | `Record<string, ArchivedChat[]>` | `{}` | ✅ | Parked threads, newest first. Not sent to the model. |
 | `revisions` | `Record<string, Revision[]>` | `{}` | ✅ | Oldest-first; the UI reverses for display |
 | `comments` | `Record<string, Comment[]>` | `{}` | ✅ | Canonical order is **document position**, not creation order |
 
@@ -133,18 +134,18 @@ All three are `Record<documentId, …>`. They are deleted with the document.
 | Key | `apeditor` (`STORE_STORAGE_KEY = STORAGE_PREFIX` in [`utils/storage.ts`](../src/utils/storage.ts)) |
 | Writer | zustand `persist` middleware |
 | Format | `JSON.stringify({ state: <partialized>, version: 0 })` |
-| Size driver | `documents`, `chats`, `revisions`, `comments` |
+| Size driver | `documents`, `chats`, `chatArchives`, `revisions`, `comments` |
 
 There is **no `version` / `migrate` pair configured** on the persist options. All migration is imperative inside `onRehydrateStorage`. See [migrations](#5-rehydrate-migrations).
 
 ### 4.2 `partialize`
 
-Exactly these 20 keys are written:
+Exactly these 21 keys are written:
 
 ```ts
 {
   documents, currentDocumentId,
-  chats, revisions, prompts,
+  chats, chatArchives, revisions, prompts,
   viewMode, editorFontSize, uiFontSize,
   chatOpen, sidebarCollapsed, chatCollapsed, topbarCollapsed,
   includeSelection, sendSelectionOnly, persistApiKey, debugMode,
@@ -239,7 +240,7 @@ All actions follow the same pattern: never mutate, always `set(...)`, return the
 |---|---|
 | `createDocument(title?)` | `makeDoc(title?.trim() \|\| 'Untitled')`, **prepends**, sets `currentDocumentId`, returns the new id |
 | `renameDocument(id, title)` | Trims; empty → `'Untitled'` |
-| `deleteDocument(id)` | Removes the doc and `delete`s `chats[id]`, `revisions[id]`, `comments[id]`; `currentDocumentId` → `documents[0]?.id ?? null` |
+| `deleteDocument(id)` | Removes the doc and `delete`s `chats[id]`, `chatArchives[id]`, `revisions[id]`, `comments[id]`; `currentDocumentId` → `documents[0]?.id ?? null` |
 | `setCurrentDocument(id)` | Direct set |
 | `updateDocumentContent(id, content)` | Bumps `updatedAt` |
 
@@ -260,6 +261,10 @@ Label regimes: the editor toolbar saves with **no label**; Chat saves `'Before A
 | `appendMessage(documentId, msg)` | Appends |
 | `updateLastAssistant(documentId, content)` | Scans **backwards** for the last `assistant` message and replaces only its `content`; no-op if none |
 | `clearChat(documentId)` | Sets `chats[documentId] = []`, keeping the key |
+| `archiveChat(documentId)` | If live messages exist, prepends an `ArchivedChat` and clears the live thread; no-op when empty |
+| `archiveOldChat(documentId, olderThanMs)` | Messages with `createdAt <= now - olderThanMs` become one archive entry; newer stay live; no-op when nothing qualifies. Default cutoff in the UI is 7 days |
+| `restoreArchivedChat(documentId, archiveId)` | Loads that archive as live. Non-empty live is archived first. Removes the restored row |
+| `deleteArchivedChat(documentId, archiveId)` | Drops one archive row |
 
 ### 6.4 UI and settings
 

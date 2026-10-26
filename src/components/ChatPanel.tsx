@@ -15,8 +15,14 @@ import { buildGoogleAiModeUrl } from '@/utils/googleAiMode';
 import { requiresApiKey } from '@/config/providers';
 import { MentionInput } from '@/components/mentions/MentionInput';
 import { parseMentions } from '@/utils/mentions/parseMentions';
-import { CHAT_MESSAGES_HEIGHT_KEY } from '@/utils/storage';
+import {
+  CHAT_MESSAGES_COLLAPSED_KEY,
+  CHAT_MESSAGES_HEIGHT_KEY,
+} from '@/utils/storage';
 import { useIsNarrow } from '@/hooks/useMediaQuery';
+import { ChatHistory } from '@/components/ChatHistory';
+import { ChatTurnFrame } from '@/components/ChatTurnFrame';
+import { groupChatTurns } from '@/utils/chatArchive';
 
 // Maximum fraction of the viewport width the chat panel is allowed to
 // occupy. The static MAX_CHAT_WIDTH is still used as a floor so the panel
@@ -53,6 +59,7 @@ export function ChatPanel() {
   const appendMessage = useStore((s) => s.appendMessage);
   const updateLastAssistant = useStore((s) => s.updateLastAssistant);
   const clearChat = useStore((s) => s.clearChat);
+  const archiveChat = useStore((s) => s.archiveChat);
   const api = useStore((s) => s.api);
   const includeSelection = useStore((s) => s.includeSelection);
   const setIncludeSelection = useStore((s) => s.setIncludeSelection);
@@ -116,6 +123,34 @@ export function ChatPanel() {
   const messages: ChatMessage[] = currentDocumentId
     ? chats[currentDocumentId] ?? []
     : [];
+  const turns = useMemo(() => groupChatTurns(messages), [messages]);
+  const latestTurnId = turns[turns.length - 1]?.id;
+  const [turnExpanded, setTurnExpanded] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [messagesCollapsed, setMessagesCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(CHAT_MESSAGES_COLLAPSED_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        CHAT_MESSAGES_COLLAPSED_KEY,
+        messagesCollapsed ? '1' : '0'
+      );
+    } catch {
+      /* ignore quota errors */
+    }
+  }, [messagesCollapsed]);
+  useEffect(() => {
+    setTurnExpanded({});
+  }, [currentDocumentId]);
+  const isTurnExpanded = (id: string) =>
+    turnExpanded[id] ?? id === latestTurnId;
 
   // Listen for selection events from the editor, fill-chat from PromptLibrary,
   // and window resize to re-clamp the chat width against the 2/3 viewport cap.
@@ -884,18 +919,77 @@ export function ChatPanel() {
         className="h-full border-l border-paper-hairline dark:border-cyber-border flex flex-col bg-paper-panel dark:bg-ape-panel"
         style={{ width: '100%' }}
       >
-      <div className="px-3 py-2 border-b border-paper-hairline dark:border-cyber-border flex items-center gap-2 bg-paper-elevated/50 dark:bg-ape-elevated/40 pt-[max(0.5rem,env(safe-area-inset-top))]">
-        <span className="text-[15px] font-medium text-paper-ink dark:text-cyber-primary">
-          Chat
-        </span>
+      {historyOpen && currentDocumentId && (
+        <ChatHistory
+          documentId={currentDocumentId}
+          onClose={() => setHistoryOpen(false)}
+        />
+      )}
+      <div className="px-3 py-2 border-b border-paper-hairline dark:border-cyber-border flex items-center flex-wrap gap-2 bg-paper-elevated/50 dark:bg-ape-elevated/40 pt-[max(0.5rem,env(safe-area-inset-top))]">
+        <button
+          type="button"
+          className="text-[15px] font-medium text-paper-ink dark:text-cyber-primary flex items-center gap-1 min-w-0"
+          onClick={() => setMessagesCollapsed((v) => !v)}
+          aria-expanded={!messagesCollapsed}
+          title={
+            messagesCollapsed
+              ? 'Show conversation'
+              : 'Hide conversation (keep the input)'
+          }
+        >
+          <span aria-hidden className="font-mono text-xs w-3 shrink-0">
+            {messagesCollapsed ? '+' : '−'}
+          </span>
+          <span>Chat</span>
+        </button>
         <span className="text-xs text-paper-inkSoft dark:text-cyber-muted font-mono truncate">
           {isKeyless ? 'google-ai-mode' : api.model}
         </span>
         <div className="flex-1" />
+        {!messagesCollapsed && turns.length > 1 && (
+          <button
+            type="button"
+            className="text-xs text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan transition-colors"
+            onClick={() => {
+              const latestOpen = latestTurnId
+                ? { [latestTurnId]: true }
+                : {};
+              const allOpen = Object.fromEntries(
+                turns.map((t) => [t.id, true])
+              );
+              const allExpanded = turns.every((t) => isTurnExpanded(t.id));
+              setTurnExpanded(allExpanded ? latestOpen : allOpen);
+            }}
+            title="Expand every turn, or collapse all but the latest"
+          >
+            {turns.every((t) => isTurnExpanded(t.id))
+              ? 'Collapse older'
+              : 'Expand all'}
+          </button>
+        )}
+        <button
+          type="button"
+          className="text-xs text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan transition-colors"
+          onClick={() => setHistoryOpen(true)}
+          disabled={!currentDocumentId}
+          title="Browse current and archived chats"
+        >
+          History
+        </button>
+        <button
+          type="button"
+          className="text-xs text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan transition-colors"
+          onClick={() => currentDocumentId && archiveChat(currentDocumentId)}
+          disabled={!messages.length}
+          title="Park this conversation and start a new empty chat"
+        >
+          Archive
+        </button>
         <button
           className="text-xs text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-danger transition-colors"
           onClick={() => currentDocumentId && clearChat(currentDocumentId)}
           disabled={!messages.length}
+          title="Delete the live conversation without archiving"
         >
           Clear
         </button>
@@ -918,12 +1012,21 @@ export function ChatPanel() {
           remains. */}
       <div
         ref={scrollerRef}
+        hidden={messagesCollapsed}
         className={
-          messagesHeight > 0
-            ? 'overflow-y-auto p-3 space-y-3 bg-paper-base dark:bg-ape-base min-h-0 shrink-0'
-            : 'flex-1 overflow-y-auto p-3 space-y-3 bg-paper-base dark:bg-ape-base min-h-0'
+          messagesCollapsed
+            ? 'hidden'
+            : messagesHeight > 0
+              ? 'overflow-y-auto p-3 space-y-3 bg-paper-base dark:bg-ape-base min-h-0 shrink-0'
+              : 'flex-1 overflow-y-auto p-3 space-y-3 bg-paper-base dark:bg-ape-base min-h-0'
         }
-        style={messagesHeight > 0 ? { height: `${messagesHeight}px` } : undefined}
+        style={
+          messagesCollapsed
+            ? undefined
+            : messagesHeight > 0
+              ? { height: `${messagesHeight}px` }
+              : undefined
+        }
       >
         {!messages.length && (
           <p className="text-sm text-paper-inkSoft dark:text-cyber-muted">
@@ -931,19 +1034,33 @@ export function ChatPanel() {
             the library.
           </p>
         )}
-        {messages.map((m) => (
-          <MessageBubble
-            key={m.id}
-            message={m}
-            staged={stagedRejections[m.id] ?? []}
-            committed={committedRejections[m.id] ?? {}}
-            onStageReject={(info) => stageReject(m.id, info)}
-            onCommit={() => commitStagedRejections(m.id)}
-            onClearStaged={() => clearStagedRejections(m.id)}
-            onApplyAll={() => applyAllForMessage(m.id)}
-            applyAllSummary={applyAllSummary[m.id] ?? null}
-            onClearApplyAllSummary={() => clearApplyAllSummary(m.id)}
-          />
+        {turns.map((turn) => (
+          <ChatTurnFrame
+            key={turn.id}
+            turn={turn}
+            expanded={isTurnExpanded(turn.id)}
+            onToggle={() =>
+              setTurnExpanded((prev) => ({
+                ...prev,
+                [turn.id]: !isTurnExpanded(turn.id),
+              }))
+            }
+          >
+            {turn.messages.map((m) => (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                staged={stagedRejections[m.id] ?? []}
+                committed={committedRejections[m.id] ?? {}}
+                onStageReject={(info) => stageReject(m.id, info)}
+                onCommit={() => commitStagedRejections(m.id)}
+                onClearStaged={() => clearStagedRejections(m.id)}
+                onApplyAll={() => applyAllForMessage(m.id)}
+                applyAllSummary={applyAllSummary[m.id] ?? null}
+                onClearApplyAllSummary={() => clearApplyAllSummary(m.id)}
+              />
+            ))}
+          </ChatTurnFrame>
         ))}
         {/* Keyless-provider "AI Mode opened" notice. Rendered as a
             sibling of the message bubbles so it scrolls with the chat
@@ -997,6 +1114,20 @@ export function ChatPanel() {
           </div>
         )}
       </div>
+      {messagesCollapsed && (notice || error) && (
+        <div className="px-3 py-2 space-y-1">
+          {notice && (
+            <div className="text-xs text-paper-inkSoft dark:text-cyber-muted bg-paper-elevated dark:bg-ape-elevated border border-paper-hairline dark:border-cyber-border rounded p-2">
+              {notice}
+            </div>
+          )}
+          {error && (
+            <div className="text-xs text-cyber-danger bg-cyber-danger/10 border border-cyber-danger/40 rounded p-2 whitespace-pre-wrap">
+              {error}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Draggable divider between the messages (output) area and the
           input area. Mirrors the editor's suggestion-panel handle so
