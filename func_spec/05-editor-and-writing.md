@@ -348,7 +348,6 @@ All bounds live in [`useDragResize.ts`](../src/hooks/useDragResize.ts) and are i
 | `MIN_POPOVER_HEIGHT` / `MAX_POPOVER_HEIGHT` | `220` / `800` |
 | `MIN_SETTINGS_WIDTH` / `MAX_SETTINGS_WIDTH` | `360` / `960` |
 | `MIN_SETTINGS_HEIGHT` / `MAX_SETTINGS_HEIGHT` | `420` / `900` |
-| `MIN/MAX_SETTINGS_TEXTAREA_WIDTH` | `320` / `880` |
 | `MIN/MAX_SETTINGS_TEXTAREA_HEIGHT` | `100` / `600` |
 
 The chat panel additionally caps at `max(MAX_CHAT_WIDTH, floor(window.innerWidth * 2/3))` so a persisted 720 px value cannot push the panel off-screen on a narrow window. A `window` resize listener re-clamps and writes back only when the stored value exceeds the new maximum.

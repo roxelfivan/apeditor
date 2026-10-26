@@ -211,8 +211,6 @@ export const MAX_SETTINGS_HEIGHT = 900;
 // textarea starts at 3 rows by default; the user can grow either
 // one to roughly half a laptop screen while keeping the rest of
 // the modal scannable.
-export const MIN_SETTINGS_TEXTAREA_WIDTH = 320;
-export const MAX_SETTINGS_TEXTAREA_WIDTH = 880;
 export const MIN_SETTINGS_TEXTAREA_HEIGHT = 100;
 export const MAX_SETTINGS_TEXTAREA_HEIGHT = 600;
 

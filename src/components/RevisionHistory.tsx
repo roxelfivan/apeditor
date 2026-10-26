@@ -21,7 +21,6 @@ export function RevisionHistory({ open, onClose }: Props) {
   const restoreRevision = useStore((s) => s.restoreRevision);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [labelDraft, setLabelDraft] = useState('');
   const [rightMode, setRightMode] = useState<RightPaneMode>('preview');
 
   if (!open || !doc) return null;
@@ -42,8 +41,7 @@ export function RevisionHistory({ open, onClose }: Props) {
           <button
             className="btn-fire-sm shrink-0"
             onClick={() => {
-              setLabelDraft('');
-              saveRevision(doc.id, labelDraft || undefined);
+              saveRevision(doc.id);
             }}
           >
             Snapshot now

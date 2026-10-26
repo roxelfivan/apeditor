@@ -143,8 +143,8 @@ Output:
 --- END DOC ---
 ```
 
-- Paragraph boundaries are **every `\n`** (char code 10). Identical to `splitParagraphs` in `api/chat.ts` and in [`useDocumentMentions.ts`](../src/hooks/useDocumentMentions.ts).
-- Each preview has whitespace collapsed to single spaces, is trimmed, then truncated at `OUTLINE_PREVIEW_CHARS = 60` on a word boundary, else ellipsised with `…`.
+- Paragraph boundaries are **every `\n`** (char code 10), via `splitParagraphs` in [`paragraphs.ts`](../src/utils/paragraphs.ts). Chat outlines, @-mention pickers, comment batches, and the re-anchor fallback share that helper.
+- Each preview has whitespace collapsed to single spaces, is trimmed, then truncated at `OUTLINE_PREVIEW_CHARS = 60` on a word boundary, else ellipsised with `…` (`previewParagraph`).
 - `trimOnWordBoundary` prefers a tail space within the last `max / 2` characters.
 
 **This outline replaces the full document.** That single change cut comment-batch prompts by roughly 70% versus v0.4.0.
@@ -359,7 +359,7 @@ Setting `sendSelectionOnly` to `true` also force-sets `includeSelection = true` 
 1. Change the constant in [`api/chat.ts`](../src/api/chat.ts).
 2. If it is `DEFAULT_SYSTEM_MESSAGE` or `PROPOSED_EDIT_RULES_DEFAULT`, update the matching `isStale*` detector so already-persisted copies of the old built-in normalise away.
 3. If you change `formatCommentBatch`'s output, update **both** the comment-batch instruction block and `looksLikeCommentBatch`.
-4. If you change `buildDocOutline`'s paragraph boundary, change `splitParagraphs` in `useDocumentMentions.ts` to match — heading sections and outline offsets must agree.
+4. If you change `buildDocOutline`'s paragraph boundary, change `splitParagraphs` in [`paragraphs.ts`](../src/utils/paragraphs.ts) — heading sections and outline offsets import the same helper.
 5. Run `npx vite-node scripts/measure-prompt.ts` to check the token impact.
 
 ## 10. Next

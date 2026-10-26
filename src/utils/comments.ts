@@ -7,6 +7,7 @@
 // hand the LLM).
 
 import { findEditAnchor } from '@/utils/proposedEdit';
+import { splitParagraphs } from '@/utils/paragraphs';
 import type { Comment } from '@/types';
 
 /** Soft cap on a single comment body; the composer shows a counter. */
@@ -269,21 +270,9 @@ export function formatCommentBatch(
   // batch top-to-bottom in the same order the passages appear.
   const sorted = [...comments].sort((a, b) => a.start - b.start);
 
-  // Pre-compute paragraph boundaries once. `paragraphs[i]` is the
-  // start offset of the i-th paragraph (0-based), and the document
-  // length acts as the implicit end of the last paragraph. We treat
-  // both `\n\n` and single `\n` as paragraph breaks because the
-  // editor accepts hard-wrapped single newlines as paragraph
-  // separators in practice (textarea + markdown rendering).
-  const paragraphStarts: number[] = [0];
-  for (let i = 0; i < doc.length; i++) {
-    if (doc.charCodeAt(i) === 10 /* \n */) {
-      const next = i + 1;
-      if (next < doc.length && paragraphStarts[paragraphStarts.length - 1] !== next) {
-        paragraphStarts.push(next);
-      }
-    }
-  }
+  // Shared `\n`-as-paragraph rule (`src/utils/paragraphs.ts`) so
+  // batch paragraph indexes match the prompt outline and pickers.
+  const paragraphStarts = splitParagraphs(doc);
   const totalParagraphs = paragraphStarts.length;
 
   const lines: string[] = [];

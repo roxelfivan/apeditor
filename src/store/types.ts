@@ -1,8 +1,7 @@
-// Shared store types. Pure type declarations + a re-export of the
-// `DEFAULT_SYSTEM_MESSAGE` constant that used to live in `useStore.ts`
-// (kept here as a re-export so existing
+// Shared store types. Value re-exports such as `DEFAULT_SYSTEM_MESSAGE`
+// live on the `useStore` barrel so historical
 // `import { DEFAULT_SYSTEM_MESSAGE } from '@/store/useStore'` calls
-// keep resolving).
+// keep resolving; this file is types only.
 
 import type {
   ApiConfig,
@@ -12,13 +11,10 @@ import type {
   CommentRound,
   DocumentRecord,
   MentionToken,
-  ProposedEditRationale,
   Prompt,
   Revision,
   Theme,
 } from '@/types';
-
-export type { DEFAULT_SYSTEM_MESSAGE } from '@/api/chat';
 
 /** Per-document editor focus + caret state (kept in the store, not persisted). */
 export interface EditorFocusState {
@@ -334,6 +330,3 @@ export interface ImportPlan {
   resolvedId: string;
   strategy: 'replace' | 'skip' | 'keep-both';
 }
-
-// Re-export the rationale type so callers can import it from the store.
-export type { ProposedEditRationale };

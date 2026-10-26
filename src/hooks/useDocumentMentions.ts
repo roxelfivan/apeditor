@@ -1,13 +1,15 @@
 // Shared hook for the @-mention system. Exposes the documents list,
 // per-document paragraph previews, and heading-grouped sections for
-// the section picker. Paragraph boundaries stay in sync with
-// `buildDocOutline` in `src/api/chat.ts` so picker previews / section
-// ranges and the prompt outline describe the same shape of the
-// document.
+// the section picker. Paragraph boundaries and preview truncation
+// live in `src/utils/paragraphs.ts` so they stay identical to
+// `buildDocOutline` in `src/api/chat.ts`.
 
 import { useMemo } from 'react';
 import { useStore } from '@/store/useStore';
 import type { DocumentRecord } from '@/types';
+import { previewParagraph, splitParagraphs } from '@/utils/paragraphs';
+
+export { splitParagraphs } from '@/utils/paragraphs';
 
 export interface ParagraphInfo {
   /** 0-based paragraph index. */
@@ -45,8 +47,6 @@ export interface HeadingSection {
   paragraphIndexes: number[];
 }
 
-const OUTLINE_PREVIEW_CHARS = 60;
-
 // ATX headings require `#` to start at the line's first column
 // (CommonMark §4.2). An indented `#` is a quoted / code-block line,
 // not a heading. The title must contain at least one non-space
@@ -58,39 +58,17 @@ const ATX_HEADING_RE = /^(#{1,6})\s+(.+?)\s*#*\s*$/;
 const SETEXT_H1_RE = /^=+\s*$/;
 const SETEXT_H2_RE = /^-{2,}\s*$/;
 
-function trimOnWordBoundary(s: string, max: number): string {
-  if (s.length <= max) return s;
-  const sliced = s.slice(0, max);
-  const sp = sliced.lastIndexOf(' ');
-  if (sp > max / 2) return sliced.slice(0, sp);
-  return sliced;
-}
-
-/** Compute paragraph boundaries for a document, matching buildDocOutline. */
-export function splitParagraphs(content: string): number[] {
-  const starts: number[] = [0];
-  for (let i = 0; i < content.length; i++) {
-    if (content.charCodeAt(i) === 10) {
-      const next = i + 1;
-      if (next < content.length && starts[starts.length - 1] !== next) {
-        starts.push(next);
-      }
-    }
-  }
-  return starts;
-}
-
 /** Build a list of paragraph info objects for a document. */
 export function buildParagraphs(doc: DocumentRecord): ParagraphInfo[] {
   const starts = splitParagraphs(doc.content);
   return starts.map((start, i) => {
     const end = i + 1 < starts.length ? starts[i + 1] : doc.content.length;
-    const raw = doc.content.slice(start, end).replace(/\s+/g, ' ').trim();
-    const preview =
-      raw.length <= OUTLINE_PREVIEW_CHARS
-        ? raw
-        : trimOnWordBoundary(raw, OUTLINE_PREVIEW_CHARS) + '…';
-    return { index: i, start, end, preview };
+    return {
+      index: i,
+      start,
+      end,
+      preview: previewParagraph(doc.content.slice(start, end)),
+    };
   });
 }
 
@@ -225,12 +203,10 @@ export function buildHeadingSections(
   if (firstHeadingPara > 0) {
     const preStart = paragraphs[0].start;
     const preEnd = paragraphs[firstHeadingPara].start;
-    const preText = doc.content.slice(preStart, preEnd).replace(/\s+/g, ' ').trim();
-    if (preText) {
-      const preview =
-        preText.length <= OUTLINE_PREVIEW_CHARS
-          ? preText
-          : trimOnWordBoundary(preText, OUTLINE_PREVIEW_CHARS) + '…';
+    const preview = previewParagraph(
+      doc.content.slice(preStart, preEnd)
+    );
+    if (preview) {
       sections.push({
         index: sections.length,
         level: 0,
@@ -299,18 +275,13 @@ function buildBlankLineSections(
       endExclusive < paragraphs.length
         ? paragraphs[endExclusive].start
         : doc.content.length;
-    const raw = doc.content
-      .slice(startOffset, endOffset)
-      .replace(/\s+/g, ' ')
-      .trim();
-    if (!raw) {
+    const preview = previewParagraph(
+      doc.content.slice(startOffset, endOffset)
+    );
+    if (!preview) {
       blockStart = endExclusive;
       return;
     }
-    const preview =
-      raw.length <= OUTLINE_PREVIEW_CHARS
-        ? raw
-        : trimOnWordBoundary(raw, OUTLINE_PREVIEW_CHARS) + '…';
     sections.push({
       index: sections.length,
       level: 0,
