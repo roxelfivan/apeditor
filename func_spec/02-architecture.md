@@ -145,7 +145,7 @@ This is the **only** place in the app that performs an HTTP request to a chat pr
 | [`CommentMargin.tsx`](../src/components/CommentMargin.tsx) | 112 | Numbered badges in the right margin column. |
 | [`EdgeAnchor.tsx`](../src/components/EdgeAnchor.tsx) | 70 | Edge-pinned chevron that reveals a collapsed panel. |
 
-### `src/utils/` — 17 files
+### `src/utils/` — 18 files
 
 | File | Lines | Responsibility |
 |---|---:|---|
@@ -157,6 +157,7 @@ This is the **only** place in the app that performs an HTTP request to a chat pr
 | [`graph/buildWorkspaceGraph.ts`](../src/utils/graph/buildWorkspaceGraph.ts) | 298 | Documents + headings + wikilinks + `@` mentions → nodes and edges. |
 | [`googleAiMode.ts`](../src/utils/googleAiMode.ts) | 197 | Builds the keyless Google AI Mode deep-link URL from a chat payload. |
 | [`storage.ts`](../src/utils/storage.ts) | 181 | Every `localStorage` / `sessionStorage` key constant, `migrateLegacyStorage`, `downloadTextFile`, `sanitizeFilename`, session-API-key helpers. |
+| [`paragraphs.ts`](../src/utils/paragraphs.ts) | 56 | Shared `splitParagraphs` / `previewParagraph` / `trimOnWordBoundary` for outlines, mentions, comment batches, and re-anchor. |
 | [`diff.ts`](../src/utils/diff.ts) | 77 | `lineDiff` (flat) and `splitDiff` (side-by-side rows) over the `diff` package. |
 | [`backup.ts`](../src/utils/backup.ts) | 86 | `BACKUP_SCHEMA` / `BACKUP_VERSION`, `buildDocumentBackup`, `serialiseDocumentBackup`. |
 | [`pdf.ts`](../src/utils/pdf.ts) | 92 | `pdfjs-dist` wrapper: `loadPdfFromBytes`, `pageHasNativeText`, `pageNativeText`, `renderPageToCanvas`. |

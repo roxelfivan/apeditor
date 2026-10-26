@@ -60,7 +60,7 @@ This codebase explains *why*, not *what*. Existing comments document the bug tha
 | Change the system prompt | `DEFAULT_SYSTEM_MESSAGE` in [`api/chat.ts`](../src/api/chat.ts) | Update `isStaleDefaultSystemMessage` so old copies normalise away |
 | Change the rationale rules | `PROPOSED_EDIT_RULES_DEFAULT` | Update `isStaleRationaleRulesOverride` |
 | Change the fence schema | `PROPOSED_EDIT_SCHEMA_RULES` in `api/chat.ts` + [`proposedEdit.ts`](../src/utils/proposedEdit.ts) | The parser and the schema reminder are two halves of one contract |
-| Change what the model sees about the current document | `buildDocOutline` | `splitParagraphs` in [`useDocumentMentions.ts`](../src/hooks/useDocumentMentions.ts) must match |
+| Change what the model sees about the current document | `buildDocOutline` | Paragraph boundaries live in [`paragraphs.ts`](../src/utils/paragraphs.ts); do not fork `splitParagraphs` |
 | Change the comment-batch format | `formatCommentBatch` in [`comments.ts`](../src/utils/comments.ts) | **Three** places agree: the formatter, the instruction block in `api/chat.ts`, and the `looksLikeCommentBatch` regex |
 | Add a store field | [`store/types.ts`](../src/store/types.ts) + `store.ts` (init, action, `partialize`, `onRehydrateStorage`) | See the checklist in [State & persistence §10](04-state-and-persistence.md#10-adding-a-store-field-the-checklist) |
 | Add a comment action | [`store/actions.ts`](../src/store/actions.ts) + possibly a new `CommentOp` variant in [`types.ts`](../src/types.ts) | Update the popover and the badge |
@@ -105,7 +105,7 @@ Both are picked up by `import.meta.glob(..., { query: '?raw' })` at build time. 
 1. Edit the constant in [`api/chat.ts`](../src/api/chat.ts).
 2. Update the matching `isStale*` detector.
 3. If `formatCommentBatch` changed, update **both** the instruction block and `looksLikeCommentBatch`.
-4. If `buildDocOutline`'s paragraph rule changed, update `splitParagraphs` in `useDocumentMentions.ts`.
+4. If `buildDocOutline`'s paragraph rule changed, update [`paragraphs.ts`](../src/utils/paragraphs.ts) — chat, mentions, comments, and re-anchor all import it.
 5. `npx vite-node scripts/measure-prompt.ts` to check the token impact.
 6. Manually test a Send to AI round trip.
 
@@ -220,11 +220,9 @@ Honest list. None of these are urgent, but each is a future PR.
 | `chatOpen` and `chatCollapsed` are two flags for one concept | `store/types.ts`, `store.ts` | Confusing; un-collapsing sets both. Collapse into one flag with a migration, or document the distinction harder |
 | No `version` / `migrate` on the persist config | `store.ts` | All migration is imperative in `onRehydrateStorage`. It works; it is just harder to reason about |
 | `layout.previewSizes` is persisted but not in `setLayout`'s signature | `store.ts` | Has its own `setPreviewSize` action. Either add it to `setLayout` or document why not |
-| `saveRevision` has no auto-generated labels despite the type comment | `store.ts` | Snapshots always render as "Snapshot". The `labelDraft` state in `RevisionHistory` exists but has no input bound to it |
-| `RevisionHistory.labelDraft` has no input | `RevisionHistory.tsx` | Dead state; either add a label input or remove it |
+| `saveRevision` has no auto-generated labels despite the type comment | `store.ts` | Snapshots from the Revisions modal and toolbar render as "Snapshot". Chat still passes labels such as `'Before AI send'` |
 | `isCommentStale` has no consumer | `comments.ts` | Exported but unused. Useful for a future pre-flight validation |
 | `splitDiff` is not used by `RevisionHistory` | `diff.ts` | Exported for other consumers; currently none |
-| `CommentComposer` registers its Escape effect twice | `CommentComposer.tsx` | Verbatim duplicate; idempotent but a maintenance trap |
 | `CommentMargin` fires `onSelect` on both `pointerup` and `click` | `CommentMargin.tsx` | Double invocation per tap. Harmless today; do not add side effects |
 | `mvp:` prefix is historical | all of `src/` | Mechanical but wide rename |
 | `VITE_DEFAULT_PROVIDER` missing from `.env.example` | `.env.example` | One line |

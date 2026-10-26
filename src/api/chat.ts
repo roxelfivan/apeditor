@@ -1,6 +1,7 @@
 // Minimal OpenAI-compatible chat client. Works with MiniMax by default.
 // The user supplies apiKey + apiEndpoint (and optionally model/systemMessage).
 import type { ApiConfig, ChatMessage, DocumentRecord, MentionToken } from '@/types';
+import { previewParagraph, splitParagraphs } from '@/utils/paragraphs';
 
 /**
  * Built-in default system message. Single source of truth for the
@@ -786,13 +787,6 @@ function buildProposedEditRulesMessage(
 }
 
 /**
- * Length of the per-paragraph preview used in the doc outline.
- * Tuned so a 10-paragraph document produces a ~600-char outline
- * (~150 tokens) instead of repeating the whole document verbatim.
- */
-const OUTLINE_PREVIEW_CHARS = 60;
-
-/**
  * Compact doc outline for `sys-current-doc`: title, size, and one
  * ~60-char preview line per paragraph. Far cheaper than sending the
  * full document. The `isCommentBatch` flag is a coarse signal — the
@@ -808,20 +802,7 @@ export function buildDocOutline(
   // referenced paragraphs). Keeping the parameter so callers can stay
   // stable; the outline itself does not depend on it yet.
   void isCommentBatch;
-  // Compute paragraph boundaries. Same definition as
-  // `formatCommentBatch` in `src/utils/comments.ts` — each `\n`
-  // starts a new paragraph (the editor's textarea + markdown
-  // rendering treats single newlines as paragraph breaks in
-  // practice, so we don't require a blank line).
-  const starts: number[] = [0];
-  for (let i = 0; i < content.length; i++) {
-    if (content.charCodeAt(i) === 10) {
-      const next = i + 1;
-      if (next < content.length && starts[starts.length - 1] !== next) {
-        starts.push(next);
-      }
-    }
-  }
+  const starts = splitParagraphs(content);
 
   const lines: string[] = [];
   lines.push(
@@ -830,29 +811,12 @@ export function buildDocOutline(
   for (let p = 0; p < starts.length; p++) {
     const start = starts[p];
     const end = p + 1 < starts.length ? starts[p + 1] : content.length;
-    const raw = content.slice(start, end).replace(/\s+/g, ' ').trim();
-    const preview =
-      raw.length <= OUTLINE_PREVIEW_CHARS
-        ? raw
-        : trimOnWordBoundary(raw, OUTLINE_PREVIEW_CHARS) + '…';
-    lines.push(`[p${p + 1}]@${start}: ${preview}`);
+    lines.push(
+      `[p${p + 1}]@${start}: ${previewParagraph(content.slice(start, end))}`
+    );
   }
   lines.push('--- END DOC ---');
   return lines.join('\n');
-}
-
-/**
- * Trim `s` so the returned string is at most `max` characters
- * long, ending at a whitespace boundary when possible. Used to
- * keep the per-paragraph preview in `buildDocOutline` from cutting
- * a word in half.
- */
-function trimOnWordBoundary(s: string, max: number): string {
-  if (s.length <= max) return s;
-  const sliced = s.slice(0, max);
-  const sp = sliced.lastIndexOf(' ');
-  if (sp > max / 2) return sliced.slice(0, sp);
-  return sliced;
 }
 
 /**
@@ -1083,22 +1047,4 @@ function truncateSliceOnWordBoundary(s: string, max: number): string {
   const sp = sliced.lastIndexOf(' ');
   if (sp > max / 2) return sliced.slice(0, sp) + ' …';
   return sliced + ' …';
-}
-
-/**
- * Compute paragraph start offsets for `content`. Mirrors the logic
- * in `buildDocOutline` so the section-text builder sees the same
- * paragraph boundaries as the outline.
- */
-function splitParagraphs(content: string): number[] {
-  const starts: number[] = [0];
-  for (let i = 0; i < content.length; i++) {
-    if (content.charCodeAt(i) === 10) {
-      const next = i + 1;
-      if (next < content.length && starts[starts.length - 1] !== next) {
-        starts.push(next);
-      }
-    }
-  }
-  return starts;
 }

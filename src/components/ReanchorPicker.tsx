@@ -20,6 +20,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { HeadingSection } from '@/hooks/useDocumentMentions';
+import { splitParagraphs } from '@/utils/paragraphs';
 
 export interface ReanchorPick {
   /** Inclusive start offset of the chosen passage in document text. */
@@ -83,15 +84,7 @@ function buildRows(
     }));
   }
   // Blank-line paragraph fallback so the picker never appears empty.
-  const starts = [0];
-  for (let i = 0; i < docContent.length; i++) {
-    if (docContent.charCodeAt(i) === 10 /* \n */) {
-      const next = i + 1;
-      if (next < docContent.length && starts[starts.length - 1] !== next) {
-        starts.push(next);
-      }
-    }
-  }
+  const starts = splitParagraphs(docContent);
   return starts.map((p, i) => {
     const nextStart = starts[i + 1] ?? docContent.length;
     const start = p;
