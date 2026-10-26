@@ -32,6 +32,16 @@ const useChatWidth = () => {
   return clamp(raw, MIN_CHAT_WIDTH, computeMaxChatWidth());
 };
 
+// Resolve an @-mention document from the live store. Defined at
+// module scope so the `mvp:send-comments` listener can call it even
+// when ChatPanel early-returns (chat closed or collapsed). A `const`
+// after that return stays in the temporal dead zone and throws
+// `Cannot access '…' before initialization` (minified as `ve` in
+// production) the moment Send to AI runs from Write mode.
+function lookupDocumentById(id: string) {
+  return useStore.getState().documents.find((d) => d.id === id) ?? null;
+}
+
 export function ChatPanel() {
   const chatOpen = useStore((s) => s.chatOpen);
   const setChatOpen = useStore((s) => s.setChatOpen);
@@ -150,6 +160,16 @@ export function ChatPanel() {
         (c) => detail.commentIds.includes(c.id) && !c.outdated
       );
       if (comments.length === 0) return;
+      // Reveal the panel so the user sees the turn. Write mode and
+      // narrow viewports keep chat collapsed; the listener still
+      // runs in that state, which is why document lookup lives at
+      // module scope rather than after the render early-return.
+      setChatOpen(true);
+      setChatCollapsed(false);
+      if (isNarrow) {
+        useStore.getState().setSidebarCollapsed(true);
+      }
+      useStore.getState().saveRevision(currentDocumentId, 'Before AI send');
       // Gather document mentions attached to each comment's latest
       // round. Prefer the event payload (most recent) and fall back
       // to reading the round's stored `mentions` so the prompt still
@@ -221,7 +241,7 @@ export function ChatPanel() {
               : null,
             api.rationaleRulesOverride,
             mergedMentions,
-            documentLookup,
+            lookupDocumentById,
             // Pass through the per-comment mapping so the prompt
             // builder can emit the `[comment -> referenced docs]`
             // cross-reference map. Prefer the fresh payload, fall
@@ -281,7 +301,9 @@ export function ChatPanel() {
     appendMessage,
     updateLastAssistant,
     api,
-    mentions,
+    isNarrow,
+    setChatOpen,
+    setChatCollapsed,
   ]);
 
   // Auto-scroll to bottom on new messages / streaming.
@@ -384,12 +406,6 @@ export function ChatPanel() {
     return null;
   }
 
-  // Document lookup for @-mention resolution. Re-reads from the live
-  // store on every call so a doc switch between Send and the model
-  // call still resolves correctly.
-  const documentLookup = (id: string) =>
-    useStore.getState().documents.find((d) => d.id === id) ?? null;
-
   const handleSend = async () => {
     if (!currentDocumentId) return;
     // Strip mention sentinels from the displayed text so the user
@@ -444,7 +460,7 @@ export function ChatPanel() {
         api.systemMessage,
         docSnap ? { title: docSnap.title, content: docSnap.content } : null,
         mentions,
-        documentLookup
+        lookupDocumentById
       );
       const assistantMsg: ChatMessage = {
         id: uuid(),
@@ -490,7 +506,7 @@ export function ChatPanel() {
             : null,
           api.rationaleRulesOverride,
           mentions,
-          documentLookup,
+          lookupDocumentById,
           // Chat messages have no per-comment bucket — pass
           // `undefined` so the cross-reference map (comment-batch
           // only) is silently dropped.
@@ -818,7 +834,7 @@ export function ChatPanel() {
             : null,
           api.rationaleRulesOverride,
           effectiveMentions,
-          documentLookup,
+          lookupDocumentById,
           // The staged-rejection path has no per-comment grouping
           // by design (one rejection body covers many edits in a
           // single user message). Drop the cross-reference map.
