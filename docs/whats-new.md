@@ -2,6 +2,18 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## Collapsible Chat and archive history
+
+**Tuck the conversation away while you type, and park old threads without deleting them.**
+
+- **Click Chat** in the panel header to hide the message list. The input stays. Click again to show it. Older prompt/reply turns start collapsed; the latest stays open. Use **Expand all** / **Collapse older** when there is more than one turn.
+- **History** lists the live chat and every archived session for this document. Read them, **Restore as current**, or **Delete archive**.
+- **Archive** (header) or **Archive current** / **Archive older than 7 days** (in History) move messages out of the live thread. The next Send uses only Current — archived chats stay in the browser until you restore or delete them. **Clear** still wipes Current without saving it.
+
+JSON backups now include archived chats. Files exported before this change still import (archive list is empty). No new Settings.
+
+---
+
 ## v0.6.1 — Format menu, Split beside Graph
 
 **Format works again, and Split keeps writing next to the map.**

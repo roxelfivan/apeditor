@@ -5,6 +5,7 @@
 
 import type {
   ApiConfig,
+  ArchivedChat,
   ChatMessage,
   Comment,
   CommentOp,
@@ -47,6 +48,12 @@ export interface StoreState {
 
   // Per-document chat histories, keyed by documentId.
   chats: Record<string, ChatMessage[]>;
+
+  /**
+   * Parked conversations per document. Live sends use `chats` only;
+   * these threads stay out of the model prompt until restored.
+   */
+  chatArchives: Record<string, ArchivedChat[]>;
 
   // Revisions keyed by documentId, newest last.
   revisions: Record<string, Revision[]>;
@@ -188,6 +195,24 @@ export interface StoreState {
   appendMessage: (documentId: string, msg: ChatMessage) => void;
   updateLastAssistant: (documentId: string, content: string) => void;
   clearChat: (documentId: string) => void;
+  /**
+   * Move the live thread into `chatArchives` (newest first) and empty
+   * `chats[documentId]`. No-op when the live thread is empty.
+   */
+  archiveChat: (documentId: string) => void;
+  /**
+   * Park live messages whose `createdAt` is at or before
+   * `now - olderThanMs`. Newer messages stay live. No-op when nothing
+   * qualifies.
+   */
+  archiveOldChat: (documentId: string, olderThanMs: number) => void;
+  /**
+   * Load an archived thread as the live chat. If the live thread is
+   * non-empty it is archived first. Removes the restored row.
+   */
+  restoreArchivedChat: (documentId: string, archiveId: string) => void;
+  /** Drop one archived thread. */
+  deleteArchivedChat: (documentId: string, archiveId: string) => void;
 
   addPrompt: (name: string, body: string) => void;
   updatePrompt: (id: string, patch: Partial<Omit<Prompt, 'id'>>) => void;
@@ -321,6 +346,7 @@ export interface ImportPlan {
   document: DocumentRecord;
   comments: Comment[];
   chats: ChatMessage[];
+  chatArchives: ArchivedChat[];
   revisions: Revision[];
   /**
    * Final id the document will live under once the plan lands.

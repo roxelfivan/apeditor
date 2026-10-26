@@ -17,6 +17,8 @@ export const ONBOARDED_KEY = `${STORAGE_PREFIX}:onboarded`;
 /** sessionStorage copy of the API key when "forget on close" is on. */
 export const API_KEY_SESSION_KEY = `${STORAGE_PREFIX}:session-api-key`;
 export const CHAT_MESSAGES_HEIGHT_KEY = `${STORAGE_PREFIX}:chat-messages-height`;
+/** Whether the Chat panel's message scroller is tucked away. */
+export const CHAT_MESSAGES_COLLAPSED_KEY = `${STORAGE_PREFIX}:chat-messages-collapsed`;
 export const SUGGESTION_HEIGHT_KEY = `${STORAGE_PREFIX}:suggestion-height`;
 
 export const SETTINGS_SIZE_KEYS = {

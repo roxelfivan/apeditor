@@ -36,6 +36,12 @@ import {
   DEFAULT_EDITOR_SPLIT_PCT,
 } from '@/hooks/useDragResize';
 import {
+  applyArchiveCurrent,
+  applyArchiveOld,
+  applyDeleteArchivedChat,
+  applyRestoreArchivedChat,
+} from '@/utils/chatArchive';
+import {
   STORE_STORAGE_KEY,
   clearSessionApiKey,
   readSessionApiKey,
@@ -70,6 +76,7 @@ export const useStore = create<StoreState>()(
       documents: initialDocs,
       currentDocumentId: initialDocs[0].id,
       chats: {},
+      chatArchives: {},
       revisions: {},
       prompts: seedPrompts,
       viewMode: 'split',
@@ -114,8 +121,9 @@ export const useStore = create<StoreState>()(
        * strategy requires.
        *
        *   - `'replace'` — overwrite `documents[id]` and replace the
-       *                  `comments[id]` / `chats[id]` / `revisions[id]`
-       *                  slices wholesale. `currentDocumentId` is left
+       *                  `comments[id]` / `chats[id]` /
+       *                  `chatArchives[id]` / `revisions[id]` slices
+       *                  wholesale. `currentDocumentId` is left
        *                  alone; the caller switches to the imported
        *                  doc via `setCurrentDocument` after the loop.
        *   - `'skip'`    — drop the payload silently; returns `null`.
@@ -145,6 +153,10 @@ export const useStore = create<StoreState>()(
               documents: [newDoc, ...s.documents],
               comments: { ...s.comments, [newDoc.id]: plan.comments },
               chats: { ...s.chats, [newDoc.id]: plan.chats },
+              chatArchives: {
+                ...s.chatArchives,
+                [newDoc.id]: plan.chatArchives ?? [],
+              },
               revisions: { ...s.revisions, [newDoc.id]: plan.revisions },
             };
           });
@@ -165,6 +177,10 @@ export const useStore = create<StoreState>()(
               : [nextDoc, ...s.documents],
             comments: { ...s.comments, [plan.resolvedId]: plan.comments },
             chats: { ...s.chats, [plan.resolvedId]: plan.chats },
+            chatArchives: {
+              ...s.chatArchives,
+              [plan.resolvedId]: plan.chatArchives ?? [],
+            },
             revisions: { ...s.revisions, [plan.resolvedId]: plan.revisions },
           };
         });
@@ -181,6 +197,8 @@ export const useStore = create<StoreState>()(
           const docs = s.documents.filter((d) => d.id !== id);
           const chats = { ...s.chats };
           delete chats[id];
+          const chatArchives = { ...s.chatArchives };
+          delete chatArchives[id];
           const revisions = { ...s.revisions };
           delete revisions[id];
           const comments = { ...s.comments };
@@ -188,6 +206,7 @@ export const useStore = create<StoreState>()(
           return {
             documents: docs,
             chats,
+            chatArchives,
             revisions,
             comments,
             currentDocumentId:
@@ -268,6 +287,55 @@ export const useStore = create<StoreState>()(
           const chats = { ...s.chats };
           chats[documentId] = [];
           return { chats };
+        }),
+      archiveChat: (documentId) =>
+        set((s) => {
+          const next = applyArchiveCurrent(
+            s.chats[documentId] ?? [],
+            s.chatArchives[documentId] ?? []
+          );
+          if (!next) return s;
+          return {
+            chats: { ...s.chats, [documentId]: next.live },
+            chatArchives: { ...s.chatArchives, [documentId]: next.archives },
+          };
+        }),
+      archiveOldChat: (documentId, olderThanMs) =>
+        set((s) => {
+          const next = applyArchiveOld(
+            s.chats[documentId] ?? [],
+            s.chatArchives[documentId] ?? [],
+            olderThanMs
+          );
+          if (!next) return s;
+          return {
+            chats: { ...s.chats, [documentId]: next.live },
+            chatArchives: { ...s.chatArchives, [documentId]: next.archives },
+          };
+        }),
+      restoreArchivedChat: (documentId, archiveId) =>
+        set((s) => {
+          const next = applyRestoreArchivedChat(
+            s.chats[documentId] ?? [],
+            s.chatArchives[documentId] ?? [],
+            archiveId
+          );
+          if (!next) return s;
+          return {
+            chats: { ...s.chats, [documentId]: next.live },
+            chatArchives: { ...s.chatArchives, [documentId]: next.archives },
+          };
+        }),
+      deleteArchivedChat: (documentId, archiveId) =>
+        set((s) => {
+          const next = applyDeleteArchivedChat(
+            s.chatArchives[documentId] ?? [],
+            archiveId
+          );
+          if (!next) return s;
+          return {
+            chatArchives: { ...s.chatArchives, [documentId]: next },
+          };
         }),
 
       addPrompt: (name, body) =>
@@ -503,6 +571,7 @@ export const useStore = create<StoreState>()(
         documents: s.documents,
         currentDocumentId: s.currentDocumentId,
         chats: s.chats,
+        chatArchives: s.chatArchives,
         revisions: s.revisions,
         prompts: s.prompts,
         viewMode: s.viewMode,
@@ -678,6 +747,15 @@ export const useStore = create<StoreState>()(
           }
           if (typeof state.sendSelectionOnly !== 'boolean') {
             repairs.sendSelectionOnly = false;
+          }
+          // Older payloads predate parked conversations. Default to
+          // `{}` so History never has to special-case `undefined`.
+          if (
+            !state.chatArchives ||
+            typeof state.chatArchives !== 'object' ||
+            Array.isArray(state.chatArchives)
+          ) {
+            repairs.chatArchives = {};
           }
           // Ephemeral proposed-edit highlights must always be an object.
           // Older in-memory / HMR sessions may lack the field entirely.

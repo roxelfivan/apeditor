@@ -230,9 +230,12 @@ export interface DocumentBackup {
   document: DocumentRecord;
   comments: Comment[];     // [] when none — always present
   chats: ChatMessage[];    // [] when none
+  chatArchives: ArchivedChat[]; // [] when none; omitted on older files
   revisions: Revision[];   // [] when none
 }
 ```
+
+Parse still accepts older v1 files that omit `chatArchives` and treats the field as `[]`. A present non-array is rejected.
 
 | | |
 |---|---|
@@ -301,10 +304,11 @@ Identity-bearing fields (`id`, `documentId`, `kind`) reject the empty string bec
 
 ### 5.4 Round-trip contract
 
-`buildDocumentBackup → serialiseDocumentBackup → parseDocumentBackup` produces a `ParsedDocumentBackup` whose `document` / `comments` / `chats` / `revisions` are deep-equal to the live state at export time (modulo the renumbered-rounds / migrated-shape work the comment restore-path may add via `reattachCommentToRange`). `npm run test:backup-roundtrip` covers:
+`buildDocumentBackup → serialiseDocumentBackup → parseDocumentBackup` produces a `ParsedDocumentBackup` whose `document` / `comments` / `chats` / `chatArchives` / `revisions` are deep-equal to the live state at export time (modulo the renumbered-rounds / migrated-shape work the comment restore-path may add via `reattachCommentToRange`). `npm run test:backup-roundtrip` covers:
 
-- Round-trip of a populated backup with comments / chats / revisions
+- Round-trip of a populated backup with comments / chats / chatArchives / revisions
 - Empty-slice round-trip (`[]` not `undefined`)
+- Missing `chatArchives` on an older v1 file parses as `[]`
 - `buildDocumentBackup` returns `null` for unknown `documentId`
 - Every error path in §5.3
 - `resolveImportDecisions` per-strategy behaviour
@@ -316,9 +320,9 @@ Identity-bearing fields (`id`, `documentId`, `kind`) reject the empty string bec
 
 | Strategy | Effect |
 |---|---|
-| `replace` | Overwrite `documents[id]` in place; replace the `comments[id]`, `chats[id]`, `revisions[id]` slices wholesale. Default when the file's id collides with an existing local doc. |
+| `replace` | Overwrite `documents[id]` in place; replace the `comments[id]`, `chats[id]`, `chatArchives[id]`, `revisions[id]` slices wholesale. Default when the file's id collides with an existing local doc. |
 | `skip` | Drop the import payload silently; return `null`. The doc never lands. |
-| `keep-both` | Mint a fresh uuid, copy the `document` under it with title `${title} (imported)` (after `sanitizeFilename`, reserving 11 chars for the suffix so the marker is always visible), and store the comment / chat / revision slices under the new id. Default when the file's id does not collide. |
+| `keep-both` | Mint a fresh uuid, copy the `document` under it with title `${title} (imported)` (after `sanitizeFilename`, reserving 11 chars for the suffix so the marker is always visible), and store the comment / chat / archive / revision slices under the new id. Default when the file's id does not collide. |
 
 The collision-resolution modal lists every importable row with a `Select`:
 
@@ -335,9 +339,9 @@ The popover stays open while the modal is shown — clicking outside closes the 
 
 | Strategy | Mutation |
 |---|---|
-| `replace` | `documents[id] ← plan.document`; `comments[id]`, `chats[id]`, `revisions[id]` replaced wholesale. If `id` is new (no prior local doc), the new doc lands at the top of `documents[]`. |
+| `replace` | `documents[id] ← plan.document`; `comments[id]`, `chats[id]`, `chatArchives[id]`, `revisions[id]` replaced wholesale. If `id` is new (no prior local doc), the new doc lands at the top of `documents[]`. |
 | `skip` | No-op; returns `{ importedId: null }`. |
-| `keep-both` | New uuid via `buildKeepBothDocument({ newId, sourceTitle, sourceContent, sourceCreatedAt, sourceUpdatedAt })`. Prepends to `documents[]` so the new doc lands at the top, the same convention `createDocument` uses. `comments[newId]`, `chats[newId]`, `revisions[newId]` are written. |
+| `keep-both` | New uuid via `buildKeepBothDocument({ newId, sourceTitle, sourceContent, sourceCreatedAt, sourceUpdatedAt })`. Prepends to `documents[]` so the new doc lands at the top, the same convention `createDocument` uses. `comments[newId]`, `chats[newId]`, `chatArchives[newId]`, `revisions[newId]` are written. |
 
 The store does NOT auto-switch to the imported document — `FileActionsButton.onImportApply` calls `setCurrentDocument(firstImportedId)` after the loop so the editor moves over to the imported doc.
 

@@ -102,6 +102,7 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
   const documents = useStore((s) => s.documents);
   const commentsByDoc = useStore((s) => s.comments);
   const chatsByDoc = useStore((s) => s.chats);
+  const chatArchivesByDoc = useStore((s) => s.chatArchives);
   const revisionsByDoc = useStore((s) => s.revisions);
   const setCurrentDocument = useStore((s) => s.setCurrentDocument);
   const applyImportPlan = useStore((s) => s.applyImportPlan);
@@ -246,7 +247,8 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
 
   /**
    * Export the current document as a JSON backup. The payload
-   * includes the document + its comments + chat history + revisions
+   * includes the document + its comments + chat history + archived
+   * chats + revisions
    * in one file so a user can move a working session between
    * profiles / devices without losing context. Filename matches the
    * existing `${title}.md` pattern with a `.json` extension.
@@ -268,6 +270,7 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
       documents,
       comments: commentsByDoc,
       chats: chatsByDoc,
+      chatArchives: chatArchivesByDoc,
       revisions: revisionsByDoc,
       appVersion: import.meta.env.VITE_APP_VERSION ?? 'unknown',
     });
@@ -379,6 +382,7 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
           document: parsed.document,
           comments: parsed.comments,
           chats: parsed.chats,
+          chatArchives: parsed.chatArchives,
           revisions: parsed.revisions,
           resolvedId: d.documentId,
           strategy: 'keep-both',
@@ -393,6 +397,7 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
           document: parsed.document,
           comments: parsed.comments,
           chats: parsed.chats,
+          chatArchives: parsed.chatArchives,
           revisions: parsed.revisions,
           resolvedId: d.documentId,
           strategy: 'replace',
@@ -679,8 +684,9 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
             Import full backup (JSON)
           </div>
           <p className="text-paper-inkSoft dark:text-cyber-muted leading-snug">
-            Restore a document plus its comments, chat history, and
-            revisions from a <code className="font-mono">.json</code>{' '}
+            Restore a document plus its comments, chat history,
+            archived chats, and revisions from a{' '}
+            <code className="font-mono">.json</code>{' '}
             file produced by an earlier Export. Conflicts with existing
             documents ask before overwriting.
           </p>
@@ -706,7 +712,8 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
           </div>
           <p className="text-paper-inkSoft dark:text-cyber-muted leading-snug">
             Download the document plus its comments, chat history,
-            and revisions as a single JSON file — useful before
+            archived chats, and revisions as a single JSON file —
+            useful before
             clearing browser storage or switching devices.
           </p>
           <div className="flex items-center justify-end pt-1">

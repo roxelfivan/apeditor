@@ -215,6 +215,7 @@ test('build → serialise → parse round-trips a populated DocumentBackup', () 
   assert.equal(parsed.chats.length, 1);
   assert.equal(parsed.chats[0].id, 'm1');
   assert.equal(parsed.chats[0].role, 'user');
+  assert.deepEqual(parsed.chatArchives, []);
 
   assert.equal(parsed.revisions.length, 1);
   assert.equal(parsed.revisions[0].id, 'r1');
@@ -239,7 +240,76 @@ test('empty slices round-trip with empty arrays (never undefined)', () => {
   const parsed = parseDocumentBackup(text);
   assert.deepEqual(parsed.comments, []);
   assert.deepEqual(parsed.chats, []);
+  assert.deepEqual(parsed.chatArchives, []);
   assert.deepEqual(parsed.revisions, []);
+});
+
+test('chatArchives round-trip when present', () => {
+  const built = buildDocumentBackup({
+    documentId: 'doc-existing',
+    documents: fixtureDocuments,
+    comments: fixtureCommentsByDoc,
+    chats: fixtureChatsByDoc,
+    chatArchives: {
+      'doc-existing': [
+        {
+          id: 'arch-1',
+          title: 'old thread',
+          archivedAt: 1700000000500,
+          messages: [
+            {
+              id: 'm-old',
+              role: 'user',
+              content: 'previous',
+              createdAt: 1690000000000,
+            },
+          ],
+        },
+      ],
+    },
+    revisions: fixtureRevisionsByDoc,
+  });
+  assert.ok(built);
+  const parsed = parseDocumentBackup(serialiseDocumentBackup(built));
+  assert.equal(parsed.chatArchives.length, 1);
+  assert.equal(parsed.chatArchives[0].id, 'arch-1');
+  assert.equal(parsed.chatArchives[0].title, 'old thread');
+  assert.equal(parsed.chatArchives[0].messages[0].id, 'm-old');
+});
+
+test('parse treats a missing chatArchives field as an empty array', () => {
+  const built = buildDocumentBackup({
+    documentId: 'doc-existing',
+    documents: fixtureDocuments,
+    comments: fixtureCommentsByDoc,
+    chats: fixtureChatsByDoc,
+    revisions: fixtureRevisionsByDoc,
+  });
+  assert.ok(built);
+  const obj = JSON.parse(serialiseDocumentBackup(built));
+  delete obj.chatArchives;
+  const parsed = parseDocumentBackup(JSON.stringify(obj));
+  assert.deepEqual(parsed.chatArchives, []);
+  assert.equal(parsed.chats[0].id, 'm1');
+});
+
+test('parse rejects a non-array chatArchives field', () => {
+  const built = buildDocumentBackup({
+    documentId: 'doc-existing',
+    documents: fixtureDocuments,
+    comments: fixtureCommentsByDoc,
+    chats: fixtureChatsByDoc,
+    revisions: fixtureRevisionsByDoc,
+  });
+  assert.ok(built);
+  const obj = JSON.parse(serialiseDocumentBackup(built));
+  obj.chatArchives = { not: 'an array' };
+  assert.throws(
+    () => parseDocumentBackup(JSON.stringify(obj)),
+    (err) =>
+      err instanceof BackupParseError &&
+      /invalid array field: chatArchives/i.test(err.message)
+  );
 });
 
 test('buildDocumentBackup returns null for unknown documentId', () => {

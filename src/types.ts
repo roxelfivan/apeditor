@@ -23,6 +23,18 @@ export interface ChatMessage {
   createdAt: number;
 }
 
+/**
+ * One parked conversation for a document. Live sends use `chats[docId]`
+ * only; archived threads stay out of the model prompt until restored.
+ */
+export interface ArchivedChat {
+  id: string;
+  /** First line of the first user message, truncated. */
+  title: string;
+  archivedAt: number;
+  messages: ChatMessage[];
+}
+
 export interface DocumentRecord {
   id: string;
   title: string;

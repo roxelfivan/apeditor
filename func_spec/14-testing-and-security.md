@@ -24,6 +24,9 @@ npm run typecheck            # the primary gate
 npm run test:heading-sections
 npm run test:proposed-edit
 npm run test:graph
+npm run test:backup-roundtrip
+npm run test:chat-archive
+npm run test:send-comments-tdz
 ```
 
 ---
@@ -210,7 +213,7 @@ Framed in `SECURITY.md` as v0.5.3, local-first, **no backend** — the browser t
 | **High** | Stored XSS via `rehype-raw` without sanitisation would steal the API key from `localStorage` | **Mitigated** — `rehype-sanitize` runs after `rehype-raw`, allowing only `<u>` beyond the default schema |
 | **High** | API key stored in plaintext in `localStorage` | **By design** — opt-in `sessionStorage` via "Forget API key when this tab closes"; a local proxy or passphrase-wrapped Web Crypto would be the next step; avoid shared browsers |
 | **Medium** | Bearer token sent to any user-typed URL | **Mitigated** — HTTPS required, `http://localhost` allowed; an endpoint allowlist would be better |
-| **Medium** | The full document is sent to the model each turn | **Mitigated** — opt-in "selection only" omits the outline; the selection is delimited by `BEGIN/END EDITOR SELECTION`; outbound prompts redact common key shapes; comment **Send to AI** still includes a compact outline |
+| **Medium** | The full document is sent to the model each turn | **Mitigated** — opt-in "selection only" omits the outline; the selection is delimited by `BEGIN/END EDITOR SELECTION`; outbound prompts redact common key shapes; comment **Send to AI** still includes a compact outline; archived chats are excluded from the live `chats` array used on send |
 | **Medium** | No host-level CSP beyond the meta tag | **Open** — prefer HTTP headers; Vercel already sends COOP/COEP via `vercel.json` |
 | **Medium** | OpenCV.js embind requires `'unsafe-eval'` | **Required** by PaddleOCR. The `ort.wasm.min.mjs` alias keeps the WebGPU/JSEP glue — which also uses `new Function` — from ever loading, and `connect-src` allows `data:` |
 | **Medium** | No size or page caps on import | **Mitigated** — 50 MB per file, 200 MB per batch, 500 PDF pages |

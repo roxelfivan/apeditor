@@ -287,6 +287,7 @@ interface DocumentBackup {
   document: DocumentRecord;
   comments: Comment[];        // [] when none — always present
   chats: ChatMessage[];       // [] when none
+  chatArchives: ArchivedChat[]; // [] when none; omitted on older files
   revisions: Revision[];      // [] when none
 }
 ```
