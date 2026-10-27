@@ -219,27 +219,40 @@ function Topbar({
             createPortal(
               <div
                 ref={menuPanelRef}
-                role="menu"
-                className="fixed z-[80] w-52 rounded-md border border-paper-hairline dark:border-cyber-border bg-paper-panel dark:bg-ape-panel shadow-ape-paper-lift dark:shadow-2xl py-1"
-                style={{ top: menuPos.top, right: menuPos.right }}
+                className="fixed inset-0 z-[200]"
+                style={{ pointerEvents: 'auto' }}
               >
-                {extraItems.map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    role="menuitem"
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left text-paper-ink dark:text-cyber-primary hover:bg-paper-elevated dark:hover:bg-ape-elevated"
-                    onClick={() => {
-                      setMoreOpen(false);
-                      item.onClick();
-                    }}
-                  >
-                    <span className="inline-flex h-5 w-5 items-center justify-center shrink-0">
-                      {item.icon}
-                    </span>
-                    {item.label}
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  className="absolute inset-0 bg-black/20"
+                  aria-label="Close menu"
+                  onClick={() => setMoreOpen(false)}
+                />
+                <div
+                  role="menu"
+                  className="absolute w-52 rounded-md border border-paper-hairline dark:border-cyber-border bg-paper-panel dark:bg-ape-panel shadow-ape-paper-lift dark:shadow-2xl py-1"
+                  style={{ top: menuPos.top, right: menuPos.right }}
+                >
+                  {extraItems.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      role="menuitem"
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left text-paper-ink dark:text-cyber-primary hover:bg-paper-elevated dark:hover:bg-ape-elevated"
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setMoreOpen(false);
+                        item.onClick();
+                      }}
+                    >
+                      <span className="inline-flex h-5 w-5 items-center justify-center shrink-0">
+                        {item.icon}
+                      </span>
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
               </div>,
               document.body,
             )}
