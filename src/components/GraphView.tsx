@@ -800,7 +800,7 @@ const isSphere = projection === 'sphere';
   return (
     <div
       ref={wrapRef}
-      className="relative flex-1 min-w-0 min-h-0 overflow-hidden bg-paper-base dark:bg-ape-base"
+      className="relative isolate z-0 flex-1 min-w-0 min-h-0 overflow-hidden bg-paper-base dark:bg-ape-base"
       data-graph-view
       data-graph-projection={projection}
     >

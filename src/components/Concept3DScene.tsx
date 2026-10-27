@@ -865,16 +865,20 @@ export default function Concept3DScene({
   }, []);
 
   return (
-    <div className="absolute inset-0" data-concept-scene>
+    <div className="absolute inset-0 isolate z-0" data-concept-scene>
       <canvas
         ref={canvasRef}
         className="block w-full h-full touch-none"
         role="img"
         aria-label="Workspace knowledge graph, 3D Concept projection"
       />
+      {/* isolate: label z-index is local to this layer (up to 2000 for
+          depth sorting). Without it those values compete with Filter
+          and other page overlays, so green current-doc titles paint
+          on top of the checklist. */}
       <div
         ref={labelLayerRef}
-        className="absolute inset-0 overflow-hidden pointer-events-none"
+        className="absolute inset-0 z-[1] overflow-hidden pointer-events-none isolate"
         data-concept-labels
       />
     </div>

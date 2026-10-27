@@ -1875,7 +1875,14 @@ html.dark .mention-input__overlay-chip:focus-visible:not(:disabled) {
 .graph-scope-filter-root {
   position: fixed;
   inset: 0;
+<<<<<<< HEAD
   z-index: 80;
+=======
+  /* Above 3D concept labels (they use z-index up to 2000 inside
+     their isolated layer). Stay under Help/Settings (z-40 is
+     in-tree); this root is portaled to body so 10000 is safe. */
+  z-index: 10000;
+>>>>>>> origin/cursor/graph-filter-opaque-ed2e
 }
 .graph-scope-filter-backdrop {
   position: absolute;
