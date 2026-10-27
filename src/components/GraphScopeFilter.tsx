@@ -9,6 +9,7 @@
 // bespoke widget for it would read as a different product.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { DocumentRecord } from '@/types';
 import { buildHeadingSections } from '@/hooks/useDocumentMentions';
 import {
@@ -314,24 +315,31 @@ export function GraphScopeFilter({
     clampToViewport(panel, anchor);
   }, [anchor]);
 
-  return (
+  return createPortal(
     <div
-      ref={panelRef}
-      role="dialog"
-      aria-label="Filter graph documents and sections"
+      className="graph-scope-filter-root"
       data-graph-scope-filter
-      className="mention-popover"
-      style={{ minWidth: Math.min(POPOVER_WIDTH, window.innerWidth - 16) }}
-      // Keep the graph canvas beneath from starting a pan, and keep the
-      // press that opened this panel from re-firing the toggle.
       onPointerDown={(e) => e.stopPropagation()}
     >
+      <button
+        type="button"
+        className="graph-scope-filter-backdrop"
+        aria-label="Close filter"
+        onClick={onClose}
+      />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-label="Filter graph documents and sections"
+        className="mention-popover graph-scope-filter"
+        style={{ minWidth: Math.min(POPOVER_WIDTH, window.innerWidth - 16) }}
+      >
       <div className="mention-popover__header">
         <span className="mention-popover__icon" aria-hidden>
           ⌗
         </span>
         <span className="mention-popover__title">Filter</span>
-        <span className="mention-popover__hint">
+        <span className="mention-popover__hint hidden sm:inline">
           space toggles · esc closes
         </span>
       </div>
@@ -466,6 +474,8 @@ export function GraphScopeFilter({
           </button>
         )}
       </div>
-    </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
