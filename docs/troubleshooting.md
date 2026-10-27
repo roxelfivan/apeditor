@@ -33,6 +33,10 @@ Turn on Minimax or OpenAI and save a key. Predict is off by default; click **Pre
 
 OCR can read the file in the browser, but rewriting as Markdown needs a keyed provider. Add a key in Settings. Also select at least one OCR language.
 
+## Chat + found no text
+
+The same image and PDF types as Import. If you see **No text was recognized**, the file was empty or unreadable. A file that is too large uses the same size limits as Import. Chat **+** never inserts into the document — use Import for that.
+
 If you see **No text was recognized in the selected file(s).**, try a clearer image, a different language, or a text-based PDF.
 
 ## Chat or sidebar disappeared

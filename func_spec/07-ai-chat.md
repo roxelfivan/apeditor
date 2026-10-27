@@ -291,12 +291,12 @@ const REDACTED = '[redacted]';
 
 `ChatPanel.handleSend`:
 
-1. Guard `currentDocumentId`, non-empty text, and `!streaming`.
+1. Guard `currentDocumentId`, `!streaming`, `!ocrBusy`, and either non-empty text or at least one ready Chat **+** attachment.
 2. `parseMentions(input)` strips sentinels → the plain text is the user message body.
 3. `selectionOnly = sendSelectionOnly && Boolean(selection.trim())`. Toggle with no highlight → error.
 4. **Auto-snapshot:** `saveRevision(documentId, 'Before AI send')`.
-5. Reset local state; build `userMsg` with `selection` when `includeSelection || selectionOnly`, and `selectionOnly: true` only in the latter case.
-6. `appendMessage`.
+5. Reset local state; build `userMsg` with `selection` when `includeSelection || selectionOnly`, `selectionOnly: true` only in the latter case, and optional `attachments` (name / mime / raw extract).
+6. `appendMessage` stores the typed prose. The request clone uses `withOutboundAttachmentPrompt` so the model sees a single format-then-answer body (`BEGIN ATTACHED FILE` + `BEGIN USER REQUEST`) when files are present. No pre-send `formatOcrAsMarkdown()` call.
 7. **Keyless branch** (§7) or **keyed branch**.
 8. Keyed: append an empty `assistantMsg`, dispatch `mvp:chat-streaming { streaming: true }`, create an `AbortController`, build and redact the request, stream, and on each delta call `updateLastAssistant(documentId, accumulator)`.
 9. Errors: `AbortError` is silent; `ApiError` sets its message; anything else sets `err.message || 'Unknown error'`.
@@ -312,7 +312,7 @@ The streaming tail without the input-handling. Used by the rejection-commit path
 
 When `!requiresApiKey(api.provider)` the send path does not stream at all.
 
-1. Build history locally.
+1. Build history locally, using the outbound clone when the turn has Chat **+** attachments.
 2. `buildGoogleAiModeUrl(history, api.systemMessage, docSnap, mentions, documentLookup)`.
 3. Append an **empty placeholder assistant message**.
 4. Set `lastAiModeUrl`, `awaitingPaste = assistantMsg.id`, `pasteDraft = ''`.
@@ -351,6 +351,7 @@ Two checkboxes above the input, plus a paste-selection shortcut.
 | **include selection** | `includeSelection` (default `true`) | Attaches the highlight on top of the document outline |
 | **selection only** | `sendSelectionOnly` (default `false`) | Omits the outline entirely; sends only the `BEGIN/END EDITOR SELECTION` block. Disabled with no highlight. Forces `includeSelection = true`. |
 | **paste selection ({count})** | — | Drops the current selection text straight into the input (no sentinel) |
+| **+** (composer) | local `pendingAttachments` | Hidden file input, `accept={IMPORT_FILE_ACCEPT}` (`image/*,application/pdf`). In-browser OCR via `extractTextFromFiles`. Does not insert into the editor. |
 
 Setting `sendSelectionOnly` to `true` also force-sets `includeSelection = true` inside the action, because selection-only implies sending the highlight.
 

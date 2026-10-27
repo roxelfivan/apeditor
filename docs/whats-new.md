@@ -2,6 +2,18 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## Attach photos and PDFs in Chat
+
+**Click + next to the chat box to send a file with your question.**
+
+- The picker accepts the same images and PDFs as **Import**. Recognition stays in the browser.
+- Send includes both the extracted text and what you typed. The model is asked to clean the extract as Markdown first, then answer. Import still inserts into the document; Chat **+** does not.
+- The bubble shows filename chips. History and JSON backups keep the extract, not the original file.
+
+No new Settings.
+
+---
+
 ## v0.6.2 — Phone layout, chat archives, Graph Filter
 
 **Use the app on a phone, park old chats, and keep Filter above the 3D graph.**

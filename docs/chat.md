@@ -30,6 +30,7 @@ JSON backup export/import includes archived chats. Older backup files without th
 
 1. Type in the box (*Ask, or ⌘/Ctrl+Enter to send… type @ to reference a document*).
    - Type `@` to attach another document (or selected headings / sections) — see [Reference other documents](reference-other-documents.md).
+   - Click **+** next to the box to attach photos or PDFs (the same types as [Import](import.md)). Recognition runs in the browser. On Send, the model is asked to turn those extracts into Markdown first, then answer your typed request. The bubble shows chips plus what you typed; the document is not changed. You can send attachments with no typed text.
 2. Optionally check **include selection** so the highlighted editor text is sent with the message. Check **selection only** to send that highlight *instead of* the document outline (the rest of the draft stays in the browser). **selection only** is disabled until you highlight text.
 3. **paste selection (n)** inserts the highlight into the input if you would rather see it in the box.
 4. Click **Send** or press `Ctrl+Enter` / `⌘Enter`.

@@ -104,7 +104,8 @@ rg "mvp:" src/ -n
 
 | Component | File | Responsibility |
 |---|---|---|
-| `ChatPanel` | [`ChatPanel.tsx`](../src/components/ChatPanel.tsx) | Streaming chat, keyless branch, comment-batch send, Apply All, rejection staging, selection toggles, panel resizing, the messages/input split, collapsible conversation, History / Archive header actions. |
+| `ChatPanel` | [`ChatPanel.tsx`](../src/components/ChatPanel.tsx) | Streaming chat, keyless branch, comment-batch send, Apply All, rejection staging, selection toggles, composer **+** attachments, panel resizing, the messages/input split, collapsible conversation, History / Archive header actions. |
+| `ChatAttachmentChips` | [`ChatAttachmentChips.tsx`](../src/components/ChatAttachmentChips.tsx) | Filename chips for pending composer files and sent user bubbles. |
 | `ChatHistory` | [`ChatHistory.tsx`](../src/components/ChatHistory.tsx) | Overlay: current + archived sessions, read-only collapsible turns, archive / restore / delete. Opened from ChatPanel; no `mvp:` event. |
 | `ChatTurnFrame` | [`ChatTurnFrame.tsx`](../src/components/ChatTurnFrame.tsx) | Accordion chrome for one user/assistant turn. |
 | `ProposedEditCard` | [`ProposedEditCard.tsx`](../src/components/ProposedEditCard.tsx) | One proposal: Split/Inline, Apply, Highlight Apply, Reject, Reject-with-feedback, editor highlight, resize. |

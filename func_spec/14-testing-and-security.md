@@ -26,6 +26,7 @@ npm run test:proposed-edit
 npm run test:graph
 npm run test:backup-roundtrip
 npm run test:chat-archive
+npm run test:chat-attachments
 npm run test:send-comments-tdz
 ```
 

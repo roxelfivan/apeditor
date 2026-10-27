@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { v4 as uuid } from 'uuid';
 import ReactMarkdown from 'react-markdown';
 import { useStore } from '@/store/useStore';
 import { buildRequestMessages, streamChatCompletion, ApiError } from '@/api/chat';
 import { redactSecretsInMessages } from '@/utils/secrets';
-import type { ChatMessage, MentionToken, ProposedEdit } from '@/types';
+import type { ChatAttachment, ChatMessage, MentionToken, ProposedEdit } from '@/types';
+import { ChatAttachmentChips } from '@/components/ChatAttachmentChips';
+import { withOutboundAttachmentPrompt } from '@/utils/chatAttachments';
+import { IMPORT_FILE_ACCEPT } from '@/utils/ocr';
 import { ProposedEditCard } from '@/components/ProposedEditCard';
 import { ResizeHandle } from '@/components/ResizeHandle';
 import { useDragResize, clamp, MIN_CHAT_WIDTH, MAX_CHAT_WIDTH } from '@/hooks/useDragResize';
@@ -73,6 +76,15 @@ export function ChatPanel() {
   // alongside the current document so the model sees the referenced
   // doc(s) in the system prompt.
   const [mentions, setMentions] = useState<MentionToken[]>([]);
+  // Composer “+” attachments. Object URLs are composer-only (revoked
+  // on remove / send / unmount) and never persisted on ChatMessage.
+  const [pendingAttachments, setPendingAttachments] = useState<
+    Array<ChatAttachment & { previewUrl?: string; reading?: boolean }>
+  >([]);
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const attachInputRef = useRef<HTMLInputElement>(null);
+  const pendingAttachmentsRef = useRef(pendingAttachments);
+  pendingAttachmentsRef.current = pendingAttachments;
   const [selection, setSelection] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -149,8 +161,115 @@ export function ChatPanel() {
   useEffect(() => {
     setTurnExpanded({});
   }, [currentDocumentId]);
+  useEffect(() => {
+    return () => {
+      for (const item of pendingAttachmentsRef.current) {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      }
+    };
+  }, []);
   const isTurnExpanded = (id: string) =>
     turnExpanded[id] ?? id === latestTurnId;
+
+  const clearPendingAttachments = () => {
+    setPendingAttachments((prev) => {
+      for (const item of prev) {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      }
+      return [];
+    });
+  };
+
+  const removePendingAttachment = (id: string) => {
+    setPendingAttachments((prev) => {
+      const hit = prev.find((a) => a.id === id);
+      if (hit?.previewUrl) URL.revokeObjectURL(hit.previewUrl);
+      return prev.filter((a) => a.id !== id);
+    });
+  };
+
+  const onAttachFiles = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const fileArray = Array.from(files);
+    e.target.value = '';
+    const staged = fileArray.map((file) => {
+      const isImage = file.type.startsWith('image/');
+      return {
+        id: uuid(),
+        name: file.name,
+        mime: file.type || (file.name.toLowerCase().endsWith('.pdf')
+          ? 'application/pdf'
+          : ''),
+        extractedText: '',
+        previewUrl: isImage ? URL.createObjectURL(file) : undefined,
+        reading: true,
+        file,
+      };
+    });
+    setPendingAttachments((prev) => [
+      ...prev,
+      ...staged.map((s) => ({
+        id: s.id,
+        name: s.name,
+        mime: s.mime,
+        extractedText: s.extractedText,
+        previewUrl: s.previewUrl,
+        reading: s.reading,
+      })),
+    ]);
+    setOcrBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const { extractTextFromFiles } = await import('@/utils/ocr');
+      const texts = await extractTextFromFiles(
+        staged.map((s) => s.file),
+        ['eng'],
+        undefined
+      );
+      setPendingAttachments((prev) => {
+        const next = [...prev];
+        const recognized: string[] = [];
+        for (let i = 0; i < staged.length; i++) {
+          const idx = next.findIndex((a) => a.id === staged[i].id);
+          if (idx === -1) continue;
+          const text = (texts[i] ?? '').trim();
+          if (!text) {
+            if (next[idx].previewUrl) URL.revokeObjectURL(next[idx].previewUrl);
+            next.splice(idx, 1);
+            continue;
+          }
+          recognized.push(staged[i].name);
+          next[idx] = {
+            ...next[idx],
+            extractedText: text,
+            reading: false,
+          };
+        }
+        if (recognized.length === 0) {
+          setError('No text was recognized in the selected file(s).');
+        }
+        return next;
+      });
+    } catch (err) {
+      setPendingAttachments((prev) => {
+        const ids = new Set(staged.map((s) => s.id));
+        const kept: typeof prev = [];
+        for (const item of prev) {
+          if (ids.has(item.id)) {
+            if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+          } else {
+            kept.push(item);
+          }
+        }
+        return kept;
+      });
+      setError((err as Error).message || 'OCR failed.');
+    } finally {
+      setOcrBusy(false);
+    }
+  };
 
   // Listen for selection events from the editor, fill-chat from PromptLibrary,
   // and window resize to re-clamp the chat width against the 2/3 viewport cap.
@@ -450,7 +569,16 @@ export function ChatPanel() {
     // the user typed.
     const { plain } = parseMentions(input);
     const text = plain.trim();
-    if (!text || streaming) return;
+    const readyAttachments: ChatAttachment[] = pendingAttachments
+      .filter((a) => !a.reading && a.extractedText.trim())
+      .map(({ id, name, mime, extractedText }) => ({
+        id,
+        name,
+        mime,
+        extractedText,
+      }));
+    if (streaming || ocrBusy) return;
+    if (!text && readyAttachments.length === 0) return;
     const selectionOnly =
       sendSelectionOnly && Boolean(selection.trim());
     if (sendSelectionOnly && !selection.trim()) {
@@ -464,6 +592,7 @@ export function ChatPanel() {
     setNotice(null);
     setInput('');
     setMentions([]);
+    clearPendingAttachments();
 
     const docSnap = useStore.getState().documents.find(
       (d) => d.id === currentDocumentId
@@ -478,9 +607,15 @@ export function ChatPanel() {
           ? selection || undefined
           : undefined,
       ...(selectionOnly ? { selectionOnly: true } : {}),
+      ...(readyAttachments.length > 0
+        ? { attachments: readyAttachments }
+        : {}),
       createdAt: Date.now(),
     };
+    // Persist typed prose + chips; the request clone wraps attachments
+    // in the format-then-answer prompt.
     appendMessage(currentDocumentId, userMsg);
+    const outboundUserMsg = withOutboundAttachmentPrompt(userMsg);
 
     if (isKeyless) {
       // Keyless provider: build the AI Mode deep-link from the same
@@ -489,7 +624,7 @@ export function ChatPanel() {
       // concept) and open it in a new tab. Then append a placeholder
       // assistant message and arm the paste-and-submit UI so the user
       // can copy the answer back. No streaming, no abort controller.
-      const history: ChatMessage[] = [...messages, userMsg];
+      const history: ChatMessage[] = [...messages, outboundUserMsg];
       const url = buildGoogleAiModeUrl(
         history,
         api.systemMessage,
@@ -526,7 +661,7 @@ export function ChatPanel() {
     };
     appendMessage(currentDocumentId, assistantMsg);
 
-    const history = [...messages, userMsg, assistantMsg];
+    const history = [...messages, outboundUserMsg, assistantMsg];
     setStreaming(true);
     window.dispatchEvent(new CustomEvent('mvp:chat-streaming', { detail: { streaming: true } }));
     abortRef.current = new AbortController();
@@ -1030,8 +1165,8 @@ export function ChatPanel() {
       >
         {!messages.length && (
           <p className="text-sm text-paper-inkSoft dark:text-cyber-muted">
-            Ask anything, or highlight text in the editor and send a prompt from
-            the library.
+            Ask anything, attach a photo or PDF with +, or highlight text in the
+            editor and send a prompt from the library.
           </p>
         )}
         {turns.map((turn) => (
@@ -1243,21 +1378,60 @@ export function ChatPanel() {
                 </button>
               )}
             </div>
-            <MentionInput
-              value={input}
-              onChange={(v) => {
-                setInput(v.text);
-                setMentions(v.mentions);
-              }}
-              onSubmit={() => void handleSend()}
-              ariaLabel="Chat message"
-              placeholder={
-                isKeyless
-                  ? 'Ask, or ⌘/Ctrl+Enter to open in Google AI Mode… type @ to reference a document'
-                  : 'Ask, or ⌘/Ctrl+Enter to send… type @ to reference a document'
-              }
-              className="w-full h-24 p-2 text-sm ape-field resize-none font-sans"
+            <input
+              ref={attachInputRef}
+              type="file"
+              accept={IMPORT_FILE_ACCEPT}
+              multiple
+              className="hidden"
+              onChange={(e) => void onAttachFiles(e)}
             />
+            <ChatAttachmentChips
+              items={pendingAttachments}
+              onRemove={removePendingAttachment}
+            />
+            <div className="flex items-start gap-2">
+              <button
+                type="button"
+                className="btn-icon-square shrink-0 mt-0.5 disabled:opacity-50"
+                aria-label="Attach photos or PDFs"
+                title={
+                  ocrBusy
+                    ? 'Reading file…'
+                    : 'Attach photos or PDFs (same types as Import). Sent with this message.'
+                }
+                disabled={!currentDocumentId || streaming || ocrBusy}
+                onClick={() => attachInputRef.current?.click()}
+              >
+                {ocrBusy ? (
+                  <span className="inline-flex gap-0.5">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse" style={{ animationDelay: '0ms' }} />
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse" style={{ animationDelay: '150ms' }} />
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse" style={{ animationDelay: '300ms' }} />
+                  </span>
+                ) : (
+                  <span aria-hidden className="text-lg leading-none font-medium">
+                    +
+                  </span>
+                )}
+              </button>
+              <MentionInput
+                value={input}
+                onChange={(v) => {
+                  setInput(v.text);
+                  setMentions(v.mentions);
+                }}
+                onSubmit={() => void handleSend()}
+                ariaLabel="Chat message"
+                placeholder={
+                  isKeyless
+                    ? 'Ask, or ⌘/Ctrl+Enter to open in Google AI Mode… type @ to reference a document'
+                    : 'Ask, or ⌘/Ctrl+Enter to send… type @ to reference a document'
+                }
+                containerClassName="flex-1 min-w-0"
+                className="w-full h-24 p-2 text-sm ape-field resize-none font-sans"
+              />
+            </div>
             <div className="flex justify-end gap-2">
               {streaming ? (
                 <button
@@ -1270,7 +1444,14 @@ export function ChatPanel() {
                 <button
                   className="btn-fire"
                   onClick={handleSend}
-                  disabled={!input.trim() || !currentDocumentId}
+                  disabled={
+                    !currentDocumentId ||
+                    ocrBusy ||
+                    (!input.trim() &&
+                      !pendingAttachments.some(
+                        (a) => !a.reading && a.extractedText.trim()
+                      ))
+                  }
                   title={
                     isKeyless
                       ? 'Opens Google AI Mode in a new tab with this prompt pre-filled'
@@ -1387,8 +1568,15 @@ function MessageBubble({
             {message.selection.length} chars)
           </div>
         )}
+        {isUser && message.attachments && message.attachments.length > 0 && (
+          <ChatAttachmentChips items={message.attachments} tone="bubble" />
+        )}
         {isUser ? (
-          <div className="whitespace-pre-wrap">{message.content}</div>
+          message.content ? (
+            <div className="whitespace-pre-wrap">{message.content}</div>
+          ) : message.attachments?.length ? null : (
+            <div className="whitespace-pre-wrap opacity-70">(empty)</div>
+          )
         ) : (
           <>
             <AssistantContent

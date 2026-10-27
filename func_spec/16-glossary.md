@@ -31,12 +31,24 @@ type Role = 'system' | 'user' | 'assistant';
 | `id` | `string` | `uuid()` |
 | `role` | `Role` | |
 | `content` | `string` | The visible text. `@` sentinels are stripped before this is set. |
+| `attachments` | `ChatAttachment[]?` | Composer **+** files on a user turn. Filename, mime, raw extract only. |
 | `selection` | `string?` | The editor highlight attached at send time |
 | `selectionOnly` | `boolean?` | `true` when the turn omitted the document outline and sent only `selection` |
 | `metadata` | `Record<string, unknown>?` | Provider-specific. Currently carries `cache_control` breakpoints. **`streamChatCompletion` does not forward it on its own** — it has to be deliberately read and routed. Kept generic so future fields ride along without a type change. |
 | `createdAt` | `number` | `Date.now()` |
 
 > Mentions are **not** stored on the message. They live in `ChatPanel` local state and are consumed at send time. Only *comment* mentions persist, on the round.
+>
+> Outbound sends with `attachments` rewrite `content` via `buildAttachmentTurnPrompt` (format Markdown, then answer). The stored bubble keeps the typed prose.
+
+### `ChatAttachment`
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `string` | `uuid()` |
+| `name` | `string` | Original filename |
+| `mime` | `string` | Browser `File.type`, or inferred `.pdf` |
+| `extractedText` | `string` | In-browser OCR / PDF extract. Original bytes are not persisted. |
 
 ### `DocumentRecord`
 
@@ -335,6 +347,7 @@ Write-only as of v0.5.3. The `version` field exists so a future importer can det
 | **Selection only** | A chat mode that omits the outline and sends only the highlighted passage |
 | **Selection only / include selection** | Two independent store flags; enabling selection-only force-enables include-selection |
 | **Mention / `@`-reference** | Another document, or a section of one, attached to a chat turn, comment, or rejection |
+| **Chat + attachment** | A photo or PDF attached in the composer; same types as Import; extract rides with that turn |
 | **Sentinel** | The zero-width-space-wrapped `[[mention:…]]` string serialised into the textarea |
 | **ZWSP** | Zero-width space, `U+200B`. Structural anchor of a mention sentinel and of the visible caption |
 | **Cascade** | Ticking a heading section also ticking every descendant section |

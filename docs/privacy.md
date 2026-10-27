@@ -20,8 +20,9 @@ Closing the tab or restarting the computer does **not** wipe this. Another brows
 
 You send data when you:
 
-- **Send** a Chat message, **Send to AI** comments, or send rejection feedback — to the **Minimax or OpenAI endpoint** you configured (including any `@`-referenced documents attached to that turn)
+- **Send** a Chat message, **Send to AI** comments, or send rejection feedback — to the **Minimax or OpenAI endpoint** you configured (including any `@`-referenced documents attached to that turn, and any photo/PDF text attached with Chat **+**)
 - **Import** a photo or PDF — recognition is local; the extracted text is then sent to that same endpoint to format as Markdown
+- **Chat +** — recognition is local, same as Import; only the extracted text (plus your typed request) is sent on Send. There is no separate Markdown-rewrite call; formatting is part of that one chat prompt
 - Use **Google AI Mode** — Google’s site loads in a new tab with a prompt you chose to open there
 
 ApEditor does not intermediate those requests. Your API key is sent only as `Authorization: Bearer …` to the HTTPS URL in Settings. Non-HTTPS endpoints are refused, except `http://localhost` for local development.
@@ -35,6 +36,8 @@ When you finish on a shared machine, clear this site’s data (or use a private 
 ## Import and OCR
 
 Choosing **Import text from photos or PDFs** runs recognition on-device. Files are not uploaded to ApEditor. After recognition, only the extracted text is sent to your AI provider for Markdown formatting.
+
+Chat **+** uses the same on-device recognition. Original images and PDFs are not kept in chat history — only filenames and the extracted text.
 
 ## What clearing data does
 

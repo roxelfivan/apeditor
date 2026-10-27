@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useStore, useCurrentDocument } from '@/store/useStore';
 // Type-only: keep pdfjs / PaddleOCR / OpenCV out of the initial app chunk.
 // The OCR module is loaded via dynamic import() when the user picks files.
-import type { OcrLang, OcrProgress } from '@/utils/ocr';
+import { IMPORT_FILE_ACCEPT, type OcrLang, type OcrProgress } from '@/utils/ocr';
 import { formatOcrAsMarkdown } from '@/utils/ocrMarkdown';
 import { downloadTextFile, sanitizeFilename } from '@/utils/storage';
 import {
@@ -859,7 +859,7 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
       <input
         ref={inputRef}
         type="file"
-        accept="image/*,application/pdf"
+        accept={IMPORT_FILE_ACCEPT}
         multiple
         className="hidden"
         onChange={onFiles}

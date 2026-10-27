@@ -27,6 +27,7 @@
 
 import type {
   ArchivedChat,
+  ChatAttachment,
   ChatMessage,
   Comment,
   CommentRound,
@@ -426,6 +427,18 @@ function parseComment(value: unknown): Comment {
   };
 }
 
+function parseChatAttachment(value: unknown): ChatAttachment {
+  if (!isPlainObject(value)) {
+    throw new BackupParseError('Backup chat attachment is not an object');
+  }
+  return {
+    id: requireNonEmptyString(value, 'id'),
+    name: requireString(value, 'name'),
+    mime: requireString(value, 'mime'),
+    extractedText: requireString(value, 'extractedText'),
+  };
+}
+
 function parseChatMessage(value: unknown): ChatMessage {
   if (!isPlainObject(value)) {
     throw new BackupParseError('Backup chat message is not an object');
@@ -433,6 +446,24 @@ function parseChatMessage(value: unknown): ChatMessage {
   const role = value.role;
   if (role !== 'system' && role !== 'user' && role !== 'assistant') {
     throw new BackupParseError('Backup chat message has invalid role');
+  }
+  let attachments: ChatAttachment[] | undefined;
+  if (value.attachments !== undefined) {
+    if (!Array.isArray(value.attachments)) {
+      throw new BackupParseError(
+        'Backup chat message attachments must be an array'
+      );
+    }
+    attachments = value.attachments.map((item, i) => {
+      try {
+        return parseChatAttachment(item);
+      } catch (err) {
+        throw new BackupParseError(
+          `Backup chat message attachments[${i}]: ${(err as Error).message}`,
+          err
+        );
+      }
+    });
   }
   return {
     id: requireNonEmptyString(value, 'id'),
@@ -446,6 +477,7 @@ function parseChatMessage(value: unknown): ChatMessage {
     ...(value.metadata !== undefined
       ? { metadata: value.metadata as Record<string, unknown> }
       : {}),
+    ...(attachments && attachments.length > 0 ? { attachments } : {}),
   };
 }
 

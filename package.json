@@ -17,6 +17,7 @@
     "test:graph": "node scripts/test-graph.mjs",
     "test:backup-roundtrip": "node scripts/test-backup-roundtrip.mjs",
     "test:chat-archive": "node scripts/test-chat-archive.mjs",
+    "test:chat-attachments": "node scripts/test-chat-attachments.mjs",
     "test:send-comments-tdz": "node scripts/test-send-comments-tdz.mjs",
     "check:docs": "node scripts/check-func-spec-links.mjs"
   },

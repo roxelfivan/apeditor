@@ -2,10 +2,27 @@
 
 export type Role = 'system' | 'user' | 'assistant';
 
+/**
+ * A photo or PDF attached to a chat turn via the composer “+”.
+ * Only OCR/extracted text is persisted — never the original bytes.
+ */
+export interface ChatAttachment {
+  id: string;
+  name: string;
+  mime: string;
+  extractedText: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: Role;
   content: string;
+  /**
+   * Files attached on this user turn. Display-only metadata plus the
+   * raw extract; outbound prompts rebuild a format-then-answer wrapper
+   * via `buildAttachmentTurnPrompt`.
+   */
+  attachments?: ChatAttachment[];
   // Optional context included at send time (e.g. selected text from the editor).
   selection?: string;
   /** True when this turn omitted the document outline and sent only `selection`. */
