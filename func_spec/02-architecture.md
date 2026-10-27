@@ -183,7 +183,7 @@ src/main.tsx
   ├─ applyThemeClass(theme)           // pre-paint, read straight from localStorage
   └─ <App />
        ├─ <Topbar />                  // local to App.tsx
-       │    logo · version · current doc title · [?] [{ }] [🕐] [🔖] [☀/☾] [⚙]
+       │    logo · version · current doc title · ([⋯] on narrow) [?] [{ }] [🕐] [🔖] [☀/☾] [⚙]
        ├─ <div className="flex-1 flex min-h-0 relative">
        │    ├─ <Sidebar />           // returns null when sidebarCollapsed
        │    ├─ <Editor />            // the middle column
@@ -191,6 +191,7 @@ src/main.tsx
        │    ├─ <EdgeAnchor side="left" />    // in the content row
        │    └─ <EdgeAnchor side="right" />
        ├─ <EdgeAnchor side="top" />   // sibling of Topbar → absolute top-0 is the page top
+       ├─ <MoreSheet />               // narrow ⋯ bottom sheet, portaled to document.body
        ├─ <SettingsModal open={…} />
        ├─ <PromptLibrary open={…} />
        ├─ <RevisionHistory open={…} />

@@ -1,3 +1,23 @@
+## v0.6.2 — Phone layout, chat archives, Graph Filter stacking
+
+Patch on top of [v0.6.1](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.1). Phones (including landscape) use overlay panels instead of three columns; Chat can collapse turns and archive threads; the Graph Filter stays opaque and above 3D labels.
+
+### Added
+
+- **Collapsible Chat and archives.** Click **Chat** to hide the message list (input stays). Older turns start collapsed. **History** / **Archive** park threads without deleting them; the next Send uses only Current. JSON backups include archives.
+- **Phone / Android shell.** Viewports ≤767 px wide **or** ≤540 px tall collapse sidebar and chat to overlays. Help / spec / history / prompts live under **⋯** as a bottom sheet that sits above the editor. Settings is full-bleed on narrow screens.
+
+### Fixed
+
+- **Send to AI** no longer throws when Chat is collapsed (#35).
+- **⋯ menu** was under the editor and clipped on iOS; it is now a `document.body` bottom sheet.
+- **Graph Filter** no longer lets SVG / 3D titles (including the green current-document label) paint through the checklist. Solid panel + isolated 3D label layer + Filter `z-index: 10000`.
+
+### Internal
+
+- See [`.release-notes-v0.6.2.md`](.release-notes-v0.6.2.md) for the full surface list.
+- `package.json` version bumped to `0.6.2`.
+
 ## v0.6.1 — Format menu, Split = Write/Preview | Graph
 
 Patch on top of [v0.6.0](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.0). The Format dropdown is visible again; Split keeps text beside Graph; Graph node clicks scroll the Write pane to the selected passage.

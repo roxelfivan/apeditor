@@ -2,15 +2,15 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
-## Collapsible Chat and archive history
+## v0.6.2 — Phone layout, chat archives, Graph Filter
 
-**Tuck the conversation away while you type, and park old threads without deleting them.**
+**Use the app on a phone, park old chats, and keep Filter above the 3D graph.**
 
-- **Click Chat** in the panel header to hide the message list. The input stays. Click again to show it. Older prompt/reply turns start collapsed; the latest stays open. Use **Expand all** / **Collapse older** when there is more than one turn.
-- **History** lists the live chat and every archived session for this document. Read them, **Restore as current**, or **Delete archive**.
-- **Archive** (header) or **Archive current** / **Archive older than 7 days** (in History) move messages out of the live thread. The next Send uses only Current — archived chats stay in the browser until you restore or delete them. **Clear** still wipes Current without saving it.
+- **Phone / Android.** Sidebar and chat open as overlays (including landscape). Help, Functional spec, Revision history, and Prompt library live under **⋯** and slide up from the bottom so you can tap them. Settings fills the screen on a narrow phone.
+- **Collapsible Chat and archives.** Click **Chat** to hide the message list (the input stays). Older turns start collapsed; the latest stays open. **History** / **Archive** park threads without deleting them. The next Send uses only Current. **Clear** still wipes Current without saving. JSON backups include archives; older files still import.
+- **Graph Filter stays on top.** In Graph (including 3D), node titles — including the green current-document label — no longer show through the Filter checklist.
 
-JSON backups now include archived chats. Files exported before this change still import (archive list is empty). No new Settings.
+No new Settings. No migration.
 
 ---
 

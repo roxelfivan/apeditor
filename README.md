@@ -14,10 +14,22 @@
 > functional specification). See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.6.1](https://img.shields.io/badge/version-0.6.1-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.1)
+[![v0.6.2](https://img.shields.io/badge/version-0.6.2-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.2)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
+
+---
+
+## What's new in v0.6.2
+
+> Phone layout, collapsible Chat archives, and a Graph Filter that stays on top of 3D labels. Patch on top of [v0.6.1](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.1).
+
+1. **Phone / Android fit.** Landscape phones no longer get three skinny columns. Sidebar and chat are overlays; Help / spec / history / prompts open from **⋯** as a bottom sheet above the editor.
+2. **Collapsible Chat and archives.** Hide the message list while you type, collapse older turns, and park threads in History without deleting them.
+3. **Graph Filter stays readable.** The checklist is opaque and sits above SVG and 3D node titles (including the green current-document label).
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.2 entry and prior changelogs.
 
 ---
 
