@@ -116,12 +116,13 @@ This is the **only** place in the app that performs an HTTP request to a chat pr
 | [`useDragResize.ts`](../src/hooks/useDragResize.ts) | 220 | Pointer-event drag with rAF coalescing. Also exports every `MIN_*` / `MAX_*` bound constant used across the app. |
 | [`useMediaQuery.ts`](../src/hooks/useMediaQuery.ts) | 37 | `NARROW_QUERY` / `COMMENT_SHEET_QUERY` (`max-width: 767px` or `max-height: 540px`), `useIsNarrow`, `useIsCommentSheet`. |
 
-### `src/components/` — 22 files
+### `src/components/` — 23 files
 
 | File | Lines | Responsibility |
 |---|---:|---|
 | [`Editor.tsx`](../src/components/Editor.tsx) | 2,009 | Toolbar, textarea + mirror + comment layer, comment composer/popover orchestration, margin badge positioning, Predict panel, tray, Graph host, split divider. |
-| [`ChatPanel.tsx`](../src/components/ChatPanel.tsx) | 1,381 | Streaming chat, Google AI Mode branch, comment-batch send, Apply All, rejection staging, selection toggles, panel resizing. |
+| [`ChatPanel.tsx`](../src/components/ChatPanel.tsx) | — | Streaming chat, Google AI Mode branch, comment-batch send, Apply All, rejection staging, selection toggles, composer **+** attachments, panel resizing. |
+| [`ChatAttachmentChips.tsx`](../src/components/ChatAttachmentChips.tsx) | — | Filename chips for pending composer files and sent user bubbles. |
 | [`ProposedEditCard.tsx`](../src/components/ProposedEditCard.tsx) | 925 | One AI proposal: Split/Inline view, Apply / Highlight Apply / Reject / Reject-with-feedback, editor highlight, resizable. |
 | [`CommentPopover.tsx`](../src/components/CommentPopover.tsx) | 911 | Read/edit one comment, multi-round rationale list, resize, persistence of popover size. |
 | [`SettingsModal.tsx`](../src/components/SettingsModal.tsx) | 834 | Provider, key, endpoint, model, system message, rationale rules, temperature, UI font size, debug mode. |
@@ -145,7 +146,7 @@ This is the **only** place in the app that performs an HTTP request to a chat pr
 | [`CommentMargin.tsx`](../src/components/CommentMargin.tsx) | 112 | Numbered badges in the right margin column. |
 | [`EdgeAnchor.tsx`](../src/components/EdgeAnchor.tsx) | 70 | Edge-pinned chevron that reveals a collapsed panel. |
 
-### `src/utils/` — 18 files
+### `src/utils/` — 19 files
 
 | File | Lines | Responsibility |
 |---|---:|---|
@@ -162,6 +163,7 @@ This is the **only** place in the app that performs an HTTP request to a chat pr
 | [`backup.ts`](../src/utils/backup.ts) | 86 | `BACKUP_SCHEMA` / `BACKUP_VERSION`, `buildDocumentBackup`, `serialiseDocumentBackup`. |
 | [`pdf.ts`](../src/utils/pdf.ts) | 92 | `pdfjs-dist` wrapper: `loadPdfFromBytes`, `pageHasNativeText`, `pageNativeText`, `renderPageToCanvas`. |
 | [`ocrMarkdown.ts`](../src/utils/ocrMarkdown.ts) | 97 | Streams recognised text through the configured model to produce reader-friendly Markdown. |
+| [`chatAttachments.ts`](../src/utils/chatAttachments.ts) | — | Chat **+** format-then-answer prompt (`buildAttachmentTurnPrompt`). |
 | [`graph/parseWikilinks.ts`](../src/utils/graph/parseWikilinks.ts) | 131 | `extractWikilinks`, `normalizeWikiSlug`, `resolveWikilink`. |
 | [`secrets.ts`](../src/utils/secrets.ts) | 52 | Three redaction regexes and `redactSecretsInMessages`. |
 | [`markdown.ts`](../src/utils/markdown.ts) | 23 | The shared `remarkPlugins` / `rehypePlugins` arrays. |

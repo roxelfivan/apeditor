@@ -152,6 +152,14 @@ const fixtureChatsByDoc = {
       role: 'user',
       content: 'hello',
       createdAt: 1700000000300,
+      attachments: [
+        {
+          id: 'att1',
+          name: 'scan.png',
+          mime: 'image/png',
+          extractedText: 'recognized line',
+        },
+      ],
     },
   ],
 };
@@ -215,6 +223,14 @@ test('build → serialise → parse round-trips a populated DocumentBackup', () 
   assert.equal(parsed.chats.length, 1);
   assert.equal(parsed.chats[0].id, 'm1');
   assert.equal(parsed.chats[0].role, 'user');
+  assert.deepEqual(parsed.chats[0].attachments, [
+    {
+      id: 'att1',
+      name: 'scan.png',
+      mime: 'image/png',
+      extractedText: 'recognized line',
+    },
+  ]);
   assert.deepEqual(parsed.chatArchives, []);
 
   assert.equal(parsed.revisions.length, 1);
@@ -646,6 +662,46 @@ test('resolveImportDecisions: non-colliding id defaults to keep-both', () => {
 // -------------------------------------------------------------------------
 // buildKeepBothDocument
 // -------------------------------------------------------------------------
+
+test('parseDocumentBackup accepts older chat messages without attachments', () => {
+  const built = buildDocumentBackup({
+    documentId: 'doc-existing',
+    documents: fixtureDocuments,
+    comments: {},
+    chats: {
+      'doc-existing': [
+        {
+          id: 'm-old',
+          role: 'user',
+          content: 'plain',
+          createdAt: 1,
+        },
+      ],
+    },
+    revisions: {},
+  });
+  const parsed = parseDocumentBackup(serialiseDocumentBackup(built));
+  assert.equal(parsed.chats[0].id, 'm-old');
+  assert.equal(parsed.chats[0].attachments, undefined);
+});
+
+test('parseDocumentBackup rejects a non-array attachments field', () => {
+  const built = buildDocumentBackup({
+    documentId: 'doc-existing',
+    documents: fixtureDocuments,
+    comments: {},
+    chats: fixtureChatsByDoc,
+    revisions: {},
+  });
+  const obj = JSON.parse(serialiseDocumentBackup(built));
+  obj.chats[0].attachments = { not: 'an-array' };
+  assert.throws(
+    () => parseDocumentBackup(JSON.stringify(obj)),
+    (err) =>
+      err instanceof BackupParseError &&
+      /attachments must be an array/.test(err.message)
+  );
+});
 
 test('buildKeepBothDocument appends (imported) and sanitises the title', () => {
   const doc = buildKeepBothDocument({

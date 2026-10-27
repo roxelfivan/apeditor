@@ -14,10 +14,22 @@
 > functional specification). See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.6.2](https://img.shields.io/badge/version-0.6.2-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.2)
+[![v0.6.3](https://img.shields.io/badge/version-0.6.3-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.3)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
+
+---
+
+## What's new in v0.6.3
+
+> Attach photos or PDFs in Chat and send them with your question. Patch on top of [v0.6.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.2).
+
+1. **Chat +.** Same images and PDFs as Import. Recognition stays in the browser. Send builds one prompt: format the extract as Markdown, then answer what you typed. Import still inserts into the document; Chat **+** does not.
+2. **Composer bar.** One field — textarea on top, **+** left and **Send** right.
+3. History and JSON backups keep filename, mime, and extract — not the original file.
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.3 entry and prior changelogs.
 
 ---
 
@@ -45,194 +57,29 @@ See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.1 entry and prior change
 
 ---
 
-## What's new in v0.6.0
+## Earlier releases
 
-> The 3D view is finally readable while you spin it, and you can actually see the balls in dark mode. Labels gain a typographic hierarchy and a distance fade; dark-mode spheres are lifted off the background; the editor toolbar stops stacking onto three rows; and the first-run Welcome document finally explains the Graph view. Minor release on top of [v0.5.9](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.9).
+High-level only. Full changelogs: [RELEASE_NOTES.md](./RELEASE_NOTES.md).
 
-1. **3D labels are legible while rotating.** They were all the same size, weight, and ink at any distance, painted in DOM order — so orbiting collapsed the graph into overlapping mush. Labels now scale and embolden by node kind (document > heading > term), fade and shrink with camera distance, paint near-over-far, and carry a text halo. **No label is ever hidden**; the hovered one stays at full size so you can always read what you are pointing at.
-2. **Dark-mode 3D spheres are visible.** The palette had been using the flat `ape.*` surface tokens — correct as SVG fills, wrong for a lit 3D canvas. `[[term]]` spheres were rendering at *exactly* the background colour, so they vanished. All three sphere colours are lifted while keeping their original hue and saturation.
-3. **The toolbar is one row again.** Both the row and the graph controls were `flex-wrap`, stacking twice over as the pane resized — Filter / Reset landed on a second line and Import / Save on a third. The row is now `flex-nowrap` and scrolls horizontally, with Import / Save pinned to the right edge.
-4. **Welcome document rewritten** (10 → 12 sections). The Graph view — projections, the Filter, `[[wikilink]]` syntax — was missing from onboarding entirely.
+### v0.6.0
 
-No new dependency, no store-schema change, no migration. Flat and Globe rendering are untouched.
+Legible 3D labels and dark-mode spheres; one-row scrolling toolbar; Welcome document covers the Graph view.
 
-See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.0 entry and prior changelogs.
+### v0.5.0 – v0.5.9
 
----
+Graph (map, Globe, 3D, Filter, wider zoom), JSON backup export/import, Preview wikilinks, in-app Functional Specification, proposed-edit Apply waterfall, selection-only chat, secret redaction, session-only API key, store refactor.
 
-## What's new in v0.5.9
+### v0.4.0 – v0.4.9
 
-> Graph can finally be narrowed. A **Filter** picks which documents and headings appear; zoom and labels go wider; deep 3D heading stacks compress instead of shooting out of frame; and a Graph / 3D node click opens the document in Split. Patch on top of [v0.5.8](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.8).
+Comment + Send to AI, rounds and rationales, Google AI Mode, `@` mentions with heading sections, Format dropdown, Predict off by default, auto-snapshots.
 
-1. **Filter.** Toolbar popover (same checkbox language as the `@`-section picker) includes or excludes documents and sections *before* layout. Flat, Globe, and Concept all see the same pruned graph. **Reset** clears the filter with the other Graph controls.
-2. **Wider zoom and labels.** Zoom **0.25×–12×** (was 0.5×–4×); labels **6–48 px** (was 12–28), including the 3D label layer. Concept eye distance is derived from the zoom ceiling so the toolbar percentage and the camera cannot disagree.
-3. **Deep-tier compression and sibling helix in 3D.** Ordinary Markdown outlines keep the full tier gap; past depth 6 the gap tapers so tall `Comment > A > B > …` paths stay readable. A wide ring of peer headings opens extra stories so labels do not pile on one floor.
-4. **Clicks open the document.** A short click on a Graph or 3D node switches to Split and selects the heading / `[[term]]` range (the textarea is unmounted while you are in Graph).
+### v0.3.0 – v0.3.4
 
-See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.5.9 entry and prior changelogs.
+ApEditor design system, Import → Markdown / OCR under CSP, Apply All, inline Predict, B/I/U, security hardening.
 
----
+### v0.2.x
 
-## What's new in v0.5.7
-
-> Graph can finally be moved around. Drag empty space to pan in the flat map; switch to **Globe** in the Graph toolbar to spin the same nodes onto a sphere. Adopted from the iSphere focus+context technique (Du et al., CHI 2017), with the plane→sphere and screen→plane math implemented in pure TypeScript. Patch on top of [v0.5.6](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.6).
-
-1. **Pan, orbit, and zoom are now a single camera.** `GraphView` lost its bound-derived viewBox; the camera is an explicit `{ cx, cy, scale }` with a zoom *multiplier* on top of the fit-to-pane scale. Zooming keeps the world point under the cursor pinned.
-2. **Spherical navigation.** A new `Globe` projection wraps the layout onto a sphere of radius 2600 layout units and projects it back through `toSphere` / `rotateSphere` / `toScreen`. Yaw rotates about Y so dragging horizontally rolls the globe instead of spinning toward the camera. Rotation gain derives from the viewport (`viewport.w / π`); a pane-wide drag is one half revolution.
-3. **`Graph` / `Globe` is one toggle, not a fifth viewMode.** A new segmented control in the Graph toolbar row. Reset returns to the flat map.
-4. **Graphical fisheye lens (Eq. 1 of Wang et al. 2018).** `fisheyeLens.ts` implements `β' = (m + 1)β / (mβ + 1)` exactly. Wired through the pipeline but not yet UI-exposed — no focal point yet, so it's inert.
-
-The Edit / Import / Comment / Chat / Prompt / Config surfaces stay; the editor view dropdown is unchanged. Backups from v0.5.3 onward still round-trip unchanged, and v0.5.5's Preview wikilinks, Functional Specification, and Graph Reset polish are still in place.
-
-See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.5.7 entry and prior changelogs.
-
----
-
-## What's new in v0.5.4
-
-> Fourth editor view: a **local knowledge graph** compiled from documents, headings, `[[wikilinks]]`, and comment `@` mentions. No LLM call, no new dependencies, no store-schema or prompt-contract changes. Built on [v0.5.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.3).
-
-1. **Graph in the view dropdown.** Next to **Write**, **Preview**, and **Split**. Graph replaces the text panes. Format, Comment, and Predict hide (they need the textarea). File actions and Save stay.
-2. **Document and heading nodes.** Every sidebar document is a node. Every Markdown heading is a child node (same heading split as the `@` picker).
-3. **`[[wikilink]]` terms.** Write `[[Name]]`, `[[Name|label]]`, or `[[Name#Heading]]` (Obsidian / LLM wiki syntax). A matching document title or heading becomes an edge. An unresolved name becomes a **term** node; click it to select that span. Graph does not create a new document.
-4. **`@` mention edges.** Comment-round `@` references draw lines to the target document or heading. Internal `@` sentinels (`[[mention:…]]`) are ignored.
-5. **Explore UX.** Hover dims non-neighbors and labels the edge (`heading`, `@`, or `[[wikilink]]`). Click a document to open it. Click a heading or term to open its document and select the passage.
-6. **Help → What's new.** In-app Help now has a [What's new](./docs/whats-new.md) page for the current release.
-
-JSON backup, comment Re-link / Dismiss, and the proposed-edit Apply waterfall stay as they were in v0.5.3.
-
-See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.5.4 entry and prior changelogs.
-
----
-
-## What's new in v0.5.3
-
-> First user-visible release on top of [v0.5.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.2)'s internal refactor. Four feature areas: a full JSON backup export; broader empty / gated-state copy on Import + the `@` doc picker + the Google AI Mode paste flow; per-row Re-link / Dismiss for stale comments; and a streamlined **proposed-edit Apply waterfall** (Exact → Best Effort → Highlight). No prompt / store / LLM-facing contract changes. (The session-only API key shipped in v0.5.2 as `persistApiKey` — its UX and store shape are unchanged by this release.)
-
-**Backup**
-
-1. **Export full backup (JSON).** A new **Export .json** button at the bottom of the file-actions popover (next to **Export .md**) downloads the current document plus its comments, chat history, and revisions as a single file. Filename matches the existing `${title}.md` pattern with a `.json` extension. The payload is versioned (`schema: 'apeditor-document-backup'`, `version: 1`).
-
-**Round-trip**
-
-2. **Restore from JSON backup.** A new **Import .json** button (one popover section below Export) restores a document plus its comments, chat history, and revisions from a backup file produced by **Export .json**. Picker accepts `application/json`; an inline error surfaces for size caps (`BACKUP_MAX_FILE_BYTES`), JSON parse failures, and version mismatches. The clean case (no id collisions) imports in one tap; colliding ids open a per-row modal with **Replace / Skip / Keep both** so imports never silently overwrite. Successful imports land the new doc at the top of the sidebar and the editor switches to it. Backups are now bidirectional at v1 — exporting and re-importing produces a deep-equal document state. Cover the inverse of item 1 in v0.5.3.
-
-**Clearer empty / gated states**
-
-2. **OCR-vs-key gate copy.** The Import popover now shows a contextual paragraph under the language checker explaining what runs locally versus what needs an API key. With no key: *"OCR works without an API key. Adding one in Settings lets the recognised text be rewritten as Markdown before insertion. Without a key, raw text is inserted as-is."* With a key configured the paragraph switches to a cyan *"Key configured. Files are OCR'd locally and rewritten as Markdown via your model before insertion."* so the user always knows which path they're on.
-3. **Empty-state copy in the `@` doc picker.** Three states — `no-workspace` (zero docs), `only-current` (only the current doc is open, which the picker excludes by design), and `no-match` (typed a query with no matches) — are now distinguished with context-appropriate copy and a `data-empty-reason` attribute for analytics / testing.
-4. **Two-step Google AI Mode paste hint.** A numbered list now sits above the paste-answer textarea spelling out: (1) Google AI Mode opened in a new tab with your prompt, (2) copy the answer out of that tab, (3) paste it below — ⌘/Ctrl+Enter to commit. First-time users no longer paste their original question here by mistake.
-
-**Per-comment Re-link + Dismiss**
-
-5. **Stale-comment list in the tray.** When the document has outdated comments, the tray grows a collapsed *"N stale comments — Re-link or Dismiss"* list. Each row shows the original snippet, a **Re-link** button (opens the new `ReanchorPicker`), and a **Dismiss** button (per-row, via the existing `deleteComment` + ⌘Z action). A small **Dismiss all** in the row header preserves the swept-everything path.
-6. **`ReanchorPicker` modal.** Lists the current document's heading sections (or its paragraphs when there are no headings). Selecting a row re-anchors the comment to the chosen slice. Uses the existing `reattachComment(id, { start, end })` action so ⌘Z reverts cleanly.
-
-**Proposed-edit Apply waterfall**
-
-7. **One Apply button.** Each proposed-edit card shows **Reject | Apply** (plus **Highlight Apply** only when you have a selection). Apply picks Exact when the quote matches, otherwise Best Effort — you no longer choose between separate Exact / Best Effort buttons.
-8. **Form-safer Best Effort.** Matching requires ~85% coverage of the quoted passage, expands to section / paragraph boundaries, strips re-emitted headings so they are not double-printed, and blocks Apply when a splice would duplicate surrounding text (fall through to Highlight Apply).
-9. **Apply N** uses the same waterfall. Bulk apply tries Exact, then Best Effort, per edit; skipped cards still accept Highlight Apply.
-10. **Editor highlight** of the matched Original / Best Effort span so you can see where Apply would land before you click.
-
-Export Markdown, import size / page caps, the comment-ops undo toast, gated-state tooltips, comment-batch send, secret redaction, outdated-comment bulk dismiss, and session-only API key all stay as they were in v0.5.0 / v0.5.1 / v0.5.2.
-
-See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.5.3 entry and prior changelogs.
-
----
-
-## What's new in v0.5.2
-
-> Internal-only release: a sanity-pass over the codebase and a
-> long-term-sustainability refactor. **No user-visible behaviour
-> changes.** Production ships less debug noise; the store and the
-> `@`-mention parser live in single-responsibility files now.
-
-1. **Debug POSTs removed.** Four hardcoded `fetch('http://127.0.0.1:7578/ingest/...')`
-   blocks in the chat pipeline (useEffect mount, `mvp:send-comments`
-   entry + pre-docSnap/TDZ try-catch, `handleSend` entry) have been
-   deleted. They were remnants of a local substrate debug session
-   that had been forgotten in the source and would have shipped in
-   the production bundle. Nothing in the build pipeline was stripping
-   them. No external HTTP call now happens from any chat code path.
-2. **`useStore` split into 5 files.** The 1,485-line zustand store
-   (`src/store/useStore.ts`) is now:
-   - `src/store/types.ts` — the `StoreState` interface + types
-   - `src/store/defaults.ts` — provider presets, seed prompts, the
-     `Welcome` and `Ideas` starter documents
-   - `src/store/actions.ts` — the comment-round / undo / reanchor
-     implementations + their shared helpers (named exports, so
-     each one is unit-testable without instantiating the store)
-   - `src/store/store.ts` — the `create<StoreState>()(persist(...))`
-     wiring, light settings/document actions, and rehydration
-     migrations
-   - `src/store/useStore.ts` — a thin barrel that re-exports
-     `useStore`, `useCurrentDocument`, and `DEFAULT_SYSTEM_MESSAGE`
-     so the existing 11 import sites keep working unchanged
-3. **`@`-mention parser moved to `utils/`.** `parseMentions.ts`
-   lived at `src/components/mentions/parseMentions.ts` even though
-   it has zero React / DOM imports. `src/utils/proposedEdit.ts`
-   imported it from there — a `utils → components` layering
-   violation and a tree-shake time-bomb. The file now lives at
-   `src/utils/mentions/parseMentions.ts`; every caller
-   (`MentionInput`, `MentionChip`, `CommentPopover`, `ChatPanel`,
-   `proposedEdit`) imports from the new path. `npm run typecheck`
-   and `npm run build` are clean. Bundle size is unchanged
-   (≈790 kB for the main entry chunk).
-4. **Stray `void App;` removed** from `src/main.tsx` (leftover from
-   an earlier "suppress unused" experiment).
-
-No UI changed, no store schema changed, no migration is needed.
-Existing `localStorage` payloads continue to load exactly as in
-v0.5.1.
-
----
-
-## What's new in v0.5.1
-
-> Completes **Phase 1 polish** and **Phase 2 daily friction** from
-> the UX roadmap, on top of [v0.5.0](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.0)
-> (Export Markdown, import size caps, best-effort Apply).
-
-**Phase 1 — polish**
-
-1. **Editor font size lives in Format.** Help now matches the
-   shipped UI: **Size +** / **Size −** are in the **Format**
-   menu (10–24 px), not as standalone toolbar buttons.
-2. **Gated-state tooltips.** Hovering **Predict** in Google AI
-   Mode explains that completion is off — type in Chat instead.
-   `@` explains that you need a second sidebar document.
-   Import shows a quiet **Needs API key** hint before you pick
-   files (Markdown rewrite needs a key).
-3. **⌘Z teaching toast.** With the editor focused, the first
-   ⌘/Ctrl+Z that is not a comment-op shows a one-shot toast:
-   undo in ApEditor is comment-ops only. Native textarea undo
-   still runs.
-4. **Dead chip-layout hook removed.** Mention overlay rects
-   still recompute; the unused no-op `useLayoutEffect` is gone.
-
-**Phase 2 — daily friction**
-
-5. **Selection only.** Chat can send the highlight *instead of*
-   the document outline, wrapped in `BEGIN/END EDITOR SELECTION`
-   markers, so a small question does not leak the rest of the
-   draft. **include selection** still attaches the highlight on
-   top of the outline.
-6. **Outbound secret redaction.** Common API-key / Bearer
-   shapes in the prompt are replaced with `[redacted]` on send.
-   The document is not rewritten.
-7. **Outdated comments.** **Dismiss outdated** on the tray
-   deletes every stale badge. **Re-attach** on the popover
-   anchors a comment to the current editor selection.
-8. **Forget API key when this tab closes.** Settings can keep
-   the key in `sessionStorage` so closing the tab forgets it;
-   documents and chat stay in `localStorage`.
-
-Export Markdown, import size/page caps, and best-effort Apply
-shipped in v0.5.0 and stay as they were.
-
-See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the full v0.5.2,
-v0.5.1, and v0.5.0 changelogs.
+Early UI overhauls and bug fixes.
 
 ---
 
@@ -295,9 +142,10 @@ toggles in the topbar.
 
 - **Streaming chat** — right-side panel with system prompt, model
   picker, **include selection** and **selection only** checkboxes,
-  and `⌘/Ctrl + Enter` to send. Selection-only omits the document
-  outline. Secret-looking strings in the outbound prompt are
-  redacted.
+  **+** to attach photos or PDFs (same types as Import; OCR stays
+  in-browser), and `⌘/Ctrl + Enter` to send. Selection-only omits
+  the document outline. Secret-looking strings in the outbound
+  prompt are redacted.
 - **Three providers** — MiniMax (OpenAI-compatible, default), OpenAI,
   and **Google AI Mode (no key)**. Switch in **Settings** (⚙).
 - **Proposed-edit cards** — when the model emits a `proposed-edit`
@@ -668,11 +516,12 @@ the result at your caret.
 3. Pick the language(s), then choose your file(s).
 4. A small progress chip (`reading… 2/5`) appears while the
    engine works.
-5. When recognition finishes, the extracted text is sent to your
+5.   When recognition finishes, the extracted text is sent to your
    configured chat model and rewritten as reader-friendly
    Markdown. Only that Markdown is inserted at the caret. An
    API key is required (the Import popover shows a hint when
-   none is set).
+   none is set). Chat **+** uses the same file types and OCR, but
+   attaches the extract to that chat turn instead of inserting.
 
 ### Privacy
 
@@ -711,7 +560,7 @@ A longer, task-oriented walkthrough of every screen lives under
 `⌘/Ctrl + /`) to open the same pages as a themed Help site — Light /
 Dark matches the editor. Start at the [table of contents](docs/README.md):
 
-- [What's new](docs/whats-new.md) — current release (in-app Help)
+- [What's new](docs/whats-new.md) — current release (Chat attachments in v0.6.3)
 - [Getting started](docs/getting-started.md) — first launch, connect AI, first document
 - [Your workspace](docs/workspace.md) — layout, theme, panels, Help
 - [Documents](docs/documents.md) — create, rename, switch, delete
@@ -761,6 +610,7 @@ src/
 │   ├── graph/               # Wikilink parse + workspace graph compile (v0.5.4).
 │   ├── ocr.ts               # PaddleOCR pipeline for image import.
 │   ├── pdf.ts               # pdfjs-dist wrapper.
+│   ├── chatAttachments.ts   # Chat + format-then-answer prompt.
 │   ├── proposedEdit.ts      # Parse / apply proposed-edit fences.
 │   └── ocrMarkdown.ts       # Chat-model Markdown reformatting of OCR output.
 └── components/
@@ -768,7 +618,8 @@ src/
     ├── Editor.tsx           # Textarea + mirror + comment layer + toolbar
     │                        # (Predict defaults off).
     ├── ChatPanel.tsx        # Streaming chat + proposed-edit cards +
-    │                        # comment-batch send / Apply All.
+    │                        # comment-batch send / Apply All + composer +.
+    ├── ChatAttachmentChips.tsx
     ├── CommentLayer.tsx     # Mirror overlay (highlights under textarea).
     ├── CommentMargin.tsx    # Numbered badges (+ rationale indicator).
     ├── CommentComposer.tsx  # Floating composer after **Comment**.
@@ -831,6 +682,7 @@ residual risks.
 | `npm run preview` | Serve the production build locally. |
 | `npm run typecheck` | Type-check only (no emit). |
 | `npm run test:graph` | Wikilink parse + workspace graph fixtures (incl. Preview formatting). |
+| `npm run test:chat-attachments` | Chat **+** format-then-answer prompt fixtures. |
 | `npm run check:docs` | Functional Specification internal link checker. |
 
 ---
@@ -842,27 +694,14 @@ per-release notes also ship on the GitHub release pages.
 
 | Version | Highlights |
 | --- | --- |
-| [v0.5.7](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.7) | **Graph navigation: pan, orbit, Globe.** Background drag pans the flat map at any zoom. New `Graph` / `Globe` toggle wraps the layout onto a sphere (iSphere). Existing node drag, label size, zoom, and Reset kept. Zero new dependencies. |
-| [v0.5.6](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.6) | **Import full backup (JSON).** Round-trips the v1 `DocumentBackup` shipped in v0.5.3 — Export `.json` and Import `.json` are now a single round-trip. Per-row modal for id collisions; never overwrites silently. |
-| [v0.5.5](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.5) | **Preview wikilinks** (purple, no brackets); Graph Reset tidy layout; in-app **Functional Specification**; Graph+Chat blank-tab fix. |
-| [v0.5.4](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.4) | **Graph view.** Documents, headings, `[[wikilinks]]`, and `@` mentions as a local knowledge graph. Help **What's new** page. |
-| [v0.5.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.3) | **First user-visible release on top of v0.5.2's refactor.** Full JSON backup export; per-comment **Re-link** / **Dismiss**; gated-state copy polish; proposed-edit **Apply waterfall** (Exact → Best Effort → Highlight) with form-safer matching. |
-| [v0.5.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.2) | **Internal / sustainability.** Removed four hardcoded debug POSTs from the chat pipeline (production-leak fix). Split the 1,485-line `useStore` into 5 single-responsibility files. Moved the `@`-mention parser to `utils/`. No UI or store-schema changes; no migration. |
-| [v0.5.1](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.1) | **Phase 1 + 2 UX.** Format-menu font-size docs, gated-state tooltips, ⌘Z comment-ops toast; Chat **selection only**, outbound secret redaction, outdated **Dismiss** / **Re-attach**, session-only API key. |
-| [v0.5.0](https://github.com/roxelfivan/apeditor/releases/tag/v0.5.0) | **Export Markdown** from the file-actions popover, import size and page caps with friendly errors, inline confirmation prompt for best-effort Apply when the AI quote is gone. **Popover alignment pass** + component rename `ImportMediaButton` → `FileActionsButton`. |
-| [v0.4.9](https://github.com/roxelfivan/apeditor/releases/tag/v0.4.9) | Unified **Format** dropdown (B/I/U + font size), draggable Chat panel messages/input split, draggable Original / Proposed columns in every **ProposedEditCard**. |
-| [v0.4.8](https://github.com/roxelfivan/apeditor/releases/tag/v0.4.8) | Heading-grouped `@` section picker, parent→child cascade, Cancel, inline `§…` captions in the textarea. Section sends stay scoped to picked paragraphs only. |
-| [v0.4.7](https://github.com/roxelfivan/apeditor/releases/tag/v0.4.7) | `@`-document references in chat, comments (new + re-edit), and rejection feedback. Whole-doc or section-scoped. Persisted on comment rounds. Dark-mode contrast for the rejection textarea. |
-| [v0.4.6](https://github.com/roxelfivan/apeditor/releases/tag/v0.4.6) | Auto-snapshot on Send / Apply All, structured Rationale Rules with bold+underlined keywords, ProposedEditCard Split as Preview-style markdown, draggable Write / Preview divider, Revision history Preview pane, live-default Settings sync. |
-| [v0.4.5](https://github.com/roxelfivan/apeditor/releases/tag/v0.4.5) | Comment **rounds** + **rationales**, Settings Rationale Rules, Apply re-anchors to replacement, leaner prompts, **Predict** off by default. |
-| [v0.4.1](https://github.com/roxelfivan/apeditor/releases/tag/v0.4.1) | **Send to AI** whole-document consistency; per-comment context; doc outline instead of verbatim document. |
-| [v0.4.0](https://github.com/roxelfivan/apeditor/releases/tag/v0.4.0) | **Comment** + **Send to AI**, **Google AI Mode (no key)**, title-case **Predict**, Welcome quick start. |
-| [v0.3.4](https://github.com/roxelfivan/apeditor/releases/tag/v0.3.4) | Import → Markdown, OCR works under CSP, security hardening, topbar icons. |
-| [v0.3.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.3.3) | **Apply All** for proposed edits, B/I/U toolbar, Debug Mode, global UI font size. |
-| [v0.3.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.3.2) | Debug mode, mobile-friendly editor, manual Predict. |
-| [v0.3.1](https://github.com/roxelfivan/apeditor/releases/tag/v0.3.1) | Inline sentence completion, roomier toolbar. |
-| [v0.3.0](https://github.com/roxelfivan/apeditor/releases/tag/v0.3.0) | ApEditor design system, transparent wordmark, redesigned toolbar. |
-| [v0.2.x](https://github.com/roxelfivan/apeditor/releases?q=v0.2) | Earlier UI overhauls, bug fixes. |
+| [v0.6.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.3) | **Chat + attachments.** Same images/PDFs as Import; one format-then-answer prompt; composer bar. |
+| [v0.6.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.2) | Phone overlay shell, Chat archives, Graph Filter stacking. |
+| [v0.6.1](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.1) | Format menu visible; Split = Write/Preview \| Graph; Graph click scrolls Write. |
+| [v0.6.0](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.0) | Legible 3D, one-row toolbar, Welcome covers Graph. |
+| [v0.5.0 – v0.5.9](https://github.com/roxelfivan/apeditor/releases?q=v0.5) | Graph (map / Globe / 3D / Filter), JSON backup, Apply waterfall, selection-only chat. |
+| [v0.4.0 – v0.4.9](https://github.com/roxelfivan/apeditor/releases?q=v0.4) | Comment + Send to AI, `@` mentions, Google AI Mode, Format dropdown. |
+| [v0.3.0 – v0.3.4](https://github.com/roxelfivan/apeditor/releases?q=v0.3) | Design system, OCR import, Apply All, Predict. |
+| [v0.2.x](https://github.com/roxelfivan/apeditor/releases?q=v0.2) | Early UI overhauls and bug fixes. |
 
 ---
 

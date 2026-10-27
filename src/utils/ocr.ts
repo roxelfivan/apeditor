@@ -73,6 +73,9 @@ export type OcrProgressCallback = (progress: OcrProgress) => void;
 // one-line change.
 // ---------------------------------------------------------------------------
 
+/** File picker accept list for Import and Chat “+”. */
+export const IMPORT_FILE_ACCEPT = 'image/*,application/pdf';
+
 /** Per-file size limit in bytes (50 MB). */
 export const OCR_MAX_FILE_BYTES = 50 * 1024 * 1024;
 /** Per-PDF page-count limit. PDFs with more pages are rejected before rasterising. */

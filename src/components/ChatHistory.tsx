@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ArchivedChat, ChatMessage } from '@/types';
 import { useStore } from '@/store/useStore';
 import { ChatTurnFrame } from '@/components/ChatTurnFrame';
+import { ChatAttachmentChips } from '@/components/ChatAttachmentChips';
 import {
   ARCHIVE_OLD_DEFAULT_MS,
   countMessagesOlderThan,
@@ -34,8 +35,19 @@ function ReadOnlyBubble({ message }: { message: ChatMessage }) {
             : 'bg-paper-elevated text-paper-ink dark:bg-ape-elevated dark:text-cyber-primary border border-paper-hairline dark:border-cyber-border'
         }`}
       >
-        {message.content || (
-          <span className="opacity-60">{isUser ? '(empty)' : 'thinking…'}</span>
+        {isUser && message.attachments && message.attachments.length > 0 && (
+          <ChatAttachmentChips items={message.attachments} tone="bubble" />
+        )}
+        {message.content ? (
+          message.content
+        ) : (
+          <span className="opacity-60">
+            {isUser
+              ? message.attachments?.length
+                ? ''
+                : '(empty)'
+              : 'thinking…'}
+          </span>
         )}
       </div>
     </div>

@@ -1,3 +1,19 @@
+## v0.6.3 — Chat composer attachments
+
+Patch on top of [v0.6.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.2). Attach photos or PDFs in Chat with **+**. Recognition stays in the browser. Send is one prompt: format the extracts as Markdown, then answer.
+
+### Added
+
+- **Chat +.** Same image/PDF types as Import. OCR via `extractTextFromFiles`. Extract rides with the turn; the document is unchanged.
+- **Format-then-answer prompt.** `buildAttachmentTurnPrompt` wraps files and the typed request. No second `formatOcrAsMarkdown()` call.
+- **Composer bar.** One field: textarea above, **+** left and **Send** right.
+
+### Internal
+
+- See [`.release-notes-v0.6.3.md`](.release-notes-v0.6.3.md) for the full surface list.
+- `package.json` version bumped to `0.6.3`.
+- `npm run test:chat-attachments`.
+
 ## v0.6.2 — Phone layout, chat archives, Graph Filter stacking
 
 Patch on top of [v0.6.1](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.1). Phones (including landscape) use overlay panels instead of three columns; Chat can collapse turns and archive threads; the Graph Filter stays opaque and above 3D labels.

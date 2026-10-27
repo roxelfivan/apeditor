@@ -151,25 +151,14 @@ Full changelogs are in [`RELEASE_NOTES.md`](../RELEASE_NOTES.md). The shape of t
 
 | Version | What changed |
 |---|---|
-| v0.6.2 | **Phone overlay shell, Chat archives, Graph Filter stacking.** Narrow query is `max-width: 767px` or `max-height: 540px`. Topbar **⋯** opens a `document.body` bottom sheet. Chat turns collapse; archives persist in backups. Graph Filter portals above isolated 3D labels (`z-index: 10000`). Send-to-AI works with Chat collapsed. |
-| v0.6.1 | **Format menu, Split = Write/Preview \| Graph, Graph click scrolls Write.** Format dropdown is `position: fixed` (escapes the toolbar scroller clip). Split's left pane toggles Write/Preview (`layout.splitLeftMode`); right pane is Graph; select order Write → Preview → Graph → Split. Graph `mvp:select-range` uses `scrollIntoView` and keeps `.cm-mirror` locked to the textarea. |
-| v0.6.0 | **Legible 3D, single-row toolbar, refreshed onboarding.** Concept labels gain a typographic hierarchy by kind, a zoom-invariant camera-distance ramp, near-over-far z-order, and a text halo — all presentation, nothing is ever hidden. Dark-mode sphere colours are lifted off the background (`term` was byte-identical to it). The editor toolbar and `GraphViewControls` stop double-wrapping and become one `flex-nowrap` scrolling row with Import / Save pinned right. The Welcome starter document is rewritten, 10 → 12 sections, and now covers the Graph view. |
-| v0.5.9 | **Graph scope filter, wider zoom / labels, deep-tier compression, sibling helix.** A Filter popover prunes documents and sections before layout (Flat / Globe / Concept inherit it). Zoom 0.25×–12× and labels 6–48 px; Concept distance is derived from the zoom ceiling. Heading tiers past depth 6 compress geometrically; wide sibling rings helix onto extra stories. Graph / 3D clicks switch to Split so the caret restore lands. |
-| v0.5.8 | **Graph 3D: spread the stack, free navigation.** The Concept projection's extrusion step was small enough that a tall document rendered as one horizontal slab; terms and headings shared the same positive y-axis. v0.5.8 spreads the tiers (135 units per step, base at 270) and drops `[[term]]` satellites onto an underground ring at `y = -200`. `three.js`'s `OrbitControls` is mounted for free 3D navigation: wheel zoom, shift+drag pan, two-finger pinch / pan, and arrow-key pan / +/- dolly. The hook remains the single source of truth for the camera pose. |
-| v0.5.8 | **Graph 3D Concept projection.** A third entry in the same projection toggle: the layout becomes a floor and heading tiers extrude upward, rendered with three.js and orbitable by dragging the background. three.js is loaded lazily, so the main bundle is unchanged. Flat and Globe are untouched, and it is still not a fifth `viewMode`. |
-| v0.5.7 | **Graph navigation: pan, orbit, and Globe.** The view can finally be moved: drag empty space to pan in flat mode, drag to spin the sphere in globe mode. Sphere projection (iSphere, CHI 2017): layout plane → Riemann sphere → viewport, with back-hemisphere culling. The `Graph` / `Globe` control is a navigation toggle, not a fifth `viewMode`. |
-| v0.5.6 | **Import full backup (JSON).** Round-trips the v1 `DocumentBackup` shipped in v0.5.3: backups can be re-imported with comments, chat history, and revisions intact. Per-row modal for id collisions; never overwrites silently. |
-| v0.5.5 | **Preview wikilinks** without brackets (purple); Graph Reset tidy atom layout; in-app **Functional Specification**; Graph+Chat blank-tab fix. |
-| v0.5.4 | **Graph view.** Documents, headings, `[[wikilinks]]`, and `@` mentions compiled into a local knowledge graph. Drag nodes, zoom the map. |
-| v0.5.3 | JSON backup export; per-comment Re-link / Dismiss; gated-state copy; the Apply waterfall (Exact → Best Effort → Highlight). |
-| v0.5.2 | **Internal refactor.** Removed four hardcoded debug POSTs from the chat pipeline. Split the 1,485-line store into 5 files. Moved the `@`-mention parser from `components/` to `utils/`. No behaviour change. |
-| v0.5.1 | Selection-only chat, outbound secret redaction, outdated Dismiss / Re-attach, session-only API key, gated-state tooltips. |
-| v0.5.0 | Export Markdown, import size/page caps, best-effort Apply. |
-| v0.4.9 | Unified Format dropdown, draggable chat / card dividers. |
-| v0.4.7 – v0.4.8 | `@`-document references, heading-grouped section picker, cascade, inline `§…` captions. |
-| v0.4.5 | Comment **rounds** and **rationales**; Rationale Rules; Predict off by default. |
-| v0.4.0 – v0.4.1 | **Comment + Send to AI**; Google AI Mode (no key); document outline instead of verbatim document. |
-| v0.3.x | Import → Markdown, OCR under CSP, security hardening, Apply All, inline completion. |
+| v0.6.3 | **Chat composer attachments.** **+** picks the same images/PDFs as Import; OCR stays in-browser; Send is one format-then-answer prompt. Composer is one field with **+** and **Send** on a shared bar. Optional `ChatMessage.attachments` in backups. |
+| v0.6.2 | **Phone overlay shell, Chat archives, Graph Filter stacking.** Narrow overlay panels; Chat History / Archive; Filter above 3D labels; Send-to-AI works with Chat collapsed. |
+| v0.6.1 | **Format menu, Split = Write/Preview \| Graph, Graph click scrolls Write.** Format dropdown is `position: fixed`. Split left pane Write/Preview; Graph click `scrollIntoView`. |
+| v0.6.0 | **Legible 3D, single-row toolbar, Welcome covers Graph.** Label hierarchy, distance fade, dark-mode spheres, non-wrapping toolbar. |
+| v0.5.0 – v0.5.9 | Graph (map, Globe, 3D, Filter, wider zoom), JSON backup export/import, Preview wikilinks, Functional Specification, Apply waterfall, selection-only chat, secret redaction, session-only API key, store refactor. |
+| v0.4.0 – v0.4.9 | Comment + Send to AI, rounds / rationales, Google AI Mode, `@` mentions with heading sections, Format dropdown, Predict off by default. |
+| v0.3.0 – v0.3.4 | Design system, Import → Markdown / OCR under CSP, Apply All, inline Predict, B/I/U, security hardening. |
+| v0.2.x | Early UI overhauls and bug fixes. |
 
 ## 8. Next
 

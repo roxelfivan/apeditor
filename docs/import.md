@@ -2,6 +2,8 @@
 
 You can pull text out of images or PDF files and insert it as Markdown at the caret. Recognition runs **in this browser**. Turning the raw text into readable Markdown uses the same AI settings as Chat, so Minimax or OpenAI with an API key is required for that last step.
 
+Chat has a separate **+** next to the message box. It accepts the same image and PDF types, but it attaches the extract to that chat turn instead of inserting into the document. See [Chat](chat.md).
+
 ## What you can import
 
 - **Images** — common formats such as PNG, JPEG, and WebP
