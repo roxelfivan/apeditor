@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore, useCurrentDocument } from '@/store/useStore';
 import { Sidebar } from '@/components/Sidebar';
 import { Editor } from '@/components/Editor';
@@ -49,12 +50,43 @@ function Topbar({
   const api = useStore((s) => s.api);
   const isNarrow = useIsNarrow();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(
+    null,
+  );
   const moreRef = useRef<HTMLDivElement>(null);
+  const menuPanelRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!moreOpen) {
+      setMenuPos(null);
+      return;
+    }
+    const update = () => {
+      const el = moreRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setMenuPos({
+        top: r.bottom + 4,
+        right: Math.max(8, window.innerWidth - r.right),
+      });
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [moreOpen]);
 
   useEffect(() => {
     if (!moreOpen) return;
     const onPointer = (e: PointerEvent) => {
-      if (!moreRef.current?.contains(e.target as Node)) setMoreOpen(false);
+      const t = e.target as Node;
+      if (moreRef.current?.contains(t) || menuPanelRef.current?.contains(t)) {
+        return;
+      }
+      setMoreOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setMoreOpen(false);
@@ -144,7 +176,7 @@ function Topbar({
   ] as const;
 
   return (
-    <header className="h-14 sm:h-20 px-3 sm:px-4 flex items-center gap-2 sm:gap-3 border-b border-paper-hairline dark:border-cyber-border bg-paper-base/90 dark:bg-ape-base/90 backdrop-blur-sm pt-[env(safe-area-inset-top)]">
+    <header className="relative z-30 h-14 sm:h-20 px-3 sm:px-4 flex items-center gap-2 sm:gap-3 border-b border-paper-hairline dark:border-cyber-border bg-paper-base/90 dark:bg-ape-base/90 backdrop-blur-sm pt-[env(safe-area-inset-top)]">
       <img
         src="/apeditor-logo-transparent.png"
         alt="ApEditor"
@@ -182,30 +214,35 @@ function Topbar({
               ⋯
             </span>
           </button>
-          {moreOpen && (
-            <div
-              role="menu"
-              className="absolute right-0 top-full mt-1 z-50 w-52 rounded-md border border-paper-hairline dark:border-cyber-border bg-paper-panel dark:bg-ape-panel shadow-ape-paper-lift dark:shadow-2xl py-1"
-            >
-              {extraItems.map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  role="menuitem"
-                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left text-paper-ink dark:text-cyber-primary hover:bg-paper-elevated dark:hover:bg-ape-elevated"
-                  onClick={() => {
-                    setMoreOpen(false);
-                    item.onClick();
-                  }}
-                >
-                  <span className="inline-flex h-5 w-5 items-center justify-center shrink-0">
-                    {item.icon}
-                  </span>
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          )}
+          {moreOpen &&
+            menuPos &&
+            createPortal(
+              <div
+                ref={menuPanelRef}
+                role="menu"
+                className="fixed z-[80] w-52 rounded-md border border-paper-hairline dark:border-cyber-border bg-paper-panel dark:bg-ape-panel shadow-ape-paper-lift dark:shadow-2xl py-1"
+                style={{ top: menuPos.top, right: menuPos.right }}
+              >
+                {extraItems.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    role="menuitem"
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left text-paper-ink dark:text-cyber-primary hover:bg-paper-elevated dark:hover:bg-ape-elevated"
+                    onClick={() => {
+                      setMoreOpen(false);
+                      item.onClick();
+                    }}
+                  >
+                    <span className="inline-flex h-5 w-5 items-center justify-center shrink-0">
+                      {item.icon}
+                    </span>
+                    {item.label}
+                  </button>
+                ))}
+              </div>,
+              document.body,
+            )}
         </div>
       ) : (
         extraItems.map((item) => (
