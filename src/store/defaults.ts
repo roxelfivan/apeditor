@@ -192,7 +192,7 @@ overwrites anything.
 including **What's new**. The **Settings** modal (\`⌘/Ctrl + .\`) holds
 your provider (Local Model by default), key, model, and UI font size.
 Turn on **Debug Mode** to edit System message, Rationale rules, and
-Temperature. Light and dark themes follow the top-bar toggle.`}
+Temperature. Light and dark themes follow the top-bar toggle.`
   ),
   makeDoc(
     'Ideas',
