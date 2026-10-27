@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useStore, useCurrentDocument } from '@/store/useStore';
 import { Sidebar } from '@/components/Sidebar';
@@ -37,67 +37,22 @@ function Topbar({
   onOpenRevisions,
   onOpenHelp,
   onOpenFuncSpec,
+  moreOpen,
+  onToggleMore,
 }: {
   onOpenSettings: () => void;
   onOpenPrompts: () => void;
   onOpenRevisions: () => void;
   onOpenHelp: () => void;
   onOpenFuncSpec: () => void;
+  moreOpen: boolean;
+  onToggleMore: () => void;
 }) {
   const theme = useStore((s) => s.theme);
   const toggleTheme = useStore((s) => s.toggleTheme);
   const doc = useCurrentDocument();
   const api = useStore((s) => s.api);
   const isNarrow = useIsNarrow();
-  const [moreOpen, setMoreOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(
-    null,
-  );
-  const moreRef = useRef<HTMLDivElement>(null);
-  const menuPanelRef = useRef<HTMLDivElement>(null);
-
-  useLayoutEffect(() => {
-    if (!moreOpen) {
-      setMenuPos(null);
-      return;
-    }
-    const update = () => {
-      const el = moreRef.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      setMenuPos({
-        top: r.bottom + 4,
-        right: Math.max(8, window.innerWidth - r.right),
-      });
-    };
-    update();
-    window.addEventListener('resize', update);
-    window.addEventListener('scroll', update, true);
-    return () => {
-      window.removeEventListener('resize', update);
-      window.removeEventListener('scroll', update, true);
-    };
-  }, [moreOpen]);
-
-  useEffect(() => {
-    if (!moreOpen) return;
-    const onPointer = (e: PointerEvent) => {
-      const t = e.target as Node;
-      if (moreRef.current?.contains(t) || menuPanelRef.current?.contains(t)) {
-        return;
-      }
-      setMoreOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMoreOpen(false);
-    };
-    window.addEventListener('pointerdown', onPointer);
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('pointerdown', onPointer);
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [moreOpen]);
 
   const extraItems = [
     {
@@ -200,63 +155,19 @@ function Topbar({
       )}
       <div className="flex-1 min-w-2" />
       {isNarrow ? (
-        <div className="relative shrink-0" ref={moreRef}>
-          <button
-            type="button"
-            className="btn-icon-square shrink-0"
-            onClick={() => setMoreOpen((open) => !open)}
-            title="More"
-            aria-label="More"
-            aria-haspopup="menu"
-            aria-expanded={moreOpen}
-          >
-            <span className="text-lg font-semibold leading-none" aria-hidden>
-              ⋯
-            </span>
-          </button>
-          {moreOpen &&
-            menuPos &&
-            createPortal(
-              <div
-                ref={menuPanelRef}
-                className="fixed inset-0 z-[200]"
-                style={{ pointerEvents: 'auto' }}
-              >
-                <button
-                  type="button"
-                  className="absolute inset-0 bg-black/20"
-                  aria-label="Close menu"
-                  onClick={() => setMoreOpen(false)}
-                />
-                <div
-                  role="menu"
-                  className="absolute w-52 rounded-md border border-paper-hairline dark:border-cyber-border bg-paper-panel dark:bg-ape-panel shadow-ape-paper-lift dark:shadow-2xl py-1"
-                  style={{ top: menuPos.top, right: menuPos.right }}
-                >
-                  {extraItems.map((item) => (
-                    <button
-                      key={item.key}
-                      type="button"
-                      role="menuitem"
-                      className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left text-paper-ink dark:text-cyber-primary hover:bg-paper-elevated dark:hover:bg-ape-elevated"
-                      onPointerDown={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setMoreOpen(false);
-                        item.onClick();
-                      }}
-                    >
-                      <span className="inline-flex h-5 w-5 items-center justify-center shrink-0">
-                        {item.icon}
-                      </span>
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>,
-              document.body,
-            )}
-        </div>
+        <button
+          type="button"
+          className="btn-icon-square shrink-0"
+          onClick={onToggleMore}
+          title="More"
+          aria-label="More"
+          aria-haspopup="dialog"
+          aria-expanded={moreOpen}
+        >
+          <span className="text-lg font-semibold leading-none" aria-hidden>
+            ⋯
+          </span>
+        </button>
       ) : (
         extraItems.map((item) => (
           <button
@@ -314,8 +225,70 @@ function Topbar({
   );
 }
 
+function MoreSheet({
+  open,
+  items,
+  onClose,
+}: {
+  open: boolean;
+  items: ReadonlyArray<{
+    key: string;
+    label: string;
+    icon: ReactNode;
+    onClick: () => void;
+  }>;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex flex-col justify-end">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/45"
+        aria-label="Close menu"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="More"
+        className="relative z-10 rounded-t-2xl border border-paper-hairline dark:border-cyber-border bg-paper-panel dark:bg-ape-panel shadow-ape-paper-lift dark:shadow-2xl pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2"
+      >
+        <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-paper-hairline dark:bg-cyber-border" />
+        {items.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className="w-full flex items-center gap-3 px-5 py-3.5 text-base text-left text-paper-ink dark:text-cyber-primary hover:bg-paper-elevated dark:hover:bg-ape-elevated"
+            onClick={() => {
+              onClose();
+              item.onClick();
+            }}
+          >
+            <span className="inline-flex h-6 w-6 items-center justify-center shrink-0">
+              {item.icon}
+            </span>
+            {item.label}
+          </button>
+        ))}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [promptsOpen, setPromptsOpen] = useState(false);
   const [revisionsOpen, setRevisionsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -485,6 +458,8 @@ export default function App() {
             setFuncSpecPage(undefined);
             setFuncSpecOpen(true);
           }}
+          moreOpen={moreOpen}
+          onToggleMore={() => setMoreOpen((open) => !open)}
         />
       )}
       <div className="flex-1 flex min-h-0 relative">
@@ -532,6 +507,87 @@ export default function App() {
         onClick={() => setTopbarCollapsed(!topbarCollapsed)}
       />
 
+      <MoreSheet
+        open={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        items={[
+          {
+            key: 'help',
+            label: 'Help',
+            onClick: () => {
+              setHelpPage('home');
+              setHelpOpen(true);
+            },
+            icon: (
+              <span className="text-base font-semibold leading-none" aria-hidden>
+                ?
+              </span>
+            ),
+          },
+          {
+            key: 'funcspec',
+            label: 'Functional spec',
+            onClick: () => {
+              setFuncSpecPage(undefined);
+              setFuncSpecOpen(true);
+            },
+            icon: (
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 16 16"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M6 2.5H4.5a1 1 0 0 0-1 1V6a1 1 0 0 1-1 1 1 1 0 0 1 1 1v2.5a1 1 0 0 0 1 1H6" />
+                <path d="M10 2.5h1.5a1 1 0 0 1 1 1V6a1 1 0 0 0 1 1 1 1 0 0 0-1 1v2.5a1 1 0 0 1-1 1H10" />
+              </svg>
+            ),
+          },
+          {
+            key: 'revisions',
+            label: 'Revision history',
+            onClick: () => setRevisionsOpen(true),
+            icon: (
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 16 16"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="8" cy="8" r="5.5" />
+                <path d="M8 5.2 V8.1 L10.3 9.6" />
+              </svg>
+            ),
+          },
+          {
+            key: 'prompts',
+            label: 'Prompt library',
+            onClick: () => setPromptsOpen(true),
+            icon: (
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 16 16"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M4 2.5 H12 V13.5 L8 11 L4 13.5 Z" />
+              </svg>
+            ),
+          },
+        ]}
+      />
       <SettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
