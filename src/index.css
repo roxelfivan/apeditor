@@ -1869,6 +1869,60 @@ html.dark .mention-input__overlay-chip:focus-visible:not(:disabled) {
   box-shadow: 0 0 0 1px rgba(176, 200, 178, 0.45) inset;
 }
 
+/* Graph Filter panel. Portaled to document.body so SVG / WebGL graph
+   labels cannot paint through it. Solid fill — the shared mention
+   header/footer tints are translucent and let node text bleed. */
+.graph-scope-filter-root {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+}
+.graph-scope-filter-backdrop {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(13, 12, 10, 0.55);
+  cursor: default;
+}
+.graph-scope-filter {
+  z-index: 1;
+  isolation: isolate;
+  opacity: 1;
+  background: #f7f2e7;
+  box-shadow: 0 12px 40px rgba(13, 12, 10, 0.45);
+}
+html.dark .graph-scope-filter {
+  background: #12100e;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.75);
+}
+.graph-scope-filter .mention-popover__header,
+.graph-scope-filter .mention-popover__footer {
+  background: #efe9da;
+}
+html.dark .graph-scope-filter .mention-popover__header,
+html.dark .graph-scope-filter .mention-popover__footer {
+  background: #1c1a17;
+}
+.graph-scope-filter .mention-popover__item {
+  background: #f7f2e7;
+}
+html.dark .graph-scope-filter .mention-popover__item {
+  background: #12100e;
+}
+.graph-scope-filter .mention-popover__item--active,
+.graph-scope-filter .mention-popover__item:hover {
+  background: #e8e0ce;
+}
+html.dark .graph-scope-filter .mention-popover__item--active,
+html.dark .graph-scope-filter .mention-popover__item:hover {
+  background: #1f1d19;
+}
+.graph-scope-filter .mention-popover__footer {
+  flex-wrap: wrap;
+}
+
 .mention-popover {
   z-index: 60;
   background: #fbf7ec;
