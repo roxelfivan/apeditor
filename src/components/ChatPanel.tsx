@@ -520,7 +520,7 @@ export function ChatPanel() {
   }, [messagesHeight]);
   // Clamp the messages height against the live panel height so the
   // divider cannot drag the input area off-screen. The min keeps the
-  // input area (Send button + textarea) usable; the max keeps the
+  // input area (composer field + Send) usable; the max keeps the
   // messages area from pushing the input off the bottom.
   const clampMessagesHeight = (px: number): number => {
     const panel = containerRef.current;
@@ -1386,35 +1386,15 @@ export function ChatPanel() {
               className="hidden"
               onChange={(e) => void onAttachFiles(e)}
             />
-            <ChatAttachmentChips
-              items={pendingAttachments}
-              onRemove={removePendingAttachment}
-            />
-            <div className="flex items-start gap-2">
-              <button
-                type="button"
-                className="btn-icon-square shrink-0 mt-0.5 disabled:opacity-50"
-                aria-label="Attach photos or PDFs"
-                title={
-                  ocrBusy
-                    ? 'Reading file…'
-                    : 'Attach photos or PDFs (same types as Import). Sent with this message.'
-                }
-                disabled={!currentDocumentId || streaming || ocrBusy}
-                onClick={() => attachInputRef.current?.click()}
-              >
-                {ocrBusy ? (
-                  <span className="inline-flex gap-0.5">
-                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse" style={{ animationDelay: '0ms' }} />
-                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse" style={{ animationDelay: '150ms' }} />
-                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse" style={{ animationDelay: '300ms' }} />
-                  </span>
-                ) : (
-                  <span aria-hidden className="text-lg leading-none font-medium">
-                    +
-                  </span>
-                )}
-              </button>
+            <div className="rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-base focus-within:border-cyber-clay dark:focus-within:border-cyber-cyan flex flex-col min-w-0">
+              {pendingAttachments.length > 0 && (
+                <div className="px-2 pt-2">
+                  <ChatAttachmentChips
+                    items={pendingAttachments}
+                    onRemove={removePendingAttachment}
+                  />
+                </div>
+              )}
               <MentionInput
                 value={input}
                 onChange={(v) => {
@@ -1428,39 +1408,61 @@ export function ChatPanel() {
                     ? 'Ask, or ⌘/Ctrl+Enter to open in Google AI Mode… type @ to reference a document'
                     : 'Ask, or ⌘/Ctrl+Enter to send… type @ to reference a document'
                 }
-                containerClassName="flex-1 min-w-0"
-                className="w-full h-24 p-2 text-sm ape-field resize-none font-sans"
+                containerClassName="min-w-0"
+                className="w-full h-24 px-2.5 py-2 text-sm resize-none font-sans bg-transparent border-0 outline-none shadow-none focus:outline-none focus:ring-0 text-paper-ink dark:text-paper-base placeholder:text-paper-inkSoft dark:placeholder:text-cyber-muted"
               />
-            </div>
-            <div className="flex justify-end gap-2">
-              {streaming ? (
+              <div className="flex items-center justify-between gap-2 px-2 py-1.5 border-t border-paper-hairline dark:border-cyber-border">
                 <button
-                  className="text-sm px-3 py-1.5 rounded bg-cyber-danger text-white font-semibold hover:bg-cyber-danger/80 transition-colors"
-                  onClick={handleStop}
-                >
-                  Stop
-                </button>
-              ) : (
-                <button
-                  className="btn-fire"
-                  onClick={handleSend}
-                  disabled={
-                    !currentDocumentId ||
-                    ocrBusy ||
-                    (!input.trim() &&
-                      !pendingAttachments.some(
-                        (a) => !a.reading && a.extractedText.trim()
-                      ))
-                  }
+                  type="button"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded text-lg leading-none font-medium text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan hover:bg-paper-elevated dark:hover:bg-ape-elevated transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Attach photos or PDFs"
                   title={
-                    isKeyless
-                      ? 'Opens Google AI Mode in a new tab with this prompt pre-filled'
-                      : undefined
+                    ocrBusy
+                      ? 'Reading file…'
+                      : 'Attach photos or PDFs (same types as Import). Sent with this message.'
                   }
+                  disabled={!currentDocumentId || streaming || ocrBusy}
+                  onClick={() => attachInputRef.current?.click()}
                 >
-                  {isKeyless ? 'Open in AI Mode' : 'Send'}
+                  {ocrBusy ? (
+                    <span className="inline-flex gap-0.5">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse" style={{ animationDelay: '0ms' }} />
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse" style={{ animationDelay: '150ms' }} />
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse" style={{ animationDelay: '300ms' }} />
+                    </span>
+                  ) : (
+                    <span aria-hidden>+</span>
+                  )}
                 </button>
-              )}
+                {streaming ? (
+                  <button
+                    className="text-sm px-3 py-1.5 rounded bg-cyber-danger text-white font-semibold hover:bg-cyber-danger/80 transition-colors"
+                    onClick={handleStop}
+                  >
+                    Stop
+                  </button>
+                ) : (
+                  <button
+                    className="btn-fire-sm"
+                    onClick={handleSend}
+                    disabled={
+                      !currentDocumentId ||
+                      ocrBusy ||
+                      (!input.trim() &&
+                        !pendingAttachments.some(
+                          (a) => !a.reading && a.extractedText.trim()
+                        ))
+                    }
+                    title={
+                      isKeyless
+                        ? 'Opens Google AI Mode in a new tab with this prompt pre-filled'
+                        : undefined
+                    }
+                  >
+                    {isKeyless ? 'Open in AI Mode' : 'Send'}
+                  </button>
+                )}
+              </div>
             </div>
           </>
         )}
