@@ -5,6 +5,7 @@ import { useStore, useCurrentDocument } from '@/store/useStore';
 import { IMPORT_FILE_ACCEPT, type OcrLang, type OcrProgress } from '@/utils/ocr';
 import { formatOcrAsMarkdown } from '@/utils/ocrMarkdown';
 import { downloadTextFile, sanitizeFilename } from '@/utils/storage';
+import { scrubLiveSecretFromExport } from '@/utils/secrets';
 import {
   buildDocumentBackup,
   serialiseDocumentBackup,
@@ -242,7 +243,11 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
       return;
     }
     const base = sanitizeFilename(currentDoc.title, 'untitled');
-    downloadTextFile(`${base}.md`, currentDoc.content, 'text/markdown;charset=utf-8');
+    downloadTextFile(
+      `${base}.md`,
+      scrubLiveSecretFromExport(currentDoc.content, api.apiKey),
+      'text/markdown;charset=utf-8'
+    );
   };
 
   /**
@@ -278,7 +283,7 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
     const base = sanitizeFilename(currentDoc.title, 'untitled');
     downloadTextFile(
       `${base}.json`,
-      serialiseDocumentBackup(backup),
+      scrubLiveSecretFromExport(serialiseDocumentBackup(backup), api.apiKey),
       'application/json;charset=utf-8'
     );
   };
@@ -657,7 +662,8 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
           <p className="text-paper-inkSoft dark:text-cyber-muted leading-snug">
             Download the current document as Markdown so you have a
             copy outside the browser; local storage can be cleared
-            without warning.
+            without warning. The Settings API key is never written
+            into this file.
           </p>
           <div className="flex items-center justify-end pt-1">
             <button
@@ -713,8 +719,9 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
           <p className="text-paper-inkSoft dark:text-cyber-muted leading-snug">
             Download the document plus its comments, chat history,
             archived chats, and revisions as a single JSON file —
-            useful before
-            clearing browser storage or switching devices.
+            useful before clearing browser storage or switching
+            devices. Settings (including the API key) are not in
+            this file.
           </p>
           <div className="flex items-center justify-end pt-1">
             <button

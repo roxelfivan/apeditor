@@ -25,6 +25,7 @@ npm run test:heading-sections
 npm run test:proposed-edit
 npm run test:graph
 npm run test:backup-roundtrip
+npm run test:secrets
 npm run test:chat-archive
 npm run test:chat-attachments
 npm run test:send-comments-tdz
@@ -185,7 +186,7 @@ Honest list. If you add tests, these are the gaps with the highest value:
 | Gap | Risk |
 |---|---|
 | The SSE loop in `streamChatCompletion` | Malformed frames, mid-stream aborts |
-| `redactSecretsInMessages` | A missed pattern leaks a key into a prompt |
+| `redactSecretsInMessages` | A missed pattern leaks a key into a prompt. `npm run test:secrets` covers the common shapes plus live-key stripping on export |
 | The OCR / pdf.js pipeline | Browser-only; hard to unit test, but the cleanup contract is worth extracting and asserting |
 | Store rehydrate migrations | A bad migration silently corrupts user data |
 | `getSelectionRect` and `clampToContainer` | Geometry; needs a DOM environment |

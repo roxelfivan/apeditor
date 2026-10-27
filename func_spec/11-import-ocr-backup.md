@@ -239,7 +239,7 @@ Parse still accepts older v1 files that omit `chatArchives` and treats the field
 
 | | |
 |---|---|
-| Serialisation | `serialiseDocumentBackup(backup)` → `JSON.stringify(backup, null, 2)` |
+| Serialisation | `serialiseDocumentBackup(backup)` → pretty-printed JSON with a replacer that drops `apiKey` / `authorization`-style keys. The download path then runs `scrubLiveSecretFromExport` so the live Settings key cannot appear in the file. |
 | Unknown document | `buildDocumentBackup` returns `null` |
 | Round-trip? | **Yes.** `parseDocumentBackup` is the inverse: a v1 payload produced today can be re-imported losslessly. See §5. |
 | Button | `data-backup-toggle`, labelled **Export .json** |

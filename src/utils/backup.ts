@@ -39,6 +39,23 @@ import type {
 import { v4 as uuid } from 'uuid';
 import { sanitizeFilename } from '@/utils/storage';
 
+/**
+ * JSON keys that must never appear in a downloaded backup. The v1
+ * `DocumentBackup` shape has no credentials; this is a guard so a
+ * future extra field (or a poisoned object) cannot leak Settings.
+ */
+const CREDENTIAL_JSON_KEYS = new Set([
+  'apikey',
+  'persistapikey',
+  'authorization',
+  'bearertoken',
+  'accesstoken',
+]);
+
+function isCredentialJsonKey(key: string): boolean {
+  return CREDENTIAL_JSON_KEYS.has(key.replace(/[_-]/g, '').toLowerCase());
+}
+
 export const BACKUP_SCHEMA = 'apeditor-document-backup';
 export const BACKUP_VERSION = 1;
 
@@ -167,10 +184,15 @@ export function buildDocumentBackup(args: {
  * Serialise a `DocumentBackup` to a pretty-printed JSON string. The
  * caller is responsible for triggering the download via
  * `downloadTextFile` from `@/utils/storage` — kept out of this module
- * so it stays DOM-free and easy to unit-test.
+ * so it stays DOM-free and easy to unit-test. Credential-shaped keys
+ * (`apiKey`, `authorization`, …) are omitted if they ever appear.
  */
 export function serialiseDocumentBackup(backup: DocumentBackup): string {
-  return JSON.stringify(backup, null, 2);
+  return JSON.stringify(
+    backup,
+    (key, value) => (isCredentialJsonKey(key) ? undefined : value),
+    2
+  );
 }
 
 // ---------------------------------------------------------------------------

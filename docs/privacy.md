@@ -39,6 +39,16 @@ Choosing **Import text from photos or PDFs** runs recognition on-device. Files a
 
 Chat **+** uses the same on-device recognition. Original images and PDFs are not kept in chat history — only filenames and the extracted text.
 
+## Exports
+
+Downloads from the Import / Export toolbar never include Settings credentials:
+
+- **Export .md** is only the current document’s Markdown
+- **Export .json** is that document plus comments, chat (including archives), and revisions — not the API key, endpoint, or other Settings
+- **Save to Disk** (Local Model) writes the cached Gemma weights, not a key
+
+If the live API key was pasted into the document or a chat message, that exact string is replaced with `[redacted]` in the download. Treat exported files as copies of your writing; they can still contain anything else you typed.
+
 ## What clearing data does
 
 Clearing cookies/site storage for ApEditor resets you to a first-run state (sample **Welcome** and **Ideas** documents, empty Chat, no key). Export anything you need first by copying Markdown out of the editor.

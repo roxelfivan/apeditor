@@ -731,5 +731,51 @@ test('buildKeepBothDocument sanitises reserved characters and caps at 80 chars',
   assert.ok(doc.title.length <= 80, `expected <=80 chars, got ${doc.title.length}`);
 });
 
+test('serialiseDocumentBackup never emits Settings credential fields', () => {
+  const built = buildDocumentBackup({
+    documentId: 'doc-existing',
+    documents: fixtureDocuments,
+    comments: fixtureCommentsByDoc,
+    chats: fixtureChatsByDoc,
+    revisions: fixtureRevisionsByDoc,
+  });
+  const json = serialiseDocumentBackup(built);
+  const obj = JSON.parse(json);
+  assert.equal(Object.prototype.hasOwnProperty.call(obj, 'api'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(obj, 'apiKey'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(obj, 'persistApiKey'), false);
+  assert.equal(typeof obj.document.content, 'string');
+  assert.match(json, /"schema": "apeditor-document-backup"/);
+  assert.doesNotMatch(json, /"apiKey"/);
+});
+
+test('serialiseDocumentBackup drops a poisoned apiKey field', () => {
+  const built = buildDocumentBackup({
+    documentId: 'doc-existing',
+    documents: fixtureDocuments,
+    comments: {},
+    chats: {},
+    revisions: {},
+  });
+  const secret = 'sk-this-must-not-leave-the-browser-xyz';
+  const poisoned = {
+    ...built,
+    apiKey: secret,
+    persistApiKey: true,
+    api: { apiKey: secret, apiEndpoint: 'https://example.invalid' },
+  };
+  const json = serialiseDocumentBackup(poisoned);
+  assert.equal(json.includes(secret), false);
+  assert.doesNotMatch(json, /"apiKey"/);
+  assert.doesNotMatch(json, /"persistApiKey"/);
+  // Nested `api` object is not part of DocumentBackup; if someone
+  // stuffed it on the root it still serialises, but its apiKey child
+  // is stripped.
+  if (json.includes('"api"')) {
+    const obj = JSON.parse(json);
+    assert.equal(obj.api?.apiKey, undefined);
+  }
+});
+
 console.log(`\n${passed} tests passed`);
 await fs.rm(TMP_DIR, { recursive: true, force: true });

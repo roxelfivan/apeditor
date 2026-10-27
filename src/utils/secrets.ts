@@ -1,10 +1,12 @@
 /**
- * Soft secret redaction for outbound model payloads.
+ * Soft secret redaction for outbound model payloads and file downloads.
  *
  * Matches common BYO-key / token shapes in free text so a draft that
- * accidentally contains an API key is not forwarded verbatim. This is
- * a best-effort filter, not a security boundary — session-only keys
- * and not pasting secrets into the document remain the real controls.
+ * accidentally contains an API key is not forwarded verbatim. Downloads
+ * also strip the live Settings key (`scrubLiveSecretFromExport`) so a
+ * key pasted into a document or chat cannot leave via Export .md / .json.
+ * This is a best-effort filter, not a security boundary — session-only
+ * keys and not pasting secrets into the document remain the real controls.
  */
 
 const SECRET_PATTERNS: RegExp[] = [
@@ -17,6 +19,44 @@ const SECRET_PATTERNS: RegExp[] = [
 ];
 
 const REDACTED = '[redacted]';
+
+/** Ignore tiny strings so a short password like "abc" cannot wipe an export. */
+export const LIVE_SECRET_MIN_LENGTH = 8;
+
+/**
+ * Replace every occurrence of `secret` with `[redacted]`.
+ * Used so a Settings API key that was pasted into a document or chat
+ * cannot ride along in a Markdown or JSON download.
+ */
+export function stripExactSecret(
+  text: string,
+  secret: string
+): { text: string; count: number } {
+  if (!text) return { text, count: 0 };
+  const needle = secret.trim();
+  if (needle.length < LIVE_SECRET_MIN_LENGTH) return { text, count: 0 };
+  if (!text.includes(needle)) return { text, count: 0 };
+  const parts = text.split(needle);
+  return { text: parts.join(REDACTED), count: parts.length - 1 };
+}
+
+/**
+ * Scrub a download payload of the live Settings API key, including the
+ * JSON-escaped form (`\"`, `\\`, …) that appears inside `.json` backups.
+ */
+export function scrubLiveSecretFromExport(
+  content: string,
+  liveSecret: string
+): string {
+  const raw = liveSecret.trim();
+  if (raw.length < LIVE_SECRET_MIN_LENGTH) return content;
+  let next = stripExactSecret(content, raw).text;
+  const jsonEscaped = JSON.stringify(raw).slice(1, -1);
+  if (jsonEscaped !== raw) {
+    next = stripExactSecret(next, jsonEscaped).text;
+  }
+  return next;
+}
 
 export function redactSecrets(text: string): { text: string; count: number } {
   if (!text) return { text, count: 0 };
