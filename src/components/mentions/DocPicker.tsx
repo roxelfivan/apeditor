@@ -94,7 +94,7 @@ export function DocPicker({
         left: anchor.left,
         top: anchor.top,
         maxHeight,
-        minWidth: 240,
+        minWidth: Math.min(240, window.innerWidth - 16),
       }}
       // Prevent outside-tap from closing the composer / chat input.
       onPointerDown={(e) => e.preventDefault()}

@@ -925,7 +925,7 @@ export function ChatPanel() {
           onClose={() => setHistoryOpen(false)}
         />
       )}
-      <div className="px-3 py-2 border-b border-paper-hairline dark:border-cyber-border flex items-center flex-wrap gap-2 bg-paper-elevated/50 dark:bg-ape-elevated/40 pt-[max(0.5rem,env(safe-area-inset-top))]">
+      <div className="px-3 py-2 border-b border-paper-hairline dark:border-cyber-border flex items-center flex-wrap gap-2 bg-paper-elevated/50 dark:bg-ape-elevated/40 pt-[max(0.5rem,env(safe-area-inset-top))] max-md:pt-2">
         <button
           type="button"
           className="text-[15px] font-medium text-paper-ink dark:text-cyber-primary flex items-center gap-1 min-w-0"
@@ -1299,7 +1299,7 @@ export function ChatPanel() {
         />
         <div
           ref={containerRef}
-          className="relative z-10 h-full w-full max-w-lg shadow-ape-paper-lift dark:shadow-2xl pb-[env(safe-area-inset-bottom)]"
+          className="relative z-10 h-full w-full max-w-lg shadow-ape-paper-lift dark:shadow-2xl pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]"
           role="dialog"
           aria-modal="true"
           aria-label="Chat"
@@ -1375,7 +1375,7 @@ function MessageBubble({
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+        className={`max-w-[min(85%,calc(100vw-2rem))] rounded-lg px-3 py-2 text-sm ${
           isUser
             ? 'bg-cyber-clay text-paper-base dark:bg-ape-fire dark:text-white font-medium border border-cyber-clay/40 dark:border-cyber-fire/40 dark:shadow-ape-fire-soft'
             : 'bg-paper-elevated text-paper-ink dark:bg-ape-elevated dark:text-cyber-primary border border-paper-hairline dark:border-cyber-border'
@@ -1402,7 +1402,7 @@ function MessageBubble({
             {(staged.length > 0 || unappliedEdits > 0 || applyAllSummary) && (
               <div className="mt-2 -mx-1 rounded border border-paper-hairline dark:border-cyber-border bg-paper-base/50 dark:bg-ape-base/40 p-2 space-y-1.5">
                 {unappliedEdits > 0 && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 max-[420px]:flex-col max-[420px]:items-stretch">
                     <span className="text-xs text-paper-inkSoft dark:text-cyber-muted flex-1">
                       {totalEdits === 1
                         ? '1 proposed change in this reply.'

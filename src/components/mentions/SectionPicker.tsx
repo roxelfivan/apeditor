@@ -122,7 +122,7 @@ export function SectionPicker({
         left: anchor.left,
         top: anchor.top,
         maxHeight,
-        minWidth: 320,
+        minWidth: Math.min(320, window.innerWidth - 16),
       }}
       onPointerDown={(e) => e.preventDefault()}
       onMouseDown={(e) => e.preventDefault()}
