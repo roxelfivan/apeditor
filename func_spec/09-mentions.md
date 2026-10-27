@@ -193,7 +193,7 @@ Each mention becomes one `sys-referenced-doc-N` system message, appended in orde
 |---|---:|---|
 | `REFERENCED_SECTION_CHARS_CAP` | `4000` | Verbatim paragraphs per referenced document |
 | `REFERENCED_DOCS_TOTAL_CHARS_CAP` | `8000` | All referenced documents per turn |
-| Google AI Mode cap | `2000` | Per turn, because the URL ceiling is hard |
+| *(removed)* Google AI Mode URL cap | — | Retired with Google AI Mode in v0.6.4 |
 
 `remainingBudget = max(0, min(4000, ctx.totalCap - ctx.totalConsumed))`.
 

@@ -1,9 +1,9 @@
 # ApEditor — AI Markdown Editor
 
 > **A local-first AI markdown editor.** Write, comment, and revise in one
-> window. Bring your own API key (or use Google AI Mode — no key
-> required). Nothing leaves your browser except the chat requests you
-> send.
+> window. Defaults to **Local Model** (~2 GB on-device Gemma via WebGPU,
+> no API key), or bring your own Minimax / OpenAI key. Nothing leaves
+> your browser except the chat requests you send to a keyed provider.
 >
 > **Lineage:** re-produced from
 > [`ai-text-editor`](https://github.com/darrylschaefer/ai-text-editor)
@@ -14,10 +14,22 @@
 > functional specification). See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.6.3](https://img.shields.io/badge/version-0.6.3-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.3)
+[![v0.6.4](https://img.shields.io/badge/version-0.6.4-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.4)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
+
+---
+
+## What's new in v0.6.4
+
+> On-device **Local Model** is the default (Gemma in the browser, ~2 GB, no API key). Chat can attach photos and PDFs. Settings hides advanced prompt fields unless Debug Mode is on. Patch on top of [v0.6.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.3).
+
+1. **Local Model (require around 2gb disk space).** Replaces Google AI Mode. Download Gemma once (WebGPU), or load/save a `.litertlm` from disk. First launch selects Local Model by default.
+2. **Chat + attachments.** Same images/PDFs as Import; OCR in the browser; chips on the bubble. Does not insert into the document.
+3. **Simpler Settings.** System message, Rationale rules, and Temperature appear only with **Debug Mode**. **selection only** is removed (**include selection** remains).
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.4 entry and prior changelogs.
 
 ---
 
@@ -30,6 +42,7 @@
 3. History and JSON backups keep filename, mime, and extract — not the original file.
 
 See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.3 entry and prior changelogs.
+
 
 ---
 
@@ -141,13 +154,12 @@ toggles in the topbar.
 ### AI
 
 - **Streaming chat** — right-side panel with system prompt, model
-  picker, **include selection** and **selection only** checkboxes,
-  **+** to attach photos or PDFs (same types as Import; OCR stays
-  in-browser), and `⌘/Ctrl + Enter` to send. Selection-only omits
-  the document outline. Secret-looking strings in the outbound
+  picker, **include selection** checkbox, **+** to attach photos
+  or PDFs (same types as Import; OCR stays in-browser), and
+  `⌘/Ctrl + Enter` to send. Secret-looking strings in the outbound
   prompt are redacted.
-- **Three providers** — MiniMax (OpenAI-compatible, default), OpenAI,
-  and **Google AI Mode (no key)**. Switch in **Settings** (⚙).
+- **Three providers** — **Local Model (require around 2gb disk space)** (default; in-browser LiteRT-LM + WebGPU),
+  MiniMax, and OpenAI. Switch in **Settings** (⚙).
 - **Proposed-edit cards** — when the model emits a `proposed-edit`
   fence (with `summary`, `rationale`, `original`, `replacement`),
   you get **Split** (Original / Proposed as Editor Preview–style
@@ -156,7 +168,7 @@ toggles in the topbar.
 - **Predict** — inline sentence completion (**off by default**).
   Click **Predict** or press `⌘/Ctrl + \\` to turn it on and
   request a suggestion; `Tab` accepts, `Esc` rejects. Disabled
-  in **Google AI Mode** (tooltip explains why).
+  for **Local Gemma** in v1 (tooltip explains why).
 - **Customizable System Message + Rationale Rules** — set the
   assistant voice and the per-edit rationale format in **Settings**
   (each has **Reset** to the built-in default).
@@ -229,14 +241,13 @@ npm run preview    # serve the production build locally
 
 The Settings modal's **Provider** dropdown offers three options. The
 first two use the OpenAI-compatible `/chat/completions` streaming
-protocol; the third is a keyless workflow that opens Google AI Mode
-in a new tab.
+protocol; the third runs Gemma locally in the browser (no API key).
 
 | Provider | API key | Endpoint (default) | Model presets | Notes |
 | --- | --- | --- | --- | --- |
-| **MiniMax** (default) | Required | `https://api.minimax.io/v1` | `MiniMax-M3`, `MiniMax-M3-fast`, `MiniMax-M2.7`, `MiniMax-M2.7-highspeed` | Base URL is fine — the client appends `/chat/completions` automatically. |
+| **Local Model (require around 2gb disk space)** | None | Hugging Face (model download) | `gemma-4-E2B-it-web` | **Default on first launch.** Downloads ~2 GB from Hugging Face into this browser (or load a `.litertlm` from disk). Runs via WebGPU / LiteRT-LM. Chat + Comment Send to AI only in v1; **Predict** disabled. |
+| **MiniMax** | Required | `https://api.minimax.io/v1` | `MiniMax-M3`, `MiniMax-M3-fast`, `MiniMax-M2.7`, `MiniMax-M2.7-highspeed` | Base URL is fine — the client appends `/chat/completions` automatically. |
 | **OpenAI** | Required | `https://api.openai.com/v1` | `gpt-4o-mini`, `gpt-4o`, `gpt-4-turbo`, `o1-mini`, `o1`, `gpt-3.5-turbo` | Same wire format as MiniMax. |
-| **Google AI Mode (no key)** | None | `https://www.google.com/search?udm=50` | — | Chat opens a new tab pre-filled with your prompt; you copy the answer back. **Predict** is disabled for this provider. |
 
 API keys are stored only in this browser's `localStorage` by default
 and sent as `Authorization: Bearer <key>` directly to your chosen
@@ -250,7 +261,7 @@ time by setting the following variables in `.env` (see
 [`.env.example`](./.env.example)):
 
 ```bash
-VITE_DEFAULT_PROVIDER=minimax        # one of: minimax, openai, google-ai-mode
+VITE_DEFAULT_PROVIDER=local-gemma    # one of: local-gemma (default), minimax, openai
 VITE_DEFAULT_API_ENDPOINT=https://api.minimax.io/v1
 VITE_DEFAULT_MODEL=MiniMax-M2.7
 ```
@@ -566,7 +577,7 @@ Dark matches the editor. Start at the [table of contents](docs/README.md):
 - [Documents](docs/documents.md) — create, rename, switch, delete
 - [Writing](docs/writing.md) — editor, formatting, Predict
 - [Comments](docs/comments.md) — highlights, badges, Send to AI
-- [Chat](docs/chat.md) — messages, selection, Google AI Mode
+- [Chat](docs/chat.md) — messages, selection, Local Gemma
 - [Proposed edits](docs/proposed-edits.md) — Apply, Reject, Highlight Apply
 - [Reference other documents (`@`)](docs/reference-other-documents.md) — attach a doc or heading sections *(v0.4.7 / v0.4.8)*
 - [Prompt library](docs/prompt-library.md) — saved prompts
@@ -588,11 +599,12 @@ src/
 ├── index.css                # Tailwind layers + markdown + diff + theme.
 ├── types.ts                 # Shared TS types.
 ├── api/
-│   └── chat.ts              # Streaming client + request builder,
-│                            # doc outline, proposed-edit schema +
-│                            # rationale rules, comment-batch notes.
+│   ├── chat.ts              # Streaming client + request builder,
+│   │                        # doc outline, proposed-edit schema +
+│   │                        # rationale rules, comment-batch notes.
+│   └── localGemma.ts        # In-browser LiteRT-LM Local Gemma adapter.
 ├── config/
-│   └── providers.tsx        # MiniMax / OpenAI / Google AI Mode presets.
+│   └── providers.tsx        # MiniMax / OpenAI / Local Gemma presets.
 ├── docs/
 │   └── catalog.ts           # Loads `docs/*.md` for in-app Help (synced).
 ├── store/
@@ -606,7 +618,6 @@ src/
 │   ├── backup.ts            # Document + comments + chat + revisions JSON bundle.
 │   ├── comments.ts          # Re-anchor, batch format, selection rect.
 │   ├── diff.ts              # Line-diff helper for revisions / rationales.
-│   ├── googleAiMode.ts      # Google AI Mode deep-link builder.
 │   ├── graph/               # Wikilink parse + workspace graph compile (v0.5.4).
 │   ├── ocr.ts               # PaddleOCR pipeline for image import.
 │   ├── pdf.ts               # pdfjs-dist wrapper.
@@ -694,6 +705,7 @@ per-release notes also ship on the GitHub release pages.
 
 | Version | Highlights |
 | --- | --- |
+| [v0.6.4](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.4) | **Local Model default**, Chat **+** attachments, Debug-gated System/Rationale/Temperature, **selection only** removed. Replaces Google AI Mode. |
 | [v0.6.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.3) | **Chat + attachments.** Same images/PDFs as Import; one format-then-answer prompt; composer bar. |
 | [v0.6.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.2) | Phone overlay shell, Chat archives, Graph Filter stacking. |
 | [v0.6.1](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.1) | Format menu visible; Split = Write/Preview \| Graph; Graph click scrolls Write. |
@@ -775,7 +787,7 @@ count ~69 MB of unused WebGPU WASM against Hobby storage.
 
 The chat backend is provider-agnostic — the app speaks the
 OpenAI-compatible `/chat/completions` streaming protocol. MiniMax
-ships as the default preset; OpenAI and Google AI Mode are
+ships as the default preset; OpenAI and Local Gemma are
 selectable from **Settings** → **Provider**.
 
 API keys are stored only in this browser's `localStorage` by default

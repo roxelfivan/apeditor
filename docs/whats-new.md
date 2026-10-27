@@ -2,6 +2,18 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## v0.6.4 — Local Model (Gemma), Chat attachments
+
+**Run AI on your device by default, attach files in Chat, and simplify Settings.**
+
+- **Local Model is the default.** Settings → **Local Model (require around 2gb disk space)** replaces the old Google AI Mode paste flow. Download Gemma once from Hugging Face (WebGPU), or **Load from disk** / **Save to Disk**. Tips appear every 5% while downloading. No API key for Chat.
+- **Chat + attachments.** Click **+** next to the chat box to send photos or PDFs with your question (same types as Import). Recognition stays in the browser; the bubble shows filename chips. Chat **+** does not insert into the document.
+- **Settings cleaned up.** System message, Rationale rules, and Temperature appear only when **Debug Mode** is on. **selection only** is removed; **include selection** remains.
+
+No migration. Existing browsers that already saved Minimax/OpenAI keep that provider until you change it.
+
+---
+
 ## v0.6.3 — Attach photos and PDFs in Chat
 
 **Click + in the chat box to send a file with your question.**
@@ -11,10 +23,9 @@ This page is the in-app changelog. It stays with the version in the top bar. Old
 - **+** and **Send** sit on one bar inside the message field.
 - The bubble shows filename chips. History and JSON backups keep the extract, not the original file.
 
-No new Settings.
+No new Settings. No migration.
 
 ---
-
 ## v0.6.2 — Phone layout, chat archives, Graph Filter
 
 **Use the app on a phone, park old chats, and keep Filter above the 3D graph.**

@@ -4,7 +4,7 @@ Chat is the right-hand panel. Use it for free-form questions, selection-based re
 
 ## Header
 
-- **Chat** (with **+** / **−**) plus the current model name (or `google-ai-mode`). Click **Chat** to tuck the conversation away so only the header and input remain. That preference persists across reloads.
+- **Chat** (with **+** / **−**) plus the current model name (or `local-gemma`). Click **Chat** to tuck the conversation away so only the header and input remain. That preference persists across reloads.
 - **Expand all** / **Collapse older** — when there is more than one turn, expand every prompt/reply or collapse all but the latest. Older turns start collapsed; the latest stays open.
 - **History** — browse the live thread and archived conversations for this document
 - **Archive** — park the live conversation and start a new empty chat (disabled when empty). Archived threads are **not** sent to the model on the next prompt.
@@ -31,7 +31,7 @@ JSON backup export/import includes archived chats. Older backup files without th
 1. Type in the box (*Ask, or ⌘/Ctrl+Enter to send… type @ to reference a document*).
    - Type `@` to attach another document (or selected headings / sections) — see [Reference other documents](reference-other-documents.md).
    - Click **+** next to the box to attach photos or PDFs (the same types as [Import](import.md)). Recognition runs in the browser. On Send, the model is asked to turn those extracts into Markdown first, then answer your typed request. The bubble shows chips plus what you typed; the document is not changed. You can send attachments with no typed text.
-2. Optionally check **include selection** so the highlighted editor text is sent with the message. Check **selection only** to send that highlight *instead of* the document outline (the rest of the draft stays in the browser). **selection only** is disabled until you highlight text.
+2. Optionally check **include selection** so the highlighted editor text is sent with the message (along with the usual document context).
 3. **paste selection (n)** inserts the highlight into the input if you would rather see it in the box.
 4. Click **Send** or press `Ctrl+Enter` / `⌘Enter`.
 
@@ -41,11 +41,9 @@ Before each send, ApEditor stores a revision labeled **Before AI send**.
 
 If the request fails, a red error appears (or **Unknown error**). Check your key, endpoint, and network, then try again. See [Troubleshooting](troubleshooting.md).
 
-## Include selection and selection only
+## Include selection
 
-**include selection** is on by default. It attaches the highlight *in addition to* a compact outline of the whole document. User messages that included a highlight can show **▸ selection (n chars)** on the bubble.
-
-**selection only** sends the highlight as the working text and **does not** include the document outline. Use this when you do not want the rest of the draft sent to the provider. The bubble shows **▸ selection only**.
+**include selection** is on by default. It attaches the highlight *in addition to* the usual document context (outline for Minimax/OpenAI, full body for Local Model when size allows). User messages that included a highlight can show **▸ selection (n chars)** on the bubble.
 
 Highlights are wrapped in `BEGIN EDITOR SELECTION` / `END EDITOR SELECTION` markers so the model can see the bounds.
 
@@ -53,20 +51,19 @@ ApEditor also redacts secret-looking strings (API keys, Bearer tokens) from the 
 
 Use include/selection-only when you want a rewrite of a specific passage without creating comments. For many notes on one draft, [Comments](comments.md) plus **Send to AI** is usually clearer.
 
-## Google AI Mode (no key)
+## Local Model
 
-If Settings → **Provider** is **Google AI Mode (no key)**:
+If Settings → **Provider** is **Local Model (require around 2gb disk space)**:
 
-1. Type your prompt. The send button is **Open in AI Mode**.
-2. A Google AI Mode tab opens with the prompt filled in.
-3. Read the answer there, copy it, and paste into **Paste the AI Mode answer**.
-4. Click **Submit**.
+1. Download the ~2 GB `gemma-4-E2B-it-web.litertlm` model from Hugging Face once (or **Load from disk** if you already have the file). Requires WebGPU (recent Chrome / Edge / Safari) and enough GPU memory (~1.8 GB).
+2. Wait until status shows **Ready**, then send chat as usual — replies stream in the panel.
+3. Comment **Send to AI** uses the same local engine.
 
-You can **Re-open AI Mode tab** or **Cancel**.
+Local Gemma answers in normal prose for questions and explanations. **Proposed Edit** cards appear only when you ask for document changes, or when you use Comment **Send to AI**. The open document is attached on the user turn (full body, capped) so “the paragraph” / “each point” resolve to that text. (Minimax and OpenAI keep their usual edit-oriented outline prompt.)
 
-If the pasted answer contains `proposed-edit` blocks, they become the same track-changes cards as a normal streaming reply.
+The model is stored in this browser’s Cache API; it is never uploaded to ApEditor servers and is not part of the GitHub / Vercel deploy.
 
-**Predict** and in-app streaming are not used on this path. You still need an API key if you want [import](import.md) to format OCR as Markdown.
+**Predict** and OCR→Markdown rewrite still need Minimax or OpenAI with an API key.
 
 ## Prompt library
 

@@ -3,18 +3,23 @@ import { v4 as uuid } from 'uuid';
 import ReactMarkdown from 'react-markdown';
 import { useStore } from '@/store/useStore';
 import { buildRequestMessages, streamChatCompletion, ApiError } from '@/api/chat';
+import {
+  isLocalGemmaEngineReady,
+  streamLocalGemmaCompletion,
+  tryLoadLocalGemmaFromCache,
+} from '@/api/localGemma';
 import { redactSecretsInMessages } from '@/utils/secrets';
 import type { ChatAttachment, ChatMessage, MentionToken, ProposedEdit } from '@/types';
 import { ChatAttachmentChips } from '@/components/ChatAttachmentChips';
 import { withOutboundAttachmentPrompt } from '@/utils/chatAttachments';
 import { IMPORT_FILE_ACCEPT } from '@/utils/ocr';
 import { ProposedEditCard } from '@/components/ProposedEditCard';
+import { LocalGemmaControls } from '@/components/LocalGemmaControls';
 import { ResizeHandle } from '@/components/ResizeHandle';
 import { useDragResize, clamp, MIN_CHAT_WIDTH, MAX_CHAT_WIDTH } from '@/hooks/useDragResize';
 import { parseProposedEdits, formatRejectionBatch, applyAllEdits } from '@/utils/proposedEdit';
 import { formatCommentBatch } from '@/utils/comments';
 import { remarkPlugins, rehypePlugins } from '@/utils/markdown';
-import { buildGoogleAiModeUrl } from '@/utils/googleAiMode';
 import { requiresApiKey } from '@/config/providers';
 import { MentionInput } from '@/components/mentions/MentionInput';
 import { parseMentions } from '@/utils/mentions/parseMentions';
@@ -47,6 +52,30 @@ const useChatWidth = () => {
 // after that return stays in the temporal dead zone and throws
 // `Cannot access '…' before initialization` (minified as `ve` in
 // production) the moment Send to AI runs from Write mode.
+/**
+ * Stream an assistant reply for the active provider. Keyed providers
+ * use OpenAI-compatible SSE; Local Gemma uses in-browser LiteRT-LM.
+ */
+async function streamAssistantReply(
+  messages: ChatMessage[],
+  api: ReturnType<typeof useStore.getState>['api'],
+  options: { signal?: AbortSignal; onDelta: (delta: string) => void }
+): Promise<void> {
+  if (!requiresApiKey(api.provider)) {
+    if (!isLocalGemmaEngineReady()) {
+      const loaded = await tryLoadLocalGemmaFromCache(options.signal);
+      if (!loaded) {
+        throw new ApiError(
+          'Local Gemma is not ready. Open Settings and download the model from Hugging Face (or load a .litertlm file).'
+        );
+      }
+    }
+    await streamLocalGemmaCompletion(messages, options);
+    return;
+  }
+  await streamChatCompletion(messages, api, options);
+}
+
 function lookupDocumentById(id: string) {
   return useStore.getState().documents.find((d) => d.id === id) ?? null;
 }
@@ -66,8 +95,6 @@ export function ChatPanel() {
   const api = useStore((s) => s.api);
   const includeSelection = useStore((s) => s.includeSelection);
   const setIncludeSelection = useStore((s) => s.setIncludeSelection);
-  const sendSelectionOnly = useStore((s) => s.sendSelectionOnly);
-  const setSendSelectionOnly = useStore((s) => s.setSendSelectionOnly);
 
   const [input, setInput] = useState('');
   // Document mentions attached to the current chat input. Populated by
@@ -118,19 +145,10 @@ export function ChatPanel() {
   const chatWidth = useChatWidth();
   const setLayout = useStore((s) => s.setLayout);
   const containerRef = useRef<HTMLDivElement>(null);
-  // Keyless (google-ai-mode) state: when this provider is active, the
-  // chat does NOT stream a completion. Instead, handleSend opens a new
-  // tab to Google AI Mode with the prompt pre-filled, and we reveal a
-  // "paste the answer here" textarea the user fills in. We track which
-  // assistant message id is awaiting the paste so submitPasteAnswer()
-  // knows which ChatMessage to fill in.
-  const [awaitingPaste, setAwaitingPaste] = useState<string | null>(null);
-  const [pasteDraft, setPasteDraft] = useState('');
-  // Last AI Mode URL we opened for the current awaitingPaste. Kept so
-  // the user can re-open the tab if they accidentally closed it
-  // without copying the answer.
-  const [lastAiModeUrl, setLastAiModeUrl] = useState<string | null>(null);
   const isKeyless = !requiresApiKey(api.provider);
+  const [localGemmaReady, setLocalGemmaReady] = useState(() =>
+    isLocalGemmaEngineReady()
+  );
 
   const messages: ChatMessage[] = currentDocumentId
     ? chats[currentDocumentId] ?? []
@@ -402,7 +420,9 @@ export function ChatPanel() {
             // back to the round-stored mentions (same merge logic
             // as `mergedMentions` above so the two arrays stay in
             // sync — first-emission wins per mention id).
-            payload
+            payload,
+            false,
+            api.provider === 'local-gemma' ? 'on-demand' : 'eager'
           )
         );
         if (packed.count > 0) {
@@ -412,17 +432,13 @@ export function ChatPanel() {
             } from this send.`
           );
         }
-        await streamChatCompletion(
-          packed.messages,
-          api,
-          {
-            signal: abortRef.current.signal,
-            onDelta: (delta) => {
-              acc += delta;
-              updateLastAssistant(currentDocumentId, acc);
-            },
-          }
-        );
+        await streamAssistantReply(packed.messages, api, {
+          signal: abortRef.current.signal,
+          onDelta: (delta) => {
+            acc += delta;
+            updateLastAssistant(currentDocumentId, acc);
+          },
+        });
       } catch (err) {
         if ((err as Error).name === 'AbortError') {
           // user cancelled
@@ -579,12 +595,6 @@ export function ChatPanel() {
       }));
     if (streaming || ocrBusy) return;
     if (!text && readyAttachments.length === 0) return;
-    const selectionOnly =
-      sendSelectionOnly && Boolean(selection.trim());
-    if (sendSelectionOnly && !selection.trim()) {
-      setError('Highlight text in the editor to send selection only.');
-      return;
-    }
     // Snapshot current document before the AI turn so the user can
     // restore via Revision history if later applies go wrong.
     useStore.getState().saveRevision(currentDocumentId, 'Before AI send');
@@ -602,11 +612,7 @@ export function ChatPanel() {
       id: uuid(),
       role: 'user',
       content: text,
-      selection:
-        includeSelection || selectionOnly
-          ? selection || undefined
-          : undefined,
-      ...(selectionOnly ? { selectionOnly: true } : {}),
+      selection: includeSelection ? selection || undefined : undefined,
       ...(readyAttachments.length > 0
         ? { attachments: readyAttachments }
         : {}),
@@ -616,42 +622,6 @@ export function ChatPanel() {
     // in the format-then-answer prompt.
     appendMessage(currentDocumentId, userMsg);
     const outboundUserMsg = withOutboundAttachmentPrompt(userMsg);
-
-    if (isKeyless) {
-      // Keyless provider: build the AI Mode deep-link from the same
-      // shape of messages the OpenAI path would have sent (just the
-      // single user turn, since the AI Mode page has no chat history
-      // concept) and open it in a new tab. Then append a placeholder
-      // assistant message and arm the paste-and-submit UI so the user
-      // can copy the answer back. No streaming, no abort controller.
-      const history: ChatMessage[] = [...messages, outboundUserMsg];
-      const url = buildGoogleAiModeUrl(
-        history,
-        api.systemMessage,
-        docSnap ? { title: docSnap.title, content: docSnap.content } : null,
-        mentions,
-        lookupDocumentById
-      );
-      const assistantMsg: ChatMessage = {
-        id: uuid(),
-        role: 'assistant',
-        content: '',
-        createdAt: Date.now(),
-      };
-      appendMessage(currentDocumentId, assistantMsg);
-      setLastAiModeUrl(url);
-      setAwaitingPaste(assistantMsg.id);
-      setPasteDraft('');
-      // noopener,noreferrer for security; the AI Mode page is on
-      // google.com so it should not get a window handle back to us.
-      try {
-        window.open(url, '_blank', 'noopener,noreferrer');
-      } catch {
-        // Pop-up blocked: the URL is still in `lastAiModeUrl` so the
-        // user can click "Open in new tab" from the notice card.
-      }
-      return;
-    }
 
     const assistantMsg: ChatMessage = {
       id: uuid(),
@@ -682,7 +652,7 @@ export function ChatPanel() {
           // only) is silently dropped.
           undefined,
           false,
-          selectionOnly
+          api.provider === 'local-gemma' ? 'on-demand' : 'eager'
         )
       );
       if (packed.count > 0) {
@@ -692,17 +662,13 @@ export function ChatPanel() {
           } from this send.`
         );
       }
-      await streamChatCompletion(
-        packed.messages,
-        api,
-        {
-          signal: abortRef.current.signal,
-          onDelta: (delta) => {
-            acc += delta;
-            updateLastAssistant(currentDocumentId, acc);
-          },
-        }
-      );
+      await streamAssistantReply(packed.messages, api, {
+        signal: abortRef.current.signal,
+        onDelta: (delta) => {
+          acc += delta;
+          updateLastAssistant(currentDocumentId, acc);
+        },
+      });
     } catch (e) {
       if ((e as Error).name === 'AbortError') {
         // user cancelled
@@ -716,30 +682,6 @@ export function ChatPanel() {
       window.dispatchEvent(new CustomEvent('mvp:chat-streaming', { detail: { streaming: false } }));
       abortRef.current = null;
     }
-  };
-
-  // Submit the pasted AI Mode answer into the assistant message that
-  // is currently awaiting paste. Runs `parseProposedEdits` indirectly
-  // via the existing MessageBubble render path — no special handling
-  // needed, the message content goes through the same markdown +
-  // proposed-edit parsing as a streamed reply.
-  const submitPasteAnswer = () => {
-    if (!currentDocumentId || !awaitingPaste) return;
-    const text = pasteDraft.trim();
-    if (!text) return;
-    updateLastAssistant(currentDocumentId, text);
-    setPasteDraft('');
-    setAwaitingPaste(null);
-    setLastAiModeUrl(null);
-  };
-
-  // Cancel the paste flow without filling the assistant message. The
-  // placeholder assistant message remains in the chat as an empty
-  // bubble (rendered as nothing) so the user can see what happened.
-  const cancelPasteAnswer = () => {
-    setAwaitingPaste(null);
-    setPasteDraft('');
-    setLastAiModeUrl(null);
   };
 
   const handleStop = () => {
@@ -1008,7 +950,9 @@ export function ChatPanel() {
           // The staged-rejection path has no per-comment grouping
           // by design (one rejection body covers many edits in a
           // single user message). Drop the cross-reference map.
-          undefined
+          undefined,
+          false,
+          api.provider === 'local-gemma' ? 'on-demand' : 'eager'
         )
       );
       if (packed.count > 0) {
@@ -1018,17 +962,13 @@ export function ChatPanel() {
           } from this send.`
         );
       }
-      await streamChatCompletion(
-        packed.messages,
-        api,
-        {
-          signal: abortRef.current.signal,
-          onDelta: (delta) => {
-            acc += delta;
-            updateLastAssistant(currentDocumentId, acc);
-          },
-        }
-      );
+      await streamAssistantReply(packed.messages, api, {
+        signal: abortRef.current.signal,
+        onDelta: (delta) => {
+          acc += delta;
+          updateLastAssistant(currentDocumentId, acc);
+        },
+      });
     } catch (e) {
       if ((e as Error).name === 'AbortError') {
         // user cancelled
@@ -1078,7 +1018,7 @@ export function ChatPanel() {
           <span>Chat</span>
         </button>
         <span className="text-xs text-paper-inkSoft dark:text-cyber-muted font-mono truncate">
-          {isKeyless ? 'google-ai-mode' : api.model}
+          {isKeyless ? 'local-gemma' : api.model}
         </span>
         <div className="flex-1" />
         {!messagesCollapsed && turns.length > 1 && (
@@ -1197,45 +1137,15 @@ export function ChatPanel() {
             ))}
           </ChatTurnFrame>
         ))}
-        {/* Keyless-provider "AI Mode opened" notice. Rendered as a
-            sibling of the message bubbles so it scrolls with the chat
-            and sits at the bottom of the conversation, right above the
-            paste textarea. We deliberately do NOT make this part of
-            the message list — it is transient UI tied to the
-            awaitingPaste state, not a chat message. */}
-        {isKeyless && awaitingPaste && (
-          <div className="rounded border border-cyber-clay/40 dark:border-cyber-cyan/40 bg-cyber-clay/5 dark:bg-cyber-cyan/10 p-3 space-y-2 text-xs">
-            <p className="text-paper-ink dark:text-cyber-primary font-medium">
-              Google AI Mode opened in a new tab.
+        {isKeyless && !localGemmaReady && (
+          <div className="rounded border border-cyber-clay/40 dark:border-cyber-cyan/40 bg-cyber-clay/5 dark:bg-cyber-cyan/10 p-3 space-y-2">
+            <p className="text-xs text-paper-ink dark:text-cyber-primary font-medium">
+              Local Gemma needs a one-time model download
             </p>
-            <p className="text-paper-inkSoft dark:text-cyber-muted">
-              Read the answer on that page, then copy it and paste it into
-              the box below. Any <code className="font-mono text-[11px]">proposed-edit</code>{' '}
-              fences inside the pasted answer become track-changes cards
-              you can accept or reject one by one.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {lastAiModeUrl && (
-                <button
-                  type="button"
-                  className="btn-cyan-sm"
-                  onClick={() =>
-                    window.open(lastAiModeUrl, '_blank', 'noopener,noreferrer')
-                  }
-                  title="Re-open the AI Mode tab if you closed it before copying the answer"
-                >
-                  Re-open AI Mode tab
-                </button>
-              )}
-              <button
-                type="button"
-                className="btn-ghost"
-                onClick={cancelPasteAnswer}
-                title="Discard the empty placeholder assistant message"
-              >
-                Cancel
-              </button>
-            </div>
+            <LocalGemmaControls
+              compact
+              onReadyChange={setLocalGemmaReady}
+            />
           </div>
         )}
         {notice && (
@@ -1289,183 +1199,112 @@ export function ChatPanel() {
       </div>
 
       <div className="border-t border-paper-hairline dark:border-cyber-border p-3 space-y-2 bg-paper-panel dark:bg-ape-panel">
-        {isKeyless && awaitingPaste ? (
-          // Keyless + a paste is pending: replace the regular chat
-          // input with a "paste the answer here" textarea. The user's
-          // next action is to paste, not to send another prompt. They
-          // can dismiss with Cancel to return to the regular input.
-          <>
-            <label className="block text-xs font-medium text-cyber-clay dark:text-cyber-cyan uppercase tracking-wide">
-              Paste the AI Mode answer
-            </label>
-            {/* Spell out the two-step flow so a first-time user
-                doesn't paste the original question here by mistake. */}
-            <ol className="text-[11px] text-paper-inkSoft dark:text-cyber-muted leading-snug list-decimal pl-4 space-y-0.5">
-              <li>Google AI Mode opened in a new tab with your prompt.</li>
-              <li>Copy the answer out of that tab.</li>
-              <li>Paste it below — ⌘/Ctrl+Enter to commit.</li>
-            </ol>
-            <textarea
-              value={pasteDraft}
-              onChange={(e) => setPasteDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                  e.preventDefault();
-                  submitPasteAnswer();
-                }
-              }}
-              placeholder="Paste the answer from the Google AI Mode tab here…"
-              className="w-full h-32 p-2 text-sm ape-field resize-none font-sans"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                className="btn-ghost"
-                onClick={cancelPasteAnswer}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn-fire"
-                onClick={submitPasteAnswer}
-                disabled={!pasteDraft.trim()}
-              >
-                Submit
-              </button>
-            </div>
-          </>
-        ) : (
-          // Regular chat input (keyed providers, or keyless when no
-          // paste is in flight).
-          <>
-            <div className="flex items-center gap-2 text-xs text-paper-inkSoft dark:text-cyber-muted flex-wrap">
-              <label className="flex items-center gap-1 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={includeSelection}
-                  onChange={(e) => setIncludeSelection(e.target.checked)}
-                  className="accent-cyber-clay dark:accent-cyber-cyan"
-                />
-                include selection
-              </label>
-              <label
-                className={`flex items-center gap-1 select-none ${
-                  selection ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'
-                }`}
-                title={
-                  selection
-                    ? 'Send only the highlighted passage — the rest of the document stays in the browser'
-                    : 'Highlight text in the editor to send selection only'
-                }
-              >
-                <input
-                  type="checkbox"
-                  checked={sendSelectionOnly}
-                  disabled={!selection}
-                  onChange={(e) => setSendSelectionOnly(e.target.checked)}
-                  className="accent-cyber-clay dark:accent-cyber-cyan"
-                />
-                selection only
-              </label>
-              {selection && (
-                <button
-                  className="px-1.5 py-0.5 rounded border border-cyber-clay/40 dark:border-cyber-cyan/40 text-cyber-clay dark:text-cyber-cyan hover:bg-cyber-clay/5 dark:hover:bg-cyber-cyan/10 transition-colors"
-                  onClick={handleSendSelection}
-                  title="Paste the selection into the input"
-                >
-                  paste selection ({selection.length})
-                </button>
-              )}
-            </div>
+        <div className="flex items-center gap-2 text-xs text-paper-inkSoft dark:text-cyber-muted flex-wrap">
+          <label className="flex items-center gap-1 cursor-pointer select-none">
             <input
-              ref={attachInputRef}
-              type="file"
-              accept={IMPORT_FILE_ACCEPT}
-              multiple
-              className="hidden"
-              onChange={(e) => void onAttachFiles(e)}
+              type="checkbox"
+              checked={includeSelection}
+              onChange={(e) => setIncludeSelection(e.target.checked)}
+              className="accent-cyber-clay dark:accent-cyber-cyan"
             />
-            <div className="rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-base focus-within:border-cyber-clay dark:focus-within:border-cyber-cyan flex flex-col min-w-0">
-              {pendingAttachments.length > 0 && (
-                <div className="px-2 pt-2">
-                  <ChatAttachmentChips
-                    items={pendingAttachments}
-                    onRemove={removePendingAttachment}
-                  />
-                </div>
-              )}
-              <MentionInput
-                value={input}
-                onChange={(v) => {
-                  setInput(v.text);
-                  setMentions(v.mentions);
-                }}
-                onSubmit={() => void handleSend()}
-                ariaLabel="Chat message"
-                placeholder={
-                  isKeyless
-                    ? 'Ask, or ⌘/Ctrl+Enter to open in Google AI Mode… type @ to reference a document'
-                    : 'Ask, or ⌘/Ctrl+Enter to send… type @ to reference a document'
-                }
-                containerClassName="min-w-0"
-                className="w-full h-24 px-2.5 py-2 text-sm resize-none font-sans bg-transparent border-0 outline-none shadow-none focus:outline-none focus:ring-0 text-paper-ink dark:text-paper-base placeholder:text-paper-inkSoft dark:placeholder:text-cyber-muted"
+            include selection
+          </label>
+          {selection && (
+            <button
+              className="px-1.5 py-0.5 rounded border border-cyber-clay/40 dark:border-cyber-cyan/40 text-cyber-clay dark:text-cyber-cyan hover:bg-cyber-clay/5 dark:hover:bg-cyber-cyan/10 transition-colors"
+              onClick={handleSendSelection}
+              title="Paste the selection into the input"
+            >
+              paste selection ({selection.length})
+            </button>
+          )}
+        </div>
+        <input
+          ref={attachInputRef}
+          type="file"
+          accept={IMPORT_FILE_ACCEPT}
+          multiple
+          className="hidden"
+          onChange={(e) => void onAttachFiles(e)}
+        />
+        <div className="rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-base focus-within:border-cyber-clay dark:focus-within:border-cyber-cyan flex flex-col min-w-0">
+          {pendingAttachments.length > 0 && (
+            <div className="px-2 pt-2">
+              <ChatAttachmentChips
+                items={pendingAttachments}
+                onRemove={removePendingAttachment}
               />
-              <div className="flex items-center justify-between gap-2 px-2 py-1.5 border-t border-paper-hairline dark:border-cyber-border">
-                <button
-                  type="button"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded text-lg leading-none font-medium text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan hover:bg-paper-elevated dark:hover:bg-ape-elevated transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label="Attach photos or PDFs"
-                  title={
-                    ocrBusy
-                      ? 'Reading file…'
-                      : 'Attach photos or PDFs (same types as Import). Sent with this message.'
-                  }
-                  disabled={!currentDocumentId || streaming || ocrBusy}
-                  onClick={() => attachInputRef.current?.click()}
-                >
-                  {ocrBusy ? (
-                    <span className="inline-flex gap-0.5">
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse" style={{ animationDelay: '0ms' }} />
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse" style={{ animationDelay: '150ms' }} />
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse" style={{ animationDelay: '300ms' }} />
-                    </span>
-                  ) : (
-                    <span aria-hidden>+</span>
-                  )}
-                </button>
-                {streaming ? (
-                  <button
-                    className="text-sm px-3 py-1.5 rounded bg-cyber-danger text-white font-semibold hover:bg-cyber-danger/80 transition-colors"
-                    onClick={handleStop}
-                  >
-                    Stop
-                  </button>
-                ) : (
-                  <button
-                    className="btn-fire-sm"
-                    onClick={handleSend}
-                    disabled={
-                      !currentDocumentId ||
-                      ocrBusy ||
-                      (!input.trim() &&
-                        !pendingAttachments.some(
-                          (a) => !a.reading && a.extractedText.trim()
-                        ))
-                    }
-                    title={
-                      isKeyless
-                        ? 'Opens Google AI Mode in a new tab with this prompt pre-filled'
-                        : undefined
-                    }
-                  >
-                    {isKeyless ? 'Open in AI Mode' : 'Send'}
-                  </button>
-                )}
-              </div>
             </div>
-          </>
-        )}
+          )}
+          <MentionInput
+            value={input}
+            onChange={(v) => {
+              setInput(v.text);
+              setMentions(v.mentions);
+            }}
+            onSubmit={() => void handleSend()}
+            ariaLabel="Chat message"
+            placeholder={
+              isKeyless
+                ? 'Ask Local Gemma, or ⌘/Ctrl+Enter to send… type @ to reference a document'
+                : 'Ask, or ⌘/Ctrl+Enter to send… type @ to reference a document'
+            }
+            containerClassName="min-w-0"
+            className="w-full h-24 px-2.5 py-2 text-sm resize-none font-sans bg-transparent border-0 outline-none shadow-none focus:outline-none focus:ring-0 text-paper-ink dark:text-paper-base placeholder:text-paper-inkSoft dark:placeholder:text-cyber-muted"
+          />
+          <div className="flex items-center justify-between gap-2 px-2 py-1.5 border-t border-paper-hairline dark:border-cyber-border">
+            <button
+              type="button"
+              className="inline-flex h-8 w-8 items-center justify-center rounded text-lg leading-none font-medium text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan hover:bg-paper-elevated dark:hover:bg-ape-elevated transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Attach photos or PDFs"
+              title={
+                ocrBusy
+                  ? 'Reading file…'
+                  : 'Attach photos or PDFs (same types as Import). Sent with this message.'
+              }
+              disabled={!currentDocumentId || streaming || ocrBusy}
+              onClick={() => attachInputRef.current?.click()}
+            >
+              {ocrBusy ? (
+                <span className="inline-flex gap-0.5">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse" style={{ animationDelay: '0ms' }} />
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse" style={{ animationDelay: '150ms' }} />
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse" style={{ animationDelay: '300ms' }} />
+                </span>
+              ) : (
+                <span aria-hidden>+</span>
+              )}
+            </button>
+            {streaming ? (
+              <button
+                className="text-sm px-3 py-1.5 rounded bg-cyber-danger text-white font-semibold hover:bg-cyber-danger/80 transition-colors"
+                onClick={handleStop}
+              >
+                Stop
+              </button>
+            ) : (
+              <button
+                className="btn-fire-sm"
+                onClick={handleSend}
+                disabled={
+                  !currentDocumentId ||
+                  ocrBusy ||
+                  (!input.trim() &&
+                    !pendingAttachments.some(
+                      (a) => !a.reading && a.extractedText.trim()
+                    ))
+                }
+                title={
+                  isKeyless
+                    ? 'Runs Gemma locally in this browser (WebGPU)'
+                    : undefined
+                }
+              >
+                Send
+              </button>
+            )}
+          </div>
+        </div>
       </div>
       </aside>
   );
@@ -1566,8 +1405,7 @@ function MessageBubble({
       >
         {message.selection && isUser && (
           <div className="mb-1 text-[10px] uppercase tracking-wide text-paper-base/70 dark:text-white/80 font-mono">
-            ▸ {message.selectionOnly ? 'selection only' : 'selection'} (
-            {message.selection.length} chars)
+            ▸ selection ({message.selection.length} chars)
           </div>
         )}
         {isUser && message.attachments && message.attachments.length > 0 && (

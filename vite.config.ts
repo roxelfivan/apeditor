@@ -19,9 +19,13 @@ const APP_VERSION = pkg.version;
 // threaded WASM build. These same headers are needed by both `vite dev`
 // and `vite preview`. Production Vercel deploys use `vercel.json`
   // for the same pair — threaded WASM will not load without them.
+// `credentialless` keeps cross-origin isolation (SharedArrayBuffer for
+// threaded OCR WASM) while allowing cross-origin HF model + LiteRT CDN
+// fetches that lack Cross-Origin-Resource-Policy. `require-corp` blocked
+// those loads.
 const coopCoepHeaders = {
   'Cross-Origin-Opener-Policy': 'same-origin',
-  'Cross-Origin-Embedder-Policy': 'require-corp',
+  'Cross-Origin-Embedder-Policy': 'credentialless',
 };
 
 // Dev-only middleware: Vite's import-analysis adds a `?import` suffix

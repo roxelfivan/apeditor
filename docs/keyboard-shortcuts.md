@@ -33,7 +33,7 @@ Global shortcuts are ignored while you are typing in a text field, so they do no
 
 | Shortcut | Action |
 | --- | --- |
-| `Ctrl+Enter` / `⌘Enter` | Send (or **Open in AI Mode** / submit a pasted Google answer) |
+| `Ctrl+Enter` / `⌘Enter` | Send the chat message |
 
 ## Comments
 

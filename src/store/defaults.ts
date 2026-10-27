@@ -11,18 +11,16 @@ import type { ApiConfig, ApiProvider, DocumentRecord, Prompt } from '@/types';
 import { getProvider } from '@/config/providers';
 
 // Resolve the build-time default provider, then derive endpoint/model
-// defaults from the matching preset. VITE_DEFAULT_PROVIDER lets a
-// hosting environment (e.g. an OpenAI-keyed production deploy) ship
-// with a different default than the in-repo "minimax" default.
-// `google-ai-mode` is also accepted as a build-time default — the
-// settings modal will still need to be opened once so the user
-// acknowledges the keyless workflow.
+// defaults from the matching preset. First-run default is Local Model
+// (`local-gemma`). VITE_DEFAULT_PROVIDER can still force minimax or
+// openai for keyed production deploys. The settings modal still needs
+// a one-time download / load of the on-device model.
 export const initialProvider: ApiProvider =
   import.meta.env.VITE_DEFAULT_PROVIDER === 'openai'
     ? 'openai'
-    : import.meta.env.VITE_DEFAULT_PROVIDER === 'google-ai-mode'
-      ? 'google-ai-mode'
-      : 'minimax';
+    : import.meta.env.VITE_DEFAULT_PROVIDER === 'minimax'
+      ? 'minimax'
+      : 'local-gemma';
 
 const initialPreset = getProvider(initialProvider);
 
@@ -88,11 +86,14 @@ until you connect an AI.
 
 ## 1. 🔑 Connect an AI (optional)
 
-**Open Settings (gear, top right) and paste an API key.** Choose a
-provider there — each one brings its own endpoint and model defaults.
-If you'd rather not use a key, pick **Google AI Mode (no key)**, which
-opens Google in a new tab instead; paste an answer back with
-\`⌘/Ctrl + Enter\`. The whole app works fine with no AI at all.
+**Settings defaults to Local Model (require around 2gb disk space)** —
+no API key. Open the gear (top right), download the ~2 GB Gemma model
+from Hugging Face once (or **Load from disk** / **Save to Disk**), wait
+until status shows **Ready**, then use Chat. Needs WebGPU (recent
+Chrome / Edge / Safari).
+
+Prefer a cloud model? Switch **Provider** to **Minimax** or **OpenAI**
+and paste an API key. The whole app also works with no AI at all.
 
 ## 2. ✍️ Write, Preview, Graph, or Split
 
@@ -156,10 +157,10 @@ text sent along with your message.
 
 ## 8. ✨ Get sentence suggestions while writing
 
-**Predict starts off.** Click **Predict** (or \`⌘/Ctrl + \\\`) to turn
-it on and request a suggestion at the cursor. Press \`Tab\` to insert
-it, \`Esc\` to dismiss it. Click the same button again to turn it back
-off.
+**Predict starts off** and needs **Minimax** or **OpenAI** (not Local
+Model). Click **Predict** (or \`⌘/Ctrl + \\\`) to turn it on and request
+a suggestion at the cursor. Press \`Tab\` to insert it, \`Esc\` to
+dismiss it. Click the same button again to turn it back off.
 
 ## 9. 💾 Save a snapshot
 
@@ -171,9 +172,10 @@ any two revisions and restore one.
 
 **Open the import button in the editor toolbar** and pick an image or
 a PDF. Recognition runs in your browser; the extracted text is
-rewritten as readable Markdown by your configured model and inserted
-at your caret. Pick which languages to recognise with the three
-checkboxes.
+rewritten as readable Markdown by your configured Minimax/OpenAI model
+and inserted at your caret. (OCR→Markdown rewrite needs a keyed
+provider.) You can also click **+** in Chat to attach the same file
+types to a question without inserting into the document.
 
 ## 11. 💾 Keep a copy outside the browser
 
@@ -187,10 +189,10 @@ overwrites anything.
 ## 12. ❓ Help, shortcuts, and settings
 
 **Help** (\`?\` in the top bar, or \`⌘/Ctrl + /\`) is the full guide,
-and it has a **Keyboard shortcuts** page listing every shortcut. The
-**Settings** modal (\`⌘/Ctrl + .\`) holds your provider, key, model,
-and the two font sizes. Light and dark themes follow the top-bar
-toggle.`
+including **What's new**. The **Settings** modal (\`⌘/Ctrl + .\`) holds
+your provider (Local Model by default), key, model, and UI font size.
+Turn on **Debug Mode** to edit System message, Rationale rules, and
+Temperature. Light and dark themes follow the top-bar toggle.`}
   ),
   makeDoc(
     'Ideas',

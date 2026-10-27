@@ -20,6 +20,8 @@ export const CHAT_MESSAGES_HEIGHT_KEY = `${STORAGE_PREFIX}:chat-messages-height`
 /** Whether the Chat panel's message scroller is tucked away. */
 export const CHAT_MESSAGES_COLLAPSED_KEY = `${STORAGE_PREFIX}:chat-messages-collapsed`;
 export const SUGGESTION_HEIGHT_KEY = `${STORAGE_PREFIX}:suggestion-height`;
+/** Last Local Gemma "Save to Disk" metadata (filename + timestamp only). */
+export const LOCAL_GEMMA_LAST_SAVE_KEY = `${STORAGE_PREFIX}:local-gemma-last-save`;
 
 export const SETTINGS_SIZE_KEYS = {
   modal: `${STORAGE_PREFIX}:settings-modal-size`,

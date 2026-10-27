@@ -1,3 +1,23 @@
+## v0.6.4 — Local Model (Gemma), Chat attachments
+
+Patch on top of [v0.6.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.3). Keyless Google AI Mode is replaced by in-browser **Local Model** (Gemma / LiteRT-LM / WebGPU); first launch defaults to that provider; Settings hides advanced prompt fields unless Debug Mode is on. Chat **+** attachments from v0.6.3 remain.
+
+### Added
+
+- **Local Model (require around 2gb disk space).** Download Gemma into the browser Cache API, load/save `.litertlm` from disk, download tips every 5%. Chat + Comment Send to AI run locally (WebGPU). Predict and OCR→Markdown still need a keyed provider.
+
+### Changed
+
+- Default provider is `local-gemma` (was Minimax). `google-ai-mode` migrates to Local Model.
+- Removed **selection only**. Removed Google AI Mode paste/URL path.
+- **System message / Rationale / Temperature** only when Debug Mode is on.
+- Welcome + Help call out Local Model as the default.
+
+### Internal
+
+- See [`.release-notes-v0.6.4.md`](.release-notes-v0.6.4.md) for the full surface list.
+- `package.json` version bumped to `0.6.4`. New dep: `@litert-lm/core`.
+
 ## v0.6.3 — Chat composer attachments
 
 Patch on top of [v0.6.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.2). Attach photos or PDFs in Chat with **+**. Recognition stays in the browser. Send is one prompt: format the extracts as Markdown, then answer.

@@ -72,7 +72,7 @@ Open the **Format** menu on the toolbar and pick **Size +** or **Size −**. Ran
 
 ## Predict (optional sentence completion)
 
-**Predict** is **off** until you turn it on. It needs a Minimax or OpenAI key. It is not available with **Google AI Mode (no key)**.
+**Predict** is **off** until you turn it on. It needs a Minimax or OpenAI key. It is not available with **Local Model**.
 
 1. Click **Predict** on the toolbar, or press `Ctrl+\` / `⌘\` (when the control is enabled).
 2. A suggestion panel appears under the write pane: **Suggestion · Tab to accept · Esc to dismiss**.
@@ -81,7 +81,7 @@ Open the **Format** menu on the toolbar and pick **Size +** or **Size −**. Ran
 
 Click **Predict** again to stop requesting suggestions.
 
-If the button is disabled, the tooltip explains why (missing key, or Google AI Mode).
+If the button is disabled, the tooltip explains why (missing key, or Local Gemma).
 
 You can drag the top of the suggestion panel to make it taller or shorter.
 

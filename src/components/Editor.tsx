@@ -384,10 +384,9 @@ export function Editor() {
   };
 
   // Inline sentence completion. Auto-disabled when no API key is configured.
-  // The keyless `google-ai-mode` provider is also treated as "not
-  // configured" for inline completion because there is no streaming
-  // API the hook could call — the user explicitly chose the
-  // keyless path knowing it is chat-only.
+  // The keyless `local-gemma` provider is also treated as "not
+  // configured" for inline completion in v1 — Local Gemma powers
+  // Chat / Comment Send to AI only (Predict stays keyed-provider).
   const apiConfigured =
     requiresApiKey(api.provider) && Boolean(api.apiKey && api.apiEndpoint);
   // User-controlled on/off toggle for the inline-completion feature.
@@ -1705,7 +1704,7 @@ export function Editor() {
           title={
             !apiConfigured
               ? !requiresApiKey(api.provider)
-                ? 'Predict is not available with Google AI Mode — type your prompt in the Chat panel instead.'
+                ? 'Predict is not available with Local Gemma — type your prompt in the Chat panel instead (or use Minimax / OpenAI).'
                 : 'Configure an API key in Settings to enable prediction'
               : inlineOn
                 ? 'Click to stop inline predictions'

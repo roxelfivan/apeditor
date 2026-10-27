@@ -8,6 +8,7 @@ import { remarkPlugins, rehypePlugins } from '@/utils/markdown';
 import {
   applyEdit,
   applyEditAtCaret,
+  deriveProposedEditSummary,
   findEditAnchor,
   findBestEffortAnchor,
   prepareBestEffortReplace,
@@ -564,8 +565,11 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
         <span className="pe-id" title={`Change id: ${edit.id}`}>
           {edit.id}
         </span>
-        <span className="pe-summary" title={edit.summary}>
-          {edit.summary || 'Proposed edit'}
+        <span
+          className="pe-summary"
+          title={deriveProposedEditSummary(edit)}
+        >
+          {deriveProposedEditSummary(edit)}
         </span>
         {/* View-mode toggle: side-by-side vs inline. */}
         <div

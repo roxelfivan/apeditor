@@ -13,7 +13,7 @@
 | 3 | `createRoot(...).render(<React.StrictMode><App /></React.StrictMode>)`. | [`main.tsx`](../src/main.tsx) |
 | 4 | Zustand rehydrates from `localStorage['apeditor']`, then `onRehydrateStorage` runs its repair pass. | [`store/store.ts`](../src/store/store.ts) |
 | 5 | `App` applies the theme class and sets `<html style="font-size">` from `uiFontSize`. | [`App.tsx`](../src/App.tsx) |
-| 6 | If the active provider needs a key and none is set and `apeditor:onboarded` is absent, the Settings modal auto-opens and the flag is written. Google AI Mode is exempt. | [`App.tsx`](../src/App.tsx) |
+| 6 | If the active provider needs a key and none is set and `apeditor:onboarded` is absent, the Settings modal auto-opens and the flag is written. Local Model (`local-gemma`) is exempt. | [`App.tsx`](../src/App.tsx) |
 | 7 | The first-run effect that collapses both side panels on a narrow viewport fires. | [`App.tsx`](../src/App.tsx) |
 
 > StrictMode double-invokes effects in development. The `migrateLegacyStorage()` call is module-level in `main.tsx`, so it runs once; the store's rehydrate is idempotent.
@@ -56,7 +56,7 @@ Tab (or Accept button)
 | Stop sequences | `['\n\n', '\n', '   ', ' #', ' ##', ' ```']`. **The empty string is deliberately excluded** — a server-side stop on `""` truncated the stream to zero bytes. | same |
 | Overlap stripping | `stripPrefixOverlap` finds the largest `n` in `[4, min(80, prefix.length, ghost.length)]` where the last `n` chars of the prefix match the first `n` of the ghost with ≤1 mismatch, then returns `ghost.slice(n)`. | same |
 | Reasoning blocks | `<think>…</think>` and `<reasoning>…</reasoning>` are stripped by `processDelta`; an unclosed opener truncates the rest. | same |
-| Gating | Requires a keyed provider + a key + an endpoint. `apiConfigured = requiresApiKey(provider) && Boolean(apiKey && apiEndpoint)`. Google AI Mode is permanently not configured. | [`Editor.tsx`](../src/components/Editor.tsx) |
+| Gating | Requires a keyed provider + a key + an endpoint. `apiConfigured = requiresApiKey(provider) && Boolean(apiKey && apiEndpoint)`. Local Model permanently disables Predict (tooltip explains why). | [`Editor.tsx`](../src/components/Editor.tsx) |
 
 > **Gotcha:** `mvp:accept-completion` carries the **entire new document**, not a delta. Any new listener must not assume it is an insertion.
 

@@ -1,7 +1,7 @@
 {
   "name": "apeditor",
   "private": true,
-  "version": "0.6.3",
+  "version": "0.6.4",
   "type": "module",
   "description": "Minimal local-first AI markdown editor (MVP).",
   "scripts": {
@@ -25,6 +25,7 @@
     "@fontsource/ibm-plex-mono": "^5.0.13",
     "@fontsource/newsreader": "^5.0.14",
     "@fontsource/source-sans-3": "^5.0.13",
+    "@litert-lm/core": "^0.18.0",
     "@paddleocr/paddleocr-js": "^0.4.2",
     "diff": "^5.2.0",
     "onnxruntime-web": "^1.30.0",

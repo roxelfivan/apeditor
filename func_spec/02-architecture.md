@@ -87,13 +87,17 @@ Three files dominate: `Editor.tsx`, `ChatPanel.tsx`, and `utils/proposedEdit.ts`
 |---|---:|---|
 | [`chat.ts`](../src/api/chat.ts) | 1,104 | `streamChatCompletion`, `buildRequestMessages`, `resolveChatEndpoint`, `assertSafeChatEndpoint`, `ApiError`, `DEFAULT_SYSTEM_MESSAGE`, `PROPOSED_EDIT_RULES_DEFAULT`, `formatSelectionBlock`, `buildDocOutline`, `buildReferencedDocMessage`, `REFERENCED_DOCS_TOTAL_CHARS_CAP`, `CACHE_CONTROL_META`, and the `normalize*` / `isCurrent*` / `isStale*` prompt reconcilers. |
 
-This is the **only** place in the app that performs an HTTP request to a chat provider (the one exception being the OCR Markdown rewrite, which calls back into `streamChatCompletion`).
+Keyed providers use this HTTP path. Local Model (`local-gemma`) streams via [`localGemma.ts`](../src/api/localGemma.ts) (LiteRT-LM / WebGPU) instead. OCR Markdown rewrite still calls back into `streamChatCompletion`.
+
+| File | Lines | Public surface |
+|---|---:|---|
+| [`localGemma.ts`](../src/api/localGemma.ts) | — | Load / cache / save / stream Local Gemma; Hugging Face download; Cache API `apeditor-local-gemma-v1`. |
 
 ### `src/config/` — 1 file
 
 | File | Lines | Public surface |
 |---|---:|---|
-| [`providers.tsx`](../src/config/providers.tsx) | 117 | `PROVIDERS`, `getProvider`, `requiresApiKey`, `ProviderPreset`. |
+| [`providers.tsx`](../src/config/providers.tsx) | — | `PROVIDERS`, `getProvider`, `requiresApiKey`, `ProviderPreset` (minimax, openai, local-gemma). |
 
 ### `src/store/` — 5 files (split in v0.5.2 from one 1,485-line file)
 
@@ -121,8 +125,9 @@ This is the **only** place in the app that performs an HTTP request to a chat pr
 | File | Lines | Responsibility |
 |---|---:|---|
 | [`Editor.tsx`](../src/components/Editor.tsx) | 2,009 | Toolbar, textarea + mirror + comment layer, comment composer/popover orchestration, margin badge positioning, Predict panel, tray, Graph host, split divider. |
-| [`ChatPanel.tsx`](../src/components/ChatPanel.tsx) | — | Streaming chat, Google AI Mode branch, comment-batch send, Apply All, rejection staging, selection toggles, composer **+** attachments, panel resizing. |
+| [`ChatPanel.tsx`](../src/components/ChatPanel.tsx) | — | Streaming chat (SSE + Local Gemma), Chat **+** attachments, comment-batch send, Apply All, rejection staging, include selection, panel resizing. |
 | [`ChatAttachmentChips.tsx`](../src/components/ChatAttachmentChips.tsx) | — | Filename chips for pending composer files and sent user bubbles. |
+| [`LocalGemmaControls.tsx`](../src/components/LocalGemmaControls.tsx) | — | Settings UI: download / load / save / clear Local Model. |
 | [`ProposedEditCard.tsx`](../src/components/ProposedEditCard.tsx) | 925 | One AI proposal: Split/Inline view, Apply / Highlight Apply / Reject / Reject-with-feedback, editor highlight, resizable. |
 | [`CommentPopover.tsx`](../src/components/CommentPopover.tsx) | 911 | Read/edit one comment, multi-round rationale list, resize, persistence of popover size. |
 | [`SettingsModal.tsx`](../src/components/SettingsModal.tsx) | 834 | Provider, key, endpoint, model, system message, rationale rules, temperature, UI font size, debug mode. |
@@ -156,7 +161,8 @@ This is the **only** place in the app that performs an HTTP request to a chat pr
 | [`ocr.ts`](../src/utils/ocr.ts) | 400 | Lazy PaddleOCR singleton, MIME dispatch, size caps, strict cleanup. |
 | [`mentions/parseMentions.ts`](../src/utils/mentions/parseMentions.ts) | 389 | The **only** place that knows the mention sentinel format. `parseRawWithMentions`, `serializeRawWithMentions`, `summarizeMention`, `plainTextDiff`. |
 | [`graph/buildWorkspaceGraph.ts`](../src/utils/graph/buildWorkspaceGraph.ts) | 298 | Documents + headings + wikilinks + `@` mentions → nodes and edges. |
-| [`googleAiMode.ts`](../src/utils/googleAiMode.ts) | 197 | Builds the keyless Google AI Mode deep-link URL from a chat payload. |
+| [`localGemmaTips.ts`](../src/utils/localGemmaTips.ts) | — | Tip copy shown every 5% during Local Model download. |
+| [`chatAttachments.ts`](../src/utils/chatAttachments.ts) | — | Chat **+** attachment prompt wrappers and chip helpers. |
 | [`storage.ts`](../src/utils/storage.ts) | 181 | Every `localStorage` / `sessionStorage` key constant, `migrateLegacyStorage`, `downloadTextFile`, `sanitizeFilename`, session-API-key helpers. |
 | [`paragraphs.ts`](../src/utils/paragraphs.ts) | 56 | Shared `splitParagraphs` / `previewParagraph` / `trimOnWordBoundary` for outlines, mentions, comment batches, and re-anchor. |
 | [`diff.ts`](../src/utils/diff.ts) | 77 | `lineDiff` (flat) and `splitDiff` (side-by-side rows) over the `diff` package. |

@@ -102,9 +102,8 @@ Several references on one message are allowed; the same document is not
 duplicated.
 
 The current document is still described in the usual current-doc system
-message. On **Google AI Mode (no key)**, references appear as
-`[Context — referenced document "…"]` blocks in the opened prompt
-(length-limited for the URL).
+message. Local Gemma receives the same `@` references in its local
+prompt pack (full body for the open doc when size allows).
 
 ## Reading references back
 

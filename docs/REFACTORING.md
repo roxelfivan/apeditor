@@ -257,7 +257,7 @@ export { streamChatCompletion, ApiError, resolveChatEndpoint, assertSafeChatEndp
 ### Risk notes
 
 - **`buildRequestMessages` calls `buildReferencedDocMessage` and `buildDocOutline` and `buildCrossReferenceMap`** — keep them in the same folder so the import graph stays simple.
-- **`CACHE_CONTROL_META` is used in `buildRequestMessages` and `utils/googleAiMode.ts`** — put it in `prompts/constants.ts` so both import the same source.
+- **`CACHE_CONTROL_META` is used in `buildRequestMessages`** — put it in `prompts/constants.ts` so call sites import the same source.
 - **The "keep the stale-system-message / stale-rationale detection in sync with the live built-in" pattern** is currently documented in JSDoc. After splitting, the JSDoc still lives next to the function — no change.
 
 ### Order of operations

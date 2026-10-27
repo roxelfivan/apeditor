@@ -116,7 +116,7 @@ export const FUNC_SPEC_PAGES: FuncSpecPageMeta[] = [
     title: 'AI chat & prompts',
     file: '07-ai-chat.md',
     part: 'ai',
-    blurb: 'Providers, SSE streaming, the ordered system-message contract, redaction, and the keyless path.',
+    blurb: 'Providers, SSE streaming, the ordered system-message contract, redaction, and Local Gemma.',
   },
   {
     id: 'proposed-edits',

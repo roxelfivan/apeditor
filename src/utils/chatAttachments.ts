@@ -22,7 +22,7 @@ export function formatAttachedFileBlock(
 /**
  * One outbound user body: format each extract as Markdown, then answer
  * the typed request. The stored bubble `content` stays the typed prose;
- * call this only when building the request (or the Google AI Mode URL).
+ * call this only when building the outbound request.
  */
 export function buildAttachmentTurnPrompt(
   userText: string,

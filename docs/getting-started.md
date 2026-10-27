@@ -25,7 +25,7 @@ You have three choices:
 | --- | --- | --- |
 | **Minimax** (default) | Required | The reply streams in the Chat panel |
 | **OpenAI** | Required | Same as Minimax |
-| **Google AI Mode (no key)** | None | A new tab opens with your prompt; you paste the answer back |
+| **Local Model (require around 2gb disk space)** | None | Runs Gemma in the browser (WebGPU); download the model once in Settings (default on first launch) |
 
 If you use Minimax or OpenAI:
 
@@ -34,7 +34,9 @@ If you use Minimax or OpenAI:
 3. Leave the default **API endpoint** and **Model** unless you know you need something else.
 4. Click **Save**.
 
-If the gear shows a small amber dot, no API key is saved yet. That is expected until you finish this step (or switch to Google AI Mode).
+If you use Local Model (the first-launch default): open Settings → Local Model, download or load the model, wait until status shows **Ready**, then chat as usual.
+
+If the gear shows a small amber dot, no API key is saved yet. That is expected until you add a Minimax/OpenAI key (or finish downloading Local Model).
 
 Keys stay in this browser only. See [Privacy and your data](privacy.md).
 
@@ -47,7 +49,7 @@ Type in the center pane. Your work auto-saves in the browser. Next to the title 
 ## Ask the AI to help
 
 1. Highlight a sentence in **Write** (or Split with the left pane on **Write**).
-2. In Chat, leave **include selection** checked (it is on by default). Check **selection only** if you do not want the rest of the document sent.
+2. In Chat, leave **include selection** checked (it is on by default) so the highlight is sent with your question.
 3. Type a request, for example `Make this more concise.`
 4. Optionally type `@` to attach **another** document or its headings — see [Reference other documents](reference-other-documents.md).
 5. Click **Send**, or press `Ctrl+Enter` / `⌘Enter`.
