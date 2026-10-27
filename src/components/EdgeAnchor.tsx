@@ -51,8 +51,8 @@ export function EdgeAnchor({ side, collapsed, label, onClick }: Props) {
         : '›';
 
   const positionClasses = isTop
-    ? 'top-0 left-1/2 -translate-x-1/2 h-5 w-16 rounded-b-md border-b-0'
-    : `top-1/2 -translate-y-1/2 h-16 w-5 flex items-center justify-center rounded-r-md rounded-l-md ${isLeft ? 'border-l-0 left-0' : 'border-r-0 right-0'}`;
+    ? 'top-0 left-1/2 -translate-x-1/2 h-7 w-20 rounded-b-md border-b-0'
+    : `top-1/2 -translate-y-1/2 h-20 w-7 flex items-center justify-center rounded-r-md rounded-l-md ${isLeft ? 'border-l-0 left-0' : 'border-r-0 right-0'}`;
 
   return (
     <button

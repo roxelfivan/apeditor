@@ -26,6 +26,7 @@ import {
   type ResizeHandle as HandleName,
 } from '@/hooks/useDragResize';
 import { SETTINGS_SIZE_KEYS } from '@/utils/storage';
+import { useIsNarrow } from '@/hooks/useMediaQuery';
 
 // Project default for the global UI font size. Mirrored in
 // `useStore.ts`'s initial state and the `onRehydrateStorage` migration;
@@ -98,6 +99,7 @@ export function SettingsModal({ open, onClose }: Props) {
   const setDebugMode = useStore((s) => s.setDebugMode);
   const uiFontSize = useStore((s) => s.uiFontSize);
   const setUiFontSize = useStore((s) => s.setUiFontSize);
+  const isNarrow = useIsNarrow();
 
   const [provider, setProvider] = useState<ApiProvider>(api.provider);
   const [apiKey, setApiKey] = useState(api.apiKey);
@@ -436,11 +438,21 @@ export function SettingsModal({ open, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <div
+      className={`fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm ${
+        isNarrow
+          ? 'p-0'
+          : 'p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]'
+      }`}
+    >
       <div
-        className="w-full max-w-lg max-h-[min(90vh,90dvh)] bg-paper-panel dark:bg-ape-panel rounded-lg shadow-ape-paper-lift dark:shadow-2xl border border-paper-hairline dark:border-cyber-border flex flex-col relative"
+        className={`w-full bg-paper-panel dark:bg-ape-panel shadow-ape-paper-lift dark:shadow-2xl border border-paper-hairline dark:border-cyber-border flex flex-col relative ${
+          isNarrow
+            ? 'h-full max-w-none max-h-none rounded-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]'
+            : 'max-w-lg max-h-[min(90vh,90dvh)] rounded-lg'
+        }`}
         style={
-          modalSize
+          !isNarrow && modalSize
             ? {
                 width: `${modalSize.w}px`,
                 height: `${modalSize.h}px`,
@@ -818,16 +830,20 @@ export function SettingsModal({ open, onClose }: Props) {
         </div>
 
         {/* 8 resize handles on the modal card so the user can grow
-            the Settings dialog to fit a long prompt. Same shape as
-            the ProposedEditCard and CommentPopover. */}
-        <ResizeHandle handle="top" onPointerDown={onModalResizeDown('top')} />
-        <ResizeHandle handle="bottom" onPointerDown={onModalResizeDown('bottom')} />
-        <ResizeHandle handle="left" onPointerDown={onModalResizeDown('left')} />
-        <ResizeHandle handle="right" onPointerDown={onModalResizeDown('right')} />
-        <ResizeHandle handle="tl" onPointerDown={onModalResizeDown('tl')} />
-        <ResizeHandle handle="tr" onPointerDown={onModalResizeDown('tr')} />
-        <ResizeHandle handle="bl" onPointerDown={onModalResizeDown('bl')} />
-        <ResizeHandle handle="br" onPointerDown={onModalResizeDown('br')} />
+            the Settings dialog to fit a long prompt. Hidden on
+            narrow screens where the dialog is already full-bleed. */}
+        {!isNarrow && (
+          <>
+            <ResizeHandle handle="top" onPointerDown={onModalResizeDown('top')} />
+            <ResizeHandle handle="bottom" onPointerDown={onModalResizeDown('bottom')} />
+            <ResizeHandle handle="left" onPointerDown={onModalResizeDown('left')} />
+            <ResizeHandle handle="right" onPointerDown={onModalResizeDown('right')} />
+            <ResizeHandle handle="tl" onPointerDown={onModalResizeDown('tl')} />
+            <ResizeHandle handle="tr" onPointerDown={onModalResizeDown('tr')} />
+            <ResizeHandle handle="bl" onPointerDown={onModalResizeDown('bl')} />
+            <ResizeHandle handle="br" onPointerDown={onModalResizeDown('br')} />
+          </>
+        )}
       </div>
     </div>
   );

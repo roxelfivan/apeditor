@@ -227,7 +227,7 @@ Honest list. None of these are urgent, but each is a future PR.
 | `mvp:` prefix is historical | all of `src/` | Mechanical but wide rename |
 | `VITE_DEFAULT_PROVIDER` missing from `.env.example` | `.env.example` | One line |
 | No CI, no committed lint config | repo root | `npm run typecheck` is the only automated gate |
-| Breakpoint mismatch at 640–767 px | `index.css` vs `useMediaQuery.ts` | Margin is still vertical while the split is stacked |
+| Short landscape phones | `useMediaQuery.ts` | `max-height: 540px` is part of `NARROW_QUERY` so iPhone landscape uses overlays |
 | `setRangeEndpoints` ignores its `visibleText` / `startNode` params | `comments.ts` | Reserved for a future fast path; `void`-discarded |
 
 ## 6. Release checklist

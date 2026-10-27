@@ -114,7 +114,7 @@ This is the **only** place in the app that performs an HTTP request to a chat pr
 | [`useInlineCompletion.ts`](../src/hooks/useInlineCompletion.ts) | 566 | The Predict state machine: 300 ms debounce, suppression gates, SSE loop, ghost lifecycle, overlap stripping, Tab/Esc handling. |
 | [`useDocumentMentions.ts`](../src/hooks/useDocumentMentions.ts) | 459 | Heading-section detection, paragraph tables, `descendantSectionIndexes` cascade, selection matching. |
 | [`useDragResize.ts`](../src/hooks/useDragResize.ts) | 220 | Pointer-event drag with rAF coalescing. Also exports every `MIN_*` / `MAX_*` bound constant used across the app. |
-| [`useMediaQuery.ts`](../src/hooks/useMediaQuery.ts) | 37 | `NARROW_QUERY` (≤767 px), `COMMENT_SHEET_QUERY` (≤639 px), `useIsNarrow`, `useIsCommentSheet`. |
+| [`useMediaQuery.ts`](../src/hooks/useMediaQuery.ts) | 37 | `NARROW_QUERY` / `COMMENT_SHEET_QUERY` (`max-width: 767px` or `max-height: 540px`), `useIsNarrow`, `useIsCommentSheet`. |
 
 ### `src/components/` — 22 files
 

@@ -391,8 +391,8 @@ Three instances live in `App.tsx`. Left and right are siblings **inside** the co
 
 | Constant | Query | Drives |
 |---|---|---|
-| `NARROW_QUERY` | `(max-width: 767px)` | `isNarrow` — panel overlays, the editor split stacking |
-| `COMMENT_SHEET_QUERY` | `(max-width: 639px)` | `isCommentSheet` — composer/popover as bottom sheets |
+| `NARROW_QUERY` | `(max-width: 767px), (max-height: 540px)` | `isNarrow` — panel overlays, the editor split stacking, compact topbar |
+| `COMMENT_SHEET_QUERY` | same as `NARROW_QUERY` | `isCommentSheet` — composer/popover as bottom sheets and the comment chip lane |
 
 `useMediaQuery` returns `false` during SSR and syncs on `change`. `App.tsx` also has a module-level `isNarrowViewport()` reading `matchMedia` synchronously, for keydown handlers.
 
@@ -407,10 +407,8 @@ A `wasNarrowRef` effect collapses **both** side panels on the transition *into* 
 | Sidebar | `fixed inset-0 z-40` modal drawer with a backdrop button; `w-[min(100%,20rem)] max-w-[85vw]`; `role="dialog" aria-modal="true"`; safe-area insets. Picking a document auto-collapses it. |
 | Chat | `fixed inset-0 z-40 flex justify-end` overlay; panel `w-full max-w-lg`; `role="dialog" aria-modal="true"` |
 | Editor split | Row becomes `flex-col`; the write pane swaps `border-r` for `border-b` and **drops the percentage flex**; the `ResizeHandle` is hidden |
-| Comment margin | CSS at `max-width: 639px` turns `.cm-margin` into a 44 px-high horizontal chip lane below the textarea (`display: flex; flex-direction: row; overflow-x: auto`) and `.cm-margin__badge { position: static }`, so the inline `top` style is ignored |
+| Comment margin | CSS at the same narrow query turns `.cm-margin` into a 44 px-high horizontal chip lane below the textarea (`display: flex; flex-direction: row; overflow-x: auto`) and `.cm-margin__badge { position: static }`, so the inline `top` style is ignored |
 | Composer / popover | `position: fixed`, inset left/right/bottom with `env(safe-area-inset-*)`, `width: auto`, `max-height: min(60vh, 60dvh)`, `z-index: 60`. The popover's 8 resize handles are **not rendered** in this mode. |
-
-> **Known inconsistency:** the margin-column → chip-lane switch is CSS at `639px`, but the editor's stacked split is `isNarrow` at `767px`. Between 640 px and 767 px the split is stacked while the margin is still a vertical strip, so `badgePositions` are still computed. It appears intentional but is untested.
 
 ## 9. Global hotkeys
 

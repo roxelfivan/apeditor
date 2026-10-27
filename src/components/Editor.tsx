@@ -1854,7 +1854,9 @@ export function Editor() {
             )}
             {showWrite && (
             <>
-            <div className="flex-1 flex min-h-0 relative max-sm:flex-col">
+            <div
+              className={`flex-1 flex min-h-0 relative ${isNarrow ? 'flex-col' : ''}`}
+            >
               {/* Textarea + mirror overlay. The mirror sits *behind*
                   the textarea so the highlights paint under the user's
                   text. The mirror and the textarea share identical
@@ -1983,9 +1985,9 @@ export function Editor() {
                 )}
               </div>
               {/* Right-margin column. Renders one numbered badge per
-                  comment, positioned by `badgePositions`. On `< sm`
+                  comment, positioned by `badgePositions`. On narrow
                   viewports the CSS switches this to a horizontal
-                  chip lane (parent is `max-sm:flex-col`). */}
+                  chip lane (parent is `flex-col` when `isNarrow`). */}
               <CommentMargin
                 comments={sortedComments}
                 badgePositions={badgePositions}

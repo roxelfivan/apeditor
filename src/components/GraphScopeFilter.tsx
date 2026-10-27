@@ -321,7 +321,7 @@ export function GraphScopeFilter({
       aria-label="Filter graph documents and sections"
       data-graph-scope-filter
       className="mention-popover"
-      style={{ minWidth: POPOVER_WIDTH }}
+      style={{ minWidth: Math.min(POPOVER_WIDTH, window.innerWidth - 16) }}
       // Keep the graph canvas beneath from starting a pan, and keep the
       // press that opened this panel from re-firing the toggle.
       onPointerDown={(e) => e.stopPropagation()}

@@ -35,6 +35,14 @@ body,
   height: 100%;
   height: 100dvh;
   margin: 0;
+  overflow: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+button,
+[role="button"] {
+  touch-action: manipulation;
 }
 
 /* ---------- Theme-aware text tokens ----------
@@ -362,6 +370,8 @@ html.dark .prose-md strong {
 }
 .help-docs-article.prose-md table {
   @apply w-full text-sm;
+  display: block;
+  overflow-x: auto;
 }
 .help-docs-article.prose-md th {
   @apply bg-paper-elevated/80 text-left font-semibold;
@@ -584,6 +594,13 @@ html.dark .resize-handle:active {
 
 .edge-anchor {
   box-shadow: 0 1px 2px rgba(23, 22, 20, 0.06);
+}
+/* Invisible padding so the chevron strip stays slim while the tap
+   target meets ~44 px on phones. */
+.edge-anchor::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
 }
 .edge-anchor:hover {
   box-shadow: 0 1px 2px rgba(23, 22, 20, 0.10);
@@ -1665,7 +1682,8 @@ html.dark .cm-stale-list__snippet {
    per-row preview (used when a heading has body text under it) is
    new. */
 .relink-picker {
-  min-width: 360px;
+  min-width: min(360px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
 }
 .mention-popover__row-preview {
   display: block;
@@ -1726,8 +1744,9 @@ html.dark .cm-undo-toast {
   background: rgba(0, 229, 255, 0.1);
 }
 
-/* Bottom-sheet variant for the composer / popover on `< sm`. */
-@media (max-width: 639px) {
+/* Bottom-sheet variant for the composer / popover, and the chip-lane
+   comment margin, on the same narrow query as `NARROW_QUERY`. */
+@media (max-width: 767px), (max-height: 540px) {
   .cm-composer--sheet,
   .cm-popover--sheet {
     position: fixed;
@@ -1765,6 +1784,16 @@ html.dark .cm-undo-toast {
     margin-left: 0;
     margin-top: 0;
     flex-shrink: 0;
+  }
+
+  /* iOS zooms the page when a focused field is under 16 px. */
+  .ape-field,
+  .cm-composer__textarea,
+  .cm-popover__textarea,
+  .mention-input__textarea,
+  textarea,
+  input:not([type='checkbox']):not([type='radio']):not([type='range']) {
+    font-size: 16px;
   }
 }
 
@@ -1846,6 +1875,7 @@ html.dark .mention-input__overlay-chip:focus-visible:not(:disabled) {
   flex-direction: column;
   font-size: 12px;
   color: #171614;
+  max-width: calc(100vw - 16px);
 }
 html.dark .mention-popover {
   background: #1c1a17;

@@ -47,49 +47,44 @@ function Topbar({
   const toggleTheme = useStore((s) => s.toggleTheme);
   const doc = useCurrentDocument();
   const api = useStore((s) => s.api);
+  const isNarrow = useIsNarrow();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
 
-  return (
-    <header className="h-14 sm:h-20 px-3 sm:px-4 flex items-center gap-2 sm:gap-3 border-b border-paper-hairline dark:border-cyber-border bg-paper-base/90 dark:bg-ape-base/90 backdrop-blur-sm pt-[env(safe-area-inset-top)]">
-      <img
-        src="/apeditor-logo-transparent.png"
-        alt="ApEditor"
-        className="brand-mark brand-mark--topbar"
-      />
-      <div className="flex flex-col leading-tight min-w-0 shrink-0">
-        <span className="display text-lg sm:text-xl text-paper-ink dark:text-cyber-primary">
-          ApEditor
-        </span>
-        <span className="hidden sm:inline text-[10px] text-paper-inkSoft dark:text-cyber-muted font-mono">
-          v{APP_VERSION}
-        </span>
-      </div>
-      {doc && (
-        <span className="ml-1 sm:ml-3 text-sm text-paper-ink dark:text-cyber-primary truncate flex items-center gap-1 min-w-0 max-w-[30vw] sm:max-w-none">
-          <span className="text-paper-inkSoft dark:text-cyber-muted shrink-0">/</span>
-          <span className="truncate">{doc.title}</span>
-        </span>
-      )}
-      <div className="flex-1 min-w-2" />
-      <button
-        type="button"
-        className="btn-icon-square shrink-0"
-        onClick={onOpenHelp}
-        title="Help — user guide"
-        aria-label="Help — user guide"
-      >
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onPointer = (e: PointerEvent) => {
+      if (!moreRef.current?.contains(e.target as Node)) setMoreOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMoreOpen(false);
+    };
+    window.addEventListener('pointerdown', onPointer);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('pointerdown', onPointer);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [moreOpen]);
+
+  const extraItems = [
+    {
+      key: 'help',
+      label: 'Help',
+      title: 'Help — user guide',
+      onClick: onOpenHelp,
+      icon: (
         <span className="text-base font-semibold leading-none" aria-hidden>
           ?
         </span>
-      </button>
-      <button
-        type="button"
-        className="btn-icon-square shrink-0"
-        onClick={onOpenFuncSpec}
-        title="Functional Specification — developer guide (⌘/Ctrl + Shift + E)"
-        aria-label="Functional Specification — developer guide"
-      >
-        {/* Braces: developer-facing specification, as opposed to the
-            `?` above it which is the end-user help site. */}
+      ),
+    },
+    {
+      key: 'funcspec',
+      label: 'Functional spec',
+      title: 'Functional Specification — developer guide (⌘/Ctrl + Shift + E)',
+      onClick: onOpenFuncSpec,
+      icon: (
         <svg
           aria-hidden="true"
           viewBox="0 0 16 16"
@@ -103,14 +98,14 @@ function Topbar({
           <path d="M6 2.5H4.5a1 1 0 0 0-1 1V6a1 1 0 0 1-1 1 1 1 0 0 1 1 1v2.5a1 1 0 0 0 1 1H6" />
           <path d="M10 2.5h1.5a1 1 0 0 1 1 1V6a1 1 0 0 0 1 1 1 1 0 0 0-1 1v2.5a1 1 0 0 1-1 1H10" />
         </svg>
-      </button>
-      <button
-        type="button"
-        className="btn-icon-square shrink-0"
-        onClick={onOpenRevisions}
-        title="Revision history"
-        aria-label="Revision history"
-      >
+      ),
+    },
+    {
+      key: 'revisions',
+      label: 'Revision history',
+      title: 'Revision history',
+      onClick: onOpenRevisions,
+      icon: (
         <svg
           aria-hidden="true"
           viewBox="0 0 16 16"
@@ -121,18 +116,17 @@ function Topbar({
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          {/* Clock: revision history. */}
           <circle cx="8" cy="8" r="5.5" />
           <path d="M8 5.2 V8.1 L10.3 9.6" />
         </svg>
-      </button>
-      <button
-        type="button"
-        className="btn-icon-square shrink-0"
-        onClick={onOpenPrompts}
-        title="Prompt library"
-        aria-label="Prompt library"
-      >
+      ),
+    },
+    {
+      key: 'prompts',
+      label: 'Prompt library',
+      title: 'Prompt library',
+      onClick: onOpenPrompts,
+      icon: (
         <svg
           aria-hidden="true"
           viewBox="0 0 16 16"
@@ -143,10 +137,90 @@ function Topbar({
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          {/* Bookmark: saved prompts. */}
           <path d="M4 2.5 H12 V13.5 L8 11 L4 13.5 Z" />
         </svg>
-      </button>
+      ),
+    },
+  ] as const;
+
+  return (
+    <header className="h-14 sm:h-20 px-3 sm:px-4 flex items-center gap-2 sm:gap-3 border-b border-paper-hairline dark:border-cyber-border bg-paper-base/90 dark:bg-ape-base/90 backdrop-blur-sm pt-[env(safe-area-inset-top)]">
+      <img
+        src="/apeditor-logo-transparent.png"
+        alt="ApEditor"
+        className="brand-mark brand-mark--topbar"
+      />
+      {!isNarrow && (
+        <div className="flex flex-col leading-tight min-w-0 shrink-0">
+          <span className="display text-lg sm:text-xl text-paper-ink dark:text-cyber-primary">
+            ApEditor
+          </span>
+          <span className="hidden sm:inline text-[10px] text-paper-inkSoft dark:text-cyber-muted font-mono">
+            v{APP_VERSION}
+          </span>
+        </div>
+      )}
+      {doc && (
+        <span className="ml-1 sm:ml-3 text-sm text-paper-ink dark:text-cyber-primary truncate flex items-center gap-1 min-w-0 max-w-[40vw] sm:max-w-none">
+          <span className="text-paper-inkSoft dark:text-cyber-muted shrink-0">/</span>
+          <span className="truncate">{doc.title}</span>
+        </span>
+      )}
+      <div className="flex-1 min-w-2" />
+      {isNarrow ? (
+        <div className="relative shrink-0" ref={moreRef}>
+          <button
+            type="button"
+            className="btn-icon-square shrink-0"
+            onClick={() => setMoreOpen((open) => !open)}
+            title="More"
+            aria-label="More"
+            aria-haspopup="menu"
+            aria-expanded={moreOpen}
+          >
+            <span className="text-lg font-semibold leading-none" aria-hidden>
+              ⋯
+            </span>
+          </button>
+          {moreOpen && (
+            <div
+              role="menu"
+              className="absolute right-0 top-full mt-1 z-50 w-52 rounded-md border border-paper-hairline dark:border-cyber-border bg-paper-panel dark:bg-ape-panel shadow-ape-paper-lift dark:shadow-2xl py-1"
+            >
+              {extraItems.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  role="menuitem"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left text-paper-ink dark:text-cyber-primary hover:bg-paper-elevated dark:hover:bg-ape-elevated"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    item.onClick();
+                  }}
+                >
+                  <span className="inline-flex h-5 w-5 items-center justify-center shrink-0">
+                    {item.icon}
+                  </span>
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        extraItems.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className="btn-icon-square shrink-0"
+            onClick={item.onClick}
+            title={item.title}
+            aria-label={item.title}
+          >
+            {item.icon}
+          </button>
+        ))
+      )}
       <button
         type="button"
         className="btn-icon-square shrink-0"

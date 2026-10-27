@@ -259,7 +259,7 @@ Then, by hand:
 | Comment → Send to AI → Edit the comment → Send again | Round 2 creation |
 | Graph view: drag, zoom, Reset, click a heading | The atom layout and the remount-on-reset path |
 | Reload the page with data in every panel | Rehydrate migrations |
-| Narrow the window below 767 px, then below 639 px | Overlay drawers, stacked split, bottom sheets |
+| Narrow the window below 767 px, or height below 540 px | Overlay drawers, stacked split, compact topbar, bottom sheets |
 | Toggle the theme | Token coverage in both palettes |
 | Export `.md` and `.json` | Both download paths |
 
