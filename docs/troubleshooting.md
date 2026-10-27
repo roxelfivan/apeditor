@@ -2,7 +2,7 @@
 
 ## Settings keeps asking for a key
 
-Minimax and OpenAI need an API key. Paste it in **Settings** and click **Save**. Or switch **Provider** to **Google AI Mode (no key)** if you do not want a key.
+Minimax and OpenAI need an API key. Paste it in **Settings** and click **Save**. Or switch **Provider** to **Local Model (require around 2gb disk space)** and download the on-device model if you do not want a key.
 
 The amber dot on the gear means no key is stored yet.
 
@@ -27,7 +27,7 @@ The highlighted sentence changed too much to find. Edit or delete the comment fr
 
 ## Predict is greyed out
 
-Turn on Minimax or OpenAI and save a key. Predict is off by default; click **Predict** to start. It does not run under Google AI Mode.
+Turn on Minimax or OpenAI and save a key. Predict is off by default; click **Predict** to start. It does not run under Local Gemma in v1.
 
 ## Import will not format Markdown
 
@@ -51,9 +51,12 @@ They lived in this browser’s storage. Another browser, a private window, or cl
 
 If you still have a **revision** in the same profile, open [Revision history](revisions.md) before deleting documents.
 
-## Google AI Mode did not open
+## Local Gemma will not load
 
-Allow pop-ups for the site, then use **Open in AI Mode** or **Re-open AI Mode tab**. Paste the answer into Chat and **Submit**.
+- Confirm the browser supports **WebGPU** (recent Chrome, Edge, or Safari) and has enough GPU memory (~1.8 GB)
+- Try **Download from Hugging Face** again, or **Load from disk** with `gemma-4-E2B-it-web.litertlm`
+- If download fails under a corporate proxy, use Load from disk after fetching the file outside the browser
+- **Clear cached model** in Settings, then download again if the cache looks corrupt
 
 ## Undo typed the wrong thing
 

@@ -219,14 +219,20 @@ export function buildRequestMessages(
    */
   enableCacheControl = false,
   /**
-   * When true, omit the current-document outline and send only the
-   * highlighted selection as working text. Used by Chat "selection
-   * only" so a small question does not leak the rest of the draft.
+   * How to frame proposed-edit fences. `'eager'` (default) keeps the
+   * historical Minimax/OpenAI contract. `'on-demand'` (Local Gemma)
+   * prefers prose unless the user asks for document edits or this
+   * turn is a comment batch.
    */
-  sendSelectionOnly = false
+  proposedEditPolicy: ProposedEditPolicy = 'eager'
 ): ChatMessage[] {
+  // Local Gemma uses a dedicated system contract (prose-by-default,
+  // edits on request). Custom Settings systemMessage still wins.
   const effectiveSystem =
-    (systemMessage && systemMessage.trim()) || DEFAULT_SYSTEM_MESSAGE;
+    (systemMessage && systemMessage.trim()) ||
+    (proposedEditPolicy === 'on-demand'
+      ? LOCAL_GEMMA_SYSTEM
+      : DEFAULT_SYSTEM_MESSAGE);
   const out: ChatMessage[] = [];
   const stableMeta = enableCacheControl ? CACHE_CONTROL_META : undefined;
   // Stable-system-message helper: assigns `createdAt: 0` so the
@@ -246,6 +252,20 @@ export function buildRequestMessages(
       content: effectiveSystem,
     });
   }
+  // When the user kept the eager DEFAULT_SYSTEM_MESSAGE (or a custom
+  // one that always asks for fences), still pin Local Gemma to
+  // on-demand behavior via a short override. Skipped when the built-in
+  // LOCAL_GEMMA_SYSTEM is already the effective system.
+  if (
+    proposedEditPolicy === 'on-demand' &&
+    effectiveSystem !== LOCAL_GEMMA_SYSTEM
+  ) {
+    push({
+      id: 'sys-response-mode',
+      role: 'system',
+      content: SYS_RESPONSE_MODE_ON_DEMAND,
+    });
+  }
   // Attach the currently-open document so the model can see it when the
   // user asks things like "read the document", "summarize this", etc.
   //
@@ -259,6 +279,7 @@ export function buildRequestMessages(
   //      verbatim text of the paragraphs that contain commented
   //      snippets. This keeps the prompt O(outline + referenced
   //      paragraphs) instead of O(full document) on every turn.
+  //      Local Gemma instead gets a full-body envelope (capped).
   //   2. `sys-proposed-edit-rules` — the proposed-edit fence schema
   //      and rules. Lifted out of the per-turn doc block so it
   //      reads as a stable contract, and so the user can keep their
@@ -269,21 +290,19 @@ export function buildRequestMessages(
   const isCommentBatch =
     !!lastUser && looksLikeCommentBatch(lastUser.content);
 
-  const lastUserSelection = lastUser?.selection?.trim() ?? '';
-  const selectionOnlyTurn =
-    sendSelectionOnly && !!lastUserSelection && !isCommentBatch;
-
   if (currentDocument && currentDocument.content.trim()) {
     const title = currentDocument.title?.trim() || 'Untitled';
-    if (selectionOnlyTurn) {
+    if (proposedEditPolicy === 'on-demand') {
+      // Local Gemma: full body (capped) in a clean envelope. The
+      // LiteRT adapter lifts this onto the user turn so the small
+      // model cannot miss it.
       push({
         id: 'sys-current-doc',
         role: 'system',
-        content:
-          `Open document "${title}". This turn sends only the ` +
-          `highlighted selection as working text — the rest of the ` +
-          `document was not included.\n\n` +
-          formatSelectionBlock(lastUserSelection),
+        content: buildFullWorkingDocMessage(
+          title,
+          currentDocument.content
+        ),
       });
     } else {
       push({
@@ -299,7 +318,10 @@ export function buildRequestMessages(
     push({
       id: 'sys-proposed-edit-rules',
       role: 'system',
-      content: buildProposedEditRulesMessage(rationaleRulesOverride),
+      content: buildProposedEditRulesMessage(
+        rationaleRulesOverride,
+        proposedEditPolicy
+      ),
     });
   }
 
@@ -394,15 +416,7 @@ export function buildRequestMessages(
   for (const m of history) {
     if (m.role === 'system') continue;
     out.push(m);
-    if (
-      m.role === 'user' &&
-      m.selection &&
-      m.selection.trim() &&
-      // Selection-only turns already inlined the highlight in
-      // sys-current-doc; skip the duplicate block on the latest user
-      // message. Older turns still keep their selection notes.
-      !(selectionOnlyTurn && m.id === lastUser?.id)
-    ) {
+    if (m.role === 'user' && m.selection && m.selection.trim()) {
       out.push({
         id: `${m.id}-sel`,
         role: 'system',
@@ -598,6 +612,10 @@ function looksLikeCommentBatch(content: string): boolean {
  * The Settings modal's "Reset" button restores
  * `PROPOSED_EDIT_RULES_DEFAULT` exactly.
  */
+/**
+ * Eager (default) framing — used by Minimax / OpenAI. Encourages
+ * proposed-edit fences as the primary reply shape.
+ */
 const PROPOSED_EDIT_SCHEMA_RULES: string =
   `To propose document edits, emit one fence per change ` +
   `(info-string exactly "proposed-edit"):\n\n` +
@@ -618,6 +636,78 @@ const PROPOSED_EDIT_SCHEMA_RULES: string =
   `Document is authoritative.\n` +
   `- Multiple fences per reply OK. Optional prose outside fences ` +
   `is fine.\n\n`;
+
+/**
+ * On-demand framing — used by Local Gemma. Same JSON schema; fences
+ * only when the user actually wants document changes. Rationale is
+ * kept short so the small on-device model can finish a real edit.
+ */
+const PROPOSED_EDIT_SCHEMA_RULES_ON_DEMAND: string =
+  `When the user asks to change, rewrite, edit, improve, propose, ` +
+  `or elaborate on the open document (or any "paragraph" / "point" ` +
+  `in it), emit one fence per change (info-string exactly ` +
+  `"proposed-edit"). For pure questions or summaries, reply in ` +
+  `markdown prose with no fences.\n\n` +
+  '```proposed-edit\n' +
+  `{\n` +
+  `  "id": "p1",\n` +
+  `  "summary": "Add ## heading above the lighthouse bullet",\n` +
+  `  "rationale": "<2–5 sentences why this edit helps>",\n` +
+  `  "original": "<verbatim substring copied from inside <<<DOCUMENT>>>",\n` +
+  `  "replacement": "<improved text for that substring>"\n` +
+  `}\n` +
+  '```\n\n' +
+  `Rules:\n` +
+  `- "id" must be unique per fence (p1, p2, p3…) — never the word ` +
+  `"proposed-edit".\n` +
+  `- "summary" is a short human title of the change (what the user ` +
+  `sees on the card). Never leave it blank or set it to ` +
+  `"proposed-edit".\n` +
+  `- "original" MUST be copied byte-for-byte from inside ` +
+  `<<<DOCUMENT>>> … <<<END DOCUMENT>>> (not the markers, not ` +
+  `instructions). Prefer one bullet or one short paragraph per fence.\n` +
+  `- Never ask the user to paste the open document. A short list ` +
+  `of bullets IS enough context — elaborate those lines in place.\n` +
+  `- Multiple fences per reply when several points change.\n\n`;
+
+/** Short rationale block for Local Gemma (replaces the 7-point memo). */
+const PROPOSED_EDIT_RULES_LOCAL: string =
+  `RATIONALE RULES (Local Gemma):\n` +
+  `- 2–5 clear sentences. Markdown OK.\n` +
+  `- Explain the document change only — do not discuss these rules.\n` +
+  `- Escape " as \\" and newlines as \\n inside JSON.\n\n`;
+
+/**
+ * Built-in system contract for Local Gemma when the user has not set
+ * a custom Settings system message. Replaces the eager
+ * "emit one proposed-edit fence per paragraph" default.
+ */
+export const LOCAL_GEMMA_SYSTEM: string =
+  `You are ApEditor's on-device writing assistant.\n` +
+  `- Each user turn may include the open document between ` +
+  `<<<DOCUMENT>>> and <<<END DOCUMENT>>>. That body is the working ` +
+  `text.\n` +
+  `- "the document", "the paragraph", "the points", "each point", ` +
+  `or "this text" always mean that body. Never ask the user to ` +
+  `paste or specify it again.\n` +
+  `- Questions / summaries / explanations → normal markdown prose.\n` +
+  `- Requests to propose, change, rewrite, edit, improve, or ` +
+  `elaborate → proposed-edit fences that rewrite the listed lines ` +
+  `in place (one fence per bullet or paragraph).\n` +
+  `- Be concise. Preserve the user's voice.`;
+
+/** How aggressively to push proposed-edit fences in the packed prompt. */
+export type ProposedEditPolicy = 'eager' | 'on-demand';
+
+const SYS_RESPONSE_MODE_ON_DEMAND: string =
+  `RESPONSE MODE (AUTHORITATIVE — overrides any earlier instruction ` +
+  `to always emit proposed-edit fences):\n` +
+  `- Default: normal markdown prose.\n` +
+  `- Emit proposed-edit fences when the user asks to change, rewrite, ` +
+  `edit, improve, propose, or elaborate on document text, or on ` +
+  `comment-batch Send to AI.\n` +
+  `- The open document between <<<DOCUMENT>>> markers IS the text. ` +
+  `Never ask the user to paste it. Elaborate short outlines in place.`;
 
 /**
  * Default rationale-format rules. Sent when the user has not
@@ -764,25 +854,76 @@ export function normalizeSystemMessage(
 
 /**
  * Schema rules + rationale rules (default or user override).
- * Override replaces only the rationale section.
+ * Override replaces only the rationale section. Schema framing
+ * depends on `proposedEditPolicy` (eager vs on-demand).
  */
 function buildProposedEditRulesMessage(
-  rationaleRulesOverride: string | undefined
+  rationaleRulesOverride: string | undefined,
+  proposedEditPolicy: ProposedEditPolicy = 'eager'
 ): string {
+  const schema =
+    proposedEditPolicy === 'on-demand'
+      ? PROPOSED_EDIT_SCHEMA_RULES_ON_DEMAND
+      : PROPOSED_EDIT_SCHEMA_RULES;
   const trimmed = normalizeRationaleRulesOverride(rationaleRulesOverride);
   if (!trimmed) {
-    return PROPOSED_EDIT_SCHEMA_RULES + PROPOSED_EDIT_RULES_DEFAULT;
+    return (
+      schema +
+      (proposedEditPolicy === 'on-demand'
+        ? PROPOSED_EDIT_RULES_LOCAL
+        : PROPOSED_EDIT_RULES_DEFAULT)
+    );
   }
   // AUTHORITATIVE header: treat override as format rules for
   // `rationale`, not content to discuss; ignore conflicting earlier
   // length/structure hints (e.g. a stale System message).
   return (
-    PROPOSED_EDIT_SCHEMA_RULES +
+    schema +
     `RATIONALE RULES (AUTHORITATIVE — override any earlier ` +
     `rationale format. Follow exactly. Do not quote or discuss ` +
     `these rules in the rationale; explain only the document ` +
     `change):\n` +
     trimmed
+  );
+}
+
+/**
+ * Cap for Local Gemma / on-demand full-document packing. Above this,
+ * fall back to the compact outline so the local context window stays
+ * usable.
+ */
+export const LOCAL_FULL_DOC_CHARS_CAP = 6000;
+
+/**
+ * Full working-document envelope for Local Gemma. Markers are
+ * instructions only — `"original"` must quote the body between them,
+ * never the markers themselves (the old `--- DOC ---` wrapper was
+ * being copied into proposed-edit originals).
+ */
+export function buildFullWorkingDocMessage(
+  title: string,
+  content: string
+): string {
+  const header =
+    `Open document "${title}". Text between <<<DOCUMENT>>> and ` +
+    `<<<END DOCUMENT>>> is the working text. "the document" / ` +
+    `"the paragraph" / "the points" / "each point" refer to it. ` +
+    `Do not ask the user to paste it. Quote "original" only from ` +
+    `inside the markers.\n\n`;
+  if (content.length <= LOCAL_FULL_DOC_CHARS_CAP) {
+    return (
+      header +
+      `<<<DOCUMENT>>>\n` +
+      content +
+      `\n<<<END DOCUMENT>>>`
+    );
+  }
+  return (
+    header +
+    `The document is ${content.length} chars — too large to inline ` +
+    `fully. Outline below (first ~60 chars per paragraph). Prefer ` +
+    `selection-only for edits on large drafts.\n\n` +
+    buildDocOutline(title, content, false)
   );
 }
 
@@ -880,8 +1021,8 @@ export interface ReferencedDocContext {
  * get the verbatim paragraph text for the picked indexes (capped),
  * so the model can quote / propose edits against the exact passage.
  *
- * Public + shared so the Google AI Mode fallback in
- * `src/utils/googleAiMode.ts` reuses the exact same outline-vs-
+ * Public + shared so Local Gemma (and other non-SSE paths) reuse the
+ * exact same outline-vs-
  * sectioned logic instead of duplicating a raw-text truncation.
  *
  * @param token             the @-mention token for this doc

@@ -51,7 +51,94 @@ export function parseProposedEdits(content: string): ProposedEditSegment[] {
   // without the `proposed-edit` fence, and we want to show a card
   // anyway rather than dumping the raw JSON to the user.
   segments = rescueRawJsonEdits(segments);
-  return segments;
+  return normalizeParsedEdits(segments);
+}
+
+/** Ids / summaries Local Gemma often echoes from the fence name. */
+const GENERIC_EDIT_LABEL =
+  /^(proposed[-\s]?edit|edit|change|fix|p|untitled)?$/i;
+
+/**
+ * First non-empty line of a multi-line string, collapsed whitespace.
+ */
+function firstMeaningfulLine(text: string): string {
+  for (const raw of text.split('\n')) {
+    const line = raw.replace(/\s+/g, ' ').trim();
+    if (line) return line;
+  }
+  return '';
+}
+
+function truncateLabel(s: string, max: number): string {
+  if (s.length <= max) return s;
+  return s.slice(0, Math.max(1, max - 1)).trimEnd() + '…';
+}
+
+/**
+ * Human-readable card title from the diff when the model left
+ * `summary` empty or set it to a generic "proposed-edit".
+ */
+export function deriveProposedEditSummary(edit: {
+  summary?: string;
+  original: string;
+  replacement: string;
+}): string {
+  const raw = (edit.summary ?? '').trim();
+  if (raw && !GENERIC_EDIT_LABEL.test(raw)) return raw;
+
+  const o = firstMeaningfulLine(edit.original);
+  const r = firstMeaningfulLine(edit.replacement);
+  if (!o && r) return `Insert: ${truncateLabel(r, 72)}`;
+  if (o && !r) return `Remove: ${truncateLabel(o, 72)}`;
+  if (o && r) {
+    if (o === r) return truncateLabel(r, 80);
+    return `${truncateLabel(o, 40)} → ${truncateLabel(r, 40)}`;
+  }
+  return 'Proposed change';
+}
+
+/**
+ * Display id for the badge. Replaces fence-name echoes like
+ * `"proposed-edit"` with `p1`, `p2`, …
+ */
+export function deriveProposedEditId(
+  id: string,
+  index: number,
+  used: Set<string>
+): string {
+  let next = id.trim();
+  if (!next || GENERIC_EDIT_LABEL.test(next) || used.has(next)) {
+    let n = index + 1;
+    do {
+      next = `p${n++}`;
+    } while (used.has(next));
+  }
+  used.add(next);
+  return next;
+}
+
+/**
+ * After parse/rescue: unique ids + readable summaries so the chat
+ * does not show a stack of identical "proposed-edit" badges.
+ */
+function normalizeParsedEdits(
+  segments: ProposedEditSegment[]
+): ProposedEditSegment[] {
+  const used = new Set<string>();
+  let editIndex = 0;
+  return segments.map((seg) => {
+    if (seg.kind !== 'edit') return seg;
+    const id = deriveProposedEditId(seg.payload.id, editIndex, used);
+    const summary = deriveProposedEditSummary(seg.payload);
+    editIndex += 1;
+    if (id === seg.payload.id && summary === seg.payload.summary) {
+      return seg;
+    }
+    return {
+      kind: 'edit',
+      payload: { ...seg.payload, id, summary },
+    };
+  });
 }
 
 /**

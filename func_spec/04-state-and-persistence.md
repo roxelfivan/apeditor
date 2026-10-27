@@ -201,16 +201,15 @@ Steps, in execution order:
 |---|---|---|
 | 1 | Theme | `applyThemeClass(state.theme)` synchronously, before the microtask |
 | 2 | Layout clamps | Only assigns when out of range: `sidebarWidth` → `160`–`480`, `chatWidth` → `280`–`720`, `editorSplitPct` → `50` if not a finite number, else `20`–`80`; `splitLeftMode` → `'write'` when missing or invalid |
-| 3 | `api` patch | Adds `provider: 'minimax'` if the key is missing; runs `normalizeRationaleRulesOverride` and `normalizeSystemMessage` |
+| 3 | `api` patch | Adds `provider: 'local-gemma'` if the key is missing; runs `normalizeRationaleRulesOverride` and `normalizeSystemMessage` |
 | 4 | Microtask queued | Later steps below keep mutating the same `repairs` object |
 | 5 | `comments` | Drops any `comments[docId]` that is not an array. For each comment, `ensureRoundsShape` wraps flat legacy comments in a single `CommentRound` built from the top-level fields, with a fresh `uuid()` and `applied: []` |
-| 6 | Provider coercion | Any value outside `'minimax' \| 'openai' \| 'google-ai-mode'` → `'minimax'` |
+| 6 | Provider coercion | `google-ai-mode` → `local-gemma`; any value outside `'minimax' \| 'openai' \| 'local-gemma'` → `'local-gemma'` |
 | 7 | `debugMode` | Non-boolean → `false` |
 | 8 | `uiFontSize` | Non-number → `14`; then clamp to `12`–`20` |
 | 9 | `persistApiKey` | Non-boolean → `true` |
-| 10 | `sendSelectionOnly` | Non-boolean → `false` |
-| 11 | `proposedEditHighlights` | Falsy or non-object → `{}` (defensive for HMR) |
-| 12 | Session API key | If `persistApiKey === false`, read `readSessionApiKey()` and restore it into `api.apiKey` |
+| 10 | `proposedEditHighlights` | Falsy or non-object → `{}` (defensive for HMR) |
+| 11 | Session API key | If `persistApiKey === false`, read `readSessionApiKey()` and restore it into `api.apiKey` |
 
 ### The flat-comment migration
 
@@ -376,9 +375,9 @@ For the field-by-field interface and for every persisted type, see [Data types &
 
 ```ts
 initialProvider =
-  VITE_DEFAULT_PROVIDER === 'openai'        ? 'openai'      :
-  VITE_DEFAULT_PROVIDER === 'google-ai-mode'? 'google-ai-mode':
-                                           'minimax'      // default, also for unknown values
+  VITE_DEFAULT_PROVIDER === 'openai'  ? 'openai'  :
+  VITE_DEFAULT_PROVIDER === 'minimax' ? 'minimax' :
+                                     'local-gemma'; // default, also for unknown values
 ```
 
 `defaultApiConfig` = `{ provider: initialProvider, apiKey: '', apiEndpoint: VITE_DEFAULT_API_ENDPOINT || preset.defaultEndpoint, model: VITE_DEFAULT_MODEL || preset.defaultModel, systemMessage: undefined, temperature: 0.7, rationaleRulesOverride: undefined }`.
@@ -389,7 +388,7 @@ The env vars seed **defaults only**. The Settings modal always wins.
 
 | Title | Shape |
 |---|---|
-| **Welcome** | H1 `# 👋 Welcome to ApEditor` plus **12** numbered `##` sections: Connect an AI · Write, Preview, Graph, or Split · Explore the Graph · Comment on a passage · Apply or Reject AI edits · Reference another document · Use a saved prompt · Get sentence suggestions while writing · Save a snapshot · Import text from photos or PDFs · Keep a copy outside the browser · Help, shortcuts, and settings. It is a live tutorial, not a changelog. |
+| **Welcome** | H1 `# 👋 Welcome to ApEditor` plus **12** numbered `##` sections. Section 1 explains **Local Model** as the Settings default (~2 GB Gemma / WebGPU, load/save from disk). Later sections cover Chat **+** attachments and Debug Mode for System message / Rationale / Temperature. It is a live tutorial, not a changelog. |
 | **Ideas** | H1 `# Ideas` plus three bullets: a lighthouse keeper who hears the sea, a field guide to imaginary birds, an essay on why we read in the bath. |
 
 Both are created by `makeDoc(title, content)` with `uuid()` ids at store construction.

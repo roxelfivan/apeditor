@@ -252,7 +252,7 @@ The global `uiFontSize` is applied as `<html style="font-size">`, so every `rem`
 interface ImportMetaEnv {
   readonly VITE_DEFAULT_API_ENDPOINT?: string;
   readonly VITE_DEFAULT_MODEL?: string;
-  readonly VITE_DEFAULT_PROVIDER?: 'minimax' | 'openai' | 'google-ai-mode';
+  readonly VITE_DEFAULT_PROVIDER?: 'minimax' | 'openai' | 'local-gemma';
   readonly VITE_APP_VERSION?: string;   // injected by vite.config.ts define
 }
 ```
@@ -261,20 +261,19 @@ interface ImportMetaEnv {
 
 ```bash
 # Default provider for first-run (Settings always wins afterwards).
-VITE_DEFAULT_PROVIDER=minimax
+# Omit or set local-gemma for on-device Gemma; use minimax|openai for keyed deploys.
+VITE_DEFAULT_PROVIDER=local-gemma
 VITE_DEFAULT_API_ENDPOINT=https://api.minimax.io/v1
 VITE_DEFAULT_MODEL=MiniMax-M2.7
 ```
-
-> `VITE_DEFAULT_PROVIDER` **is consumed** by `defaults.ts` but is not listed in the committed `.env.example`. Adding it there is a trivial improvement.
 
 ### Resolution
 
 ```ts
 initialProvider =
-  VITE_DEFAULT_PROVIDER === 'openai'         ? 'openai'         :
-  VITE_DEFAULT_PROVIDER === 'google-ai-mode' ? 'google-ai-mode' :
-                                            'minimax';         // default and unknown values
+  VITE_DEFAULT_PROVIDER === 'openai'  ? 'openai'  :
+  VITE_DEFAULT_PROVIDER === 'minimax' ? 'minimax' :
+                                     'local-gemma'; // default and unknown values
 ```
 
 The env vars seed **first-run defaults only**. The Settings modal always wins afterwards.
@@ -296,14 +295,14 @@ module.exports = { plugins: { tailwindcss: {}, autoprefixer: {} } };
 | **Provider** | `<select>` over `PROVIDERS` | Switching **auto-swaps** the endpoint and model to the new preset's defaults. The API key is deliberately **not** touched. |
 | **API key** | `<input type="password">` with Show/Hide | Only rendered when `requiresApiKey(provider)`. `autoComplete="off"`, `spellCheck={false}` |
 | **Forget API key when this tab closes** | checkbox | Drives `setPersistApiKey` → `sessionStorage` |
-| **API endpoint** | `<input>` | Placeholder = `preset.defaultEndpoint`; help text = `preset.helpText` |
-| **Model** | `<input list="mvp-model-list">` + `<datalist>` | Datalist from `preset.modelPresets` |
-| *(keyless provider)* | Static panel | "No API key needed." + `preset.helpText` |
-| **System message** | textarea + bottom `ResizeHandle` | Height `100`–`600`. **Reset** → `DEFAULT_SYSTEM_MESSAGE`; disabled when the value already equals it |
-| **Rationale rules** | textarea + bottom `ResizeHandle` | Height `100`–`600`. Placeholder "Leave empty to use the built-in default". **Reset** → `PROPOSED_EDIT_RULES_DEFAULT`; same disabled logic |
-| **Temperature** | `<input type="range">` | `min=0`, `max=2`, `step=0.05`, displayed `toFixed(2)` |
+| **API endpoint** | `<input>` | Placeholder = `preset.defaultEndpoint`; help text = `preset.helpText` (keyed only) |
+| **Model** | `<input list="mvp-model-list">` + `<datalist>` | Datalist from `preset.modelPresets` (keyed only) |
+| **Local Model controls** | `LocalGemmaControls` | Download / Load from disk / Save to Disk / Clear / Last saved / progress tips |
 | **Debug Mode** | `role="switch"` with `aria-checked` | — |
 | **UI font size** | `<input type="range">` + **Reset** | `12`–`20`, step 1. `DEFAULT_UI_FONT_SIZE = 14`. Reset disabled at 14 |
+| **System message** | textarea + bottom `ResizeHandle` | **Only when Debug Mode is on.** Height `100`–`600`. **Reset** → `DEFAULT_SYSTEM_MESSAGE` |
+| **Rationale rules** | textarea + bottom `ResizeHandle` | **Only when Debug Mode is on.** Placeholder "Leave empty to use the built-in default" |
+| **Temperature** | `<input type="range">` | **Only when Debug Mode is on.** `min=0`, `max=2`, `step=0.05` |
 
 Footer **Cancel** / **Save**. `save()` runs `setPersistApiKey` → `setApi({...})` → `setUiFontSize` → `onClose()`.
 
@@ -359,7 +358,7 @@ npm install        # also runs the OCR asset sync
 npm run dev        # http://localhost:5174
 ```
 
-There are **no unit tests and no mock server**. To exercise the chat path you need a real key in Settings, or switch to Google AI Mode and use the keyless paste flow. The three `test:*` scripts cover the pure logic without any key.
+There are **no unit tests and no mock server**. To exercise the chat path you need a real key in Settings, or Local Model with WebGPU and a downloaded/cached `.litertlm`. The `test:*` scripts cover the pure logic without any key.
 
 To measure prompt size without spending tokens:
 

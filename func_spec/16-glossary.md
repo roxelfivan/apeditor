@@ -157,19 +157,19 @@ Each captures both `before` and `after` so undo is a clean apply/reverse rather 
 ### `ApiProvider` and `KeyedApiProvider`
 
 ```ts
-type ApiProvider = 'minimax' | 'openai' | 'google-ai-mode';
-type KeyedApiProvider = Exclude<ApiProvider, 'google-ai-mode'>;
+type ApiProvider = 'minimax' | 'openai' | 'local-gemma';
+type KeyedApiProvider = Exclude<ApiProvider, 'local-gemma'>;
 ```
 
-`minimax` and `openai` speak the OpenAI Chat Completions wire format, so the request layer does **not** branch on provider for them — the id is a UI/defaults concern. `google-ai-mode` does not speak that format and does not need a key; `ChatPanel` branches on it to open a new browser tab instead.
+`minimax` and `openai` speak the OpenAI Chat Completions wire format, so the request layer does **not** branch on provider for them — the id is a UI/defaults concern. `local-gemma` runs in-browser via LiteRT-LM / WebGPU and does not need a key; `ChatPanel` streams through `streamLocalGemma`.
 
-`requiresApiKey(id) => id !== 'google-ai-mode'` is the single source of truth.
+`requiresApiKey(id) => id !== 'local-gemma'` is the single source of truth.
 
 ### `ApiConfig`
 
 | Field | Type | Default | Notes |
 |---|---|---|---|
-| `provider` | `ApiProvider` | `'minimax'` | |
+| `provider` | `ApiProvider` | `'local-gemma'` | First-run default; override with `VITE_DEFAULT_PROVIDER` |
 | `apiKey` | `string` | `''` | Never seeded by env vars |
 | `apiEndpoint` | `string` | `https://api.minimax.io/v1` | A full URL or a base URL; `/chat/completions` is appended when needed |
 | `model` | `string` | `MiniMax-M2.7` | |

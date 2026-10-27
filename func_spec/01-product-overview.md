@@ -67,10 +67,12 @@ ApEditor is built for a single, narrow audience:
 | Capability | Where it lives |
 |---|---|
 | Streaming chat with OpenAI-compatible wire format | [`api/chat.ts`](../src/api/chat.ts) |
-| Three providers: MiniMax (default), OpenAI, **Google AI Mode (no key)** | [`config/providers.tsx`](../src/config/providers.tsx) |
-| **include selection** / **selection only** context modes | [`ChatPanel.tsx`](../src/components/ChatPanel.tsx) |
+| Three providers: **Local Model (default, no key)**, MiniMax, OpenAI | [`config/providers.tsx`](../src/config/providers.tsx) |
+| In-browser Local Gemma (LiteRT-LM / WebGPU) | [`api/localGemma.ts`](../src/api/localGemma.ts), [`LocalGemmaControls.tsx`](../src/components/LocalGemmaControls.tsx) |
+| Chat **+** photo/PDF attachments (OCR extract only) | [`utils/chatAttachments.ts`](../src/utils/chatAttachments.ts), [`ChatPanel.tsx`](../src/components/ChatPanel.tsx) |
+| **include selection** context mode | [`ChatPanel.tsx`](../src/components/ChatPanel.tsx) |
 | Outbound secret redaction | [`utils/secrets.ts`](../src/utils/secrets.ts) |
-| Customizable System Message + Rationale Rules | [`api/chat.ts`](../src/api/chat.ts), [`SettingsModal.tsx`](../src/components/SettingsModal.tsx) |
+| Customizable System Message + Rationale Rules (Debug Mode) | [`api/chat.ts`](../src/api/chat.ts), [`SettingsModal.tsx`](../src/components/SettingsModal.tsx) |
 | Proposed-edit cards with Apply / Reject / Highlight Apply | [`ProposedEditCard.tsx`](../src/components/ProposedEditCard.tsx), [`utils/proposedEdit.ts`](../src/utils/proposedEdit.ts) |
 | Per-edit rationale stored on the comment round | `recordAppliedEdit` in [`store/actions.ts`](../src/store/actions.ts) |
 | Reject-with-feedback batching | `formatRejectionBatch` in [`utils/proposedEdit.ts`](../src/utils/proposedEdit.ts) |
@@ -126,7 +128,7 @@ Every AI change is a `ProposedEdit` the user must accept. The model emits *propo
 
 ### 5.5 Tokens are a budget, not an afterthought
 
-The prompt builder sends a **document outline** (one truncated line per paragraph) rather than the full document, unless the user explicitly asks for a section. Referenced documents are capped at 4,000 chars each and 8,000 chars per turn. Import is capped at 50 MB per file, 200 MB per batch, 500 PDF pages. The AI Mode URL is capped at 6,000 characters. These caps are enforced in code, not in the prompt text.
+Keyed providers send a **document outline** (one truncated line per paragraph) rather than the full document, unless the user asks for a section. Local Model packs a capped full-body `<<<DOCUMENT>>>` envelope on the user turn (`LOCAL_GEMMA_DOC_CHARS_CAP`). Referenced documents are capped at 4,000 chars each and 8,000 chars per turn. Import is capped at 50 MB per file, 200 MB per batch, 500 PDF pages. These caps are enforced in code, not in the prompt text.
 
 ### 5.6 Degrade, do not block
 
@@ -151,6 +153,7 @@ Full changelogs are in [`RELEASE_NOTES.md`](../RELEASE_NOTES.md). The shape of t
 
 | Version | What changed |
 |---|---|
+| v0.6.4 | **Local Model default, Chat attachments, Debug-gated prompts.** Google AI Mode removed; `local-gemma` is first-run default (Cache API + load/save `.litertlm`). Chat **+** attaches photos/PDFs. **selection only** removed. System message / Rationale / Temperature only when Debug Mode is on. |
 | v0.6.3 | **Chat composer attachments.** **+** picks the same images/PDFs as Import; OCR stays in-browser; Send is one format-then-answer prompt. Composer is one field with **+** and **Send** on a shared bar. Optional `ChatMessage.attachments` in backups. |
 | v0.6.2 | **Phone overlay shell, Chat archives, Graph Filter stacking.** Narrow overlay panels; Chat History / Archive; Filter above 3D labels; Send-to-AI works with Chat collapsed. |
 | v0.6.1 | **Format menu, Split = Write/Preview \| Graph, Graph click scrolls Write.** Format dropdown is `position: fixed`. Split left pane Write/Preview; Graph click `scrollIntoView`. |

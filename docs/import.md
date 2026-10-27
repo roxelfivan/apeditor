@@ -26,7 +26,7 @@ The popover explains: recognition stays in the browser; after a successful impor
 ## Requirements
 
 - At least one language checked, or you will see **Select at least one language.**
-- An API key and endpoint in Settings (not the keyless Google AI Mode path) for Markdown formatting, or **Open Settings and add an API key so imported text can be formatted as Markdown.**
+- An API key and endpoint in Settings (Minimax or OpenAI — not Local Gemma) for Markdown formatting, or **Open Settings and add an API key so imported text can be formatted as Markdown.**
 - Recognizable text in the files, or **No text was recognized in the selected file(s).**
 - If the engine fails: **OCR failed.**
 

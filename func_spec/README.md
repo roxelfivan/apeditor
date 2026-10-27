@@ -2,7 +2,7 @@
 
 > The developer-facing manual for this repository. It describes **what ApEditor does, how it is built, and the contracts you must respect when you change it.**
 
-**Applies to:** `v0.6.3` · package version **0.6.3** · MIT licensed
+**Applies to:** `v0.6.4` · package version **0.6.4** · MIT licensed
 **Audience:** engineers new to the repo, and anyone returning to it after a few months.
 
 ---
@@ -70,7 +70,7 @@ This spec describes the code as it is. When you change behaviour:
 
 *How ApEditor talks to a model. The parts most likely to need changing.*
 
-7. [AI chat & prompts](07-ai-chat.md) — providers, SSE, the ordered system-message contract, redaction, keyless mode.
+7. [AI chat & prompts](07-ai-chat.md) — providers (Local Model / Minimax / OpenAI), SSE, LiteRT-LM path, prompt contract, redaction, Chat attachments.
 8. [Proposed edits](08-proposed-edits.md) — fence schema, tolerant parsing, the Apply waterfall.
 9. [@-references](09-mentions.md) — sentinel format, two-stage picker, cascade, character budgets.
 

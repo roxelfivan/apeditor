@@ -12,6 +12,8 @@ import {
 } from '@/api/chat';
 import { PROVIDERS, getProvider, requiresApiKey } from '@/config/providers';
 import type { ApiProvider } from '@/types';
+import { LocalGemmaControls } from '@/components/LocalGemmaControls';
+import { disposeLocalGemma } from '@/api/localGemma';
 import { ResizeHandle } from '@/components/ResizeHandle';
 import {
   useDragResize,
@@ -434,6 +436,10 @@ export function SettingsModal({ open, onClose }: Props) {
       temperature,
     });
     setUiFontSize(uiFontSizeDraft);
+    // Free GPU memory when leaving Local Gemma for a keyed provider.
+    if (requiresApiKey(provider)) {
+      void disposeLocalGemma();
+    }
     onClose();
   };
 
@@ -586,142 +592,15 @@ export function SettingsModal({ open, onClose }: Props) {
               </div>
             </>
           ) : (
-            // Keyless provider (google-ai-mode): the three keyed fields
-            // above are irrelevant. Show a single explanatory block
-            // instead, plus a visible note that the System message
-            // below will be folded into the prompt that gets sent to
-            // the AI Mode tab.
-            <div className="rounded border border-paper-hairline dark:border-cyber-border bg-paper-elevated/40 dark:bg-ape-elevated/40 p-3 space-y-1.5">
-              <p className="text-sm text-paper-ink dark:text-cyber-primary">
-                No API key needed.
-              </p>
+            // Keyless provider (local-gemma): download / load the
+            // in-browser LiteRT model instead of API key fields.
+            <div className="space-y-2">
               <p className="text-xs text-paper-inkSoft dark:text-cyber-muted">
                 {preset.helpText}
               </p>
+              <LocalGemmaControls />
             </div>
           )}
-
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-medium text-cyber-clay dark:text-cyber-cyan uppercase tracking-wide">
-                System message
-              </label>
-              <button
-                type="button"
-                className="btn-cyan-sm"
-                onClick={() => setSystemMessage(DEFAULT_SYSTEM_MESSAGE)}
-                disabled={isCurrentDefaultSystemMessage(systemMessage)}
-                title="Restore the built-in default system message"
-              >
-                Reset
-              </button>
-            </div>
-            <div
-              className="settings-textarea-wrap"
-              style={
-                // Width is always 100% of the modal content area so
-                // a modal resize grows the textbox in lockstep with
-                // the rationale rules textbox below. Height is
-                // auto-measured to the prompt's natural content on
-                // first render, then becomes user-resizable via the
-                // bottom handle.
-                {
-                  width: '100%',
-                  height:
-                    systemMsgHeight !== null
-                      ? `${systemMsgHeight}px`
-                      : 'auto',
-                }
-              }
-            >
-              <textarea
-                ref={systemMsgTextareaRef}
-                value={systemMessage}
-                onChange={(e) => setSystemMessage(e.target.value)}
-                className="ape-field w-full h-full font-mono text-xs"
-                spellCheck={false}
-                aria-label="System message"
-              />
-              <ResizeHandle
-                handle="bottom"
-                onPointerDown={onSystemMsgResizeDown('bottom')}
-              />
-            </div>
-            <p className="mt-1 text-[11px] text-paper-inkSoft dark:text-cyber-muted">
-              Edit to customize the AI's system prompt. The rationale rules
-              below are sent as a separate, always-injected block.
-            </p>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-medium text-cyber-clay dark:text-cyber-cyan uppercase tracking-wide">
-                Rationale rules
-              </label>
-              <button
-                type="button"
-                className="btn-cyan-sm"
-                onClick={() =>
-                  setRationaleRulesOverride(PROPOSED_EDIT_RULES_DEFAULT)
-                }
-                disabled={isCurrentRationaleRulesDefault(rationaleRulesOverride)}
-                title="Restore the built-in default rationale rules"
-              >
-                Reset
-              </button>
-            </div>
-            <div
-              className="settings-textarea-wrap"
-              style={{
-                // Same layout as the system message textbox above:
-                // width 100% of the modal content, height
-                // auto-measured to the natural content on first
-                // render, then user-resizable via the bottom
-                // handle.
-                width: '100%',
-                height:
-                  rationaleRulesHeight !== null
-                    ? `${rationaleRulesHeight}px`
-                    : 'auto',
-              }}
-            >
-              <textarea
-                ref={rationaleRulesTextareaRef}
-                value={rationaleRulesOverride}
-                onChange={(e) => setRationaleRulesOverride(e.target.value)}
-                className="ape-field w-full h-full font-mono text-xs"
-                spellCheck={false}
-                aria-label="Rationale rules"
-                placeholder="Leave empty to use the built-in default"
-              />
-              <ResizeHandle
-                handle="bottom"
-                onPointerDown={onRationaleRulesResizeDown('bottom')}
-              />
-            </div>
-            <p className="mt-1 text-[11px] text-paper-inkSoft dark:text-cyber-muted">
-              Rules the AI follows when writing the per-edit rationale
-              (structured Markdown, keywords bold+underlined) shown
-              in each comment popover. Leave empty to use the
-              built-in default.
-            </p>
-          </div>
-
-          <div>
-            <label className="flex items-center justify-between text-xs font-medium text-cyber-clay dark:text-cyber-cyan mb-1 uppercase tracking-wide">
-              <span>Temperature</span>
-              <span className="font-mono text-cyber-clay dark:text-cyber-cyan">{temperature.toFixed(2)}</span>
-            </label>
-            <input
-              type="range"
-              min={0}
-              max={2}
-              step={0.05}
-              value={temperature}
-              onChange={(e) => setTemperature(parseFloat(e.target.value))}
-              className="w-full accent-cyber-clay dark:accent-cyber-fire"
-            />
-          </div>
 
           {/* Debug Mode + UI font size on a single row. Both
               controls are self-contained (a switch + caption, and
@@ -730,12 +609,9 @@ export function SettingsModal({ open, onClose }: Props) {
               collapses to a single column on narrow viewports.
               Toggling one never affects the other. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Debug Mode — gates developer-facing diagnostics
-                (currently the inline-completion status pill and
-                request/accept counters in the editor toolbar).
-                Persisted across reloads. Mirrors the row pattern
-                of the other settings: one label row + a single
-                inline switch, with helper text underneath. */}
+            {/* Debug Mode — gates System message / Rationale /
+                Temperature (below) plus editor toolbar diagnostics.
+                Persisted across reloads. */}
             <div>
               <div className="flex items-center justify-between text-xs font-medium text-cyber-clay dark:text-cyber-cyan mb-1 uppercase tracking-wide">
                 <span>Debug Mode</span>
@@ -746,8 +622,8 @@ export function SettingsModal({ open, onClose }: Props) {
                   onClick={() => setDebugMode(!debugMode)}
                   title={
                     debugMode
-                      ? 'Debug Mode is ON — click to hide diagnostic controls'
-                      : 'Debug Mode is OFF — click to reveal diagnostic controls'
+                      ? 'Debug Mode is ON — click to hide advanced prompt controls'
+                      : 'Debug Mode is OFF — click to show System message, Rationale, Temperature'
                   }
                   className={[
                     'relative inline-flex h-5 w-9 rounded-full border transition-colors select-none',
@@ -768,7 +644,8 @@ export function SettingsModal({ open, onClose }: Props) {
                 </button>
               </div>
               <p className="mt-1 text-[11px] text-paper-inkSoft dark:text-cyber-muted">
-                Show inline-completion status &amp; counters
+                Show System message, Rationale, Temperature, and
+                toolbar diagnostics
               </p>
             </div>
 
@@ -812,6 +689,136 @@ export function SettingsModal({ open, onClose }: Props) {
               </p>
             </div>
           </div>
+
+          {debugMode && (
+            <>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-medium text-cyber-clay dark:text-cyber-cyan uppercase tracking-wide">
+                    System message
+                  </label>
+                  <button
+                    type="button"
+                    className="btn-cyan-sm"
+                    onClick={() => setSystemMessage(DEFAULT_SYSTEM_MESSAGE)}
+                    disabled={isCurrentDefaultSystemMessage(systemMessage)}
+                    title="Restore the built-in default system message"
+                  >
+                    Reset
+                  </button>
+                </div>
+                <div
+                  className="settings-textarea-wrap"
+                  style={
+                    // Width is always 100% of the modal content area so
+                    // a modal resize grows the textbox in lockstep with
+                    // the rationale rules textbox below. Height is
+                    // auto-measured to the prompt's natural content on
+                    // first render, then becomes user-resizable via the
+                    // bottom handle.
+                    {
+                      width: '100%',
+                      height:
+                        systemMsgHeight !== null
+                          ? `${systemMsgHeight}px`
+                          : 'auto',
+                    }
+                  }
+                >
+                  <textarea
+                    ref={systemMsgTextareaRef}
+                    value={systemMessage}
+                    onChange={(e) => setSystemMessage(e.target.value)}
+                    className="ape-field w-full h-full font-mono text-xs"
+                    spellCheck={false}
+                    aria-label="System message"
+                  />
+                  <ResizeHandle
+                    handle="bottom"
+                    onPointerDown={onSystemMsgResizeDown('bottom')}
+                  />
+                </div>
+                <p className="mt-1 text-[11px] text-paper-inkSoft dark:text-cyber-muted">
+                  Edit to customize the AI's system prompt. The rationale rules
+                  below are sent as a separate, always-injected block.
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-medium text-cyber-clay dark:text-cyber-cyan uppercase tracking-wide">
+                    Rationale rules
+                  </label>
+                  <button
+                    type="button"
+                    className="btn-cyan-sm"
+                    onClick={() =>
+                      setRationaleRulesOverride(PROPOSED_EDIT_RULES_DEFAULT)
+                    }
+                    disabled={isCurrentRationaleRulesDefault(
+                      rationaleRulesOverride
+                    )}
+                    title="Restore the built-in default rationale rules"
+                  >
+                    Reset
+                  </button>
+                </div>
+                <div
+                  className="settings-textarea-wrap"
+                  style={{
+                    // Same layout as the system message textbox above:
+                    // width 100% of the modal content, height
+                    // auto-measured to the natural content on first
+                    // render, then user-resizable via the bottom
+                    // handle.
+                    width: '100%',
+                    height:
+                      rationaleRulesHeight !== null
+                        ? `${rationaleRulesHeight}px`
+                        : 'auto',
+                  }}
+                >
+                  <textarea
+                    ref={rationaleRulesTextareaRef}
+                    value={rationaleRulesOverride}
+                    onChange={(e) => setRationaleRulesOverride(e.target.value)}
+                    className="ape-field w-full h-full font-mono text-xs"
+                    spellCheck={false}
+                    aria-label="Rationale rules"
+                    placeholder="Leave empty to use the built-in default"
+                  />
+                  <ResizeHandle
+                    handle="bottom"
+                    onPointerDown={onRationaleRulesResizeDown('bottom')}
+                  />
+                </div>
+                <p className="mt-1 text-[11px] text-paper-inkSoft dark:text-cyber-muted">
+                  Rules the AI follows when writing the per-edit rationale
+                  (structured Markdown, keywords bold+underlined) shown
+                  in each comment popover. Leave empty to use the
+                  built-in default.
+                </p>
+              </div>
+
+              <div>
+                <label className="flex items-center justify-between text-xs font-medium text-cyber-clay dark:text-cyber-cyan mb-1 uppercase tracking-wide">
+                  <span>Temperature</span>
+                  <span className="font-mono text-cyber-clay dark:text-cyber-cyan">
+                    {temperature.toFixed(2)}
+                  </span>
+                </label>
+                <input
+                  type="range"
+                  min={0}
+                  max={2}
+                  step={0.05}
+                  value={temperature}
+                  onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                  className="w-full accent-cyber-clay dark:accent-cyber-fire"
+                />
+              </div>
+            </>
+          )}
         </div>
 
         <div className="px-4 py-3 border-t border-paper-hairline dark:border-cyber-border flex justify-end gap-2 bg-paper-elevated/40 dark:bg-ape-elevated/30">

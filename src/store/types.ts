@@ -94,12 +94,6 @@ export interface StoreState {
   // Whether to include the current selection with each chat message.
   includeSelection: boolean;
   /**
-   * When true, Chat omits the document outline and sends only the
-   * highlighted selection as working text. Requires a non-empty
-   * selection. Persisted.
-   */
-  sendSelectionOnly: boolean;
-  /**
    * When false, the API key is kept in memory + sessionStorage and
    * stripped from the persisted localStorage blob so closing the tab
    * forgets it. Default true (key lives in localStorage).
@@ -226,7 +220,6 @@ export interface StoreState {
   setChatCollapsed: (collapsed: boolean) => void;
   setTopbarCollapsed: (collapsed: boolean) => void;
   setIncludeSelection: (v: boolean) => void;
-  setSendSelectionOnly: (v: boolean) => void;
   setPersistApiKey: (v: boolean) => void;
   setDebugMode: (v: boolean) => void;
   toggleTheme: () => void;

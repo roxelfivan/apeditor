@@ -473,7 +473,6 @@ function parseChatMessage(value: unknown): ChatMessage {
     ...optionalString(value, 'selection') !== undefined
       ? { selection: optionalString(value, 'selection') as string }
       : {},
-    ...(value.selectionOnly === true ? { selectionOnly: true } : {}),
     ...(value.metadata !== undefined
       ? { metadata: value.metadata as Record<string, unknown> }
       : {}),

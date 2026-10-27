@@ -339,7 +339,7 @@ export default function App() {
   }, [uiFontSize]);
 
   // If the active provider needs an API key and there isn't one, gently
-  // prompt the user once on first load. The keyless `google-ai-mode`
+  // prompt the user once on first load. The keyless `local-gemma`
   // provider is intentionally excluded from this auto-pop so first-time
   // users who already chose the no-key path are not interrupted with a
   // settings modal asking for a key.

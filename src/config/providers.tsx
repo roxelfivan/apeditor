@@ -9,13 +9,15 @@
 // layer does NOT branch on `provider` for them — this config is purely
 // UI / defaults metadata for that path.
 //
-// The third entry (google-ai-mode) does NOT use the OpenAI wire
-// format and does NOT need an API key. ChatPanel.tsx branches on its
-// id to open a new tab to Google's AI Mode instead of streaming a
-// completion. It still appears here so it can be selected from the
-// same Settings dropdown, alongside the keyed providers, with
-// consistent default-endpoint / model fallback values.
+// The third entry (local-gemma) does NOT use the OpenAI wire format
+// and does NOT need an API key. ChatPanel streams via in-browser
+// LiteRT-LM (WebGPU). It still appears here so it can be selected
+// from the same Settings dropdown.
 import type { ApiProvider } from '@/types';
+import {
+  LOCAL_GEMMA_MODEL_LABEL,
+  LOCAL_GEMMA_SIZE_LABEL,
+} from '@/api/localGemma';
 
 export interface ProviderPreset {
   id: ApiProvider;
@@ -71,27 +73,22 @@ export const PROVIDERS: ProviderPreset[] = [
     apiKeyPlaceholder: 'sk-…',
   },
   {
-    id: 'google-ai-mode',
-    label: 'Google AI Mode (no key)',
-    // AI Mode is invoked as a normal Google search with the `udm=50`
-    // parameter that selects the generative-AI tab. We use the search
-    // homepage as the default endpoint so the Settings "API endpoint"
-    // placeholder is a real, non-empty URL; the keyless ChatPanel path
-    // never reads this value, it just opens a tab with the same query.
-    defaultEndpoint: 'https://www.google.com/search?udm=50',
+    id: 'local-gemma',
+    label: 'Local Model (require around 2gb disk space)',
+    // Placeholder endpoint — never used for fetch. Kept non-empty so
+    // Settings / chat header have a stable string to display.
+    defaultEndpoint: 'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm',
     modelPresets: [],
-    // The dummy default model string satisfies the non-empty check in
-    // src/api/chat.ts's `streamChatCompletion` and is rendered in the
-    // chat header. The keyless code path doesn't send it anywhere.
-    defaultModel: 'google-ai-mode',
+    defaultModel: LOCAL_GEMMA_MODEL_LABEL,
     helpText: (
       <>
-        Free, no API key. Clicking <strong>Send</strong> in the chat will
-        open Google AI Mode in a new browser tab with your prompt
-        pre-filled. Copy the answer back into the chat to insert it as
-        an assistant reply (any <code>proposed-edit</code> fences inside
-        the pasted answer become track-changes cards you can accept or
-        reject one by one).
+        Free, no API key. Runs{' '}
+        <code>{LOCAL_GEMMA_MODEL_LABEL}</code> in your browser with WebGPU
+        (LiteRT-LM). Download the model ({LOCAL_GEMMA_SIZE_LABEL}) once from
+        Hugging Face, or load a <code>.litertlm</code> file from disk. Prompts
+        stay on your device. Requires a recent Chrome, Edge, or Safari with
+        enough GPU memory (~1.8 GB). Predict and OCR→Markdown rewrite still
+        need a keyed provider.
       </>
     ),
     apiKeyPlaceholder: '(not used — no API key required)',
@@ -105,13 +102,13 @@ export function getProvider(id: ApiProvider | undefined | null): ProviderPreset 
 
 /**
  * Whether the given provider requires an API key in Settings. Currently
- * only `google-ai-mode` returns false; the two keyed providers keep
+ * only `local-gemma` returns false; the two keyed providers keep
  * the existing behaviour. Callers that need to gate on this (the
  * Settings modal's API-key field, the chat panel's "needs a key" affordance,
  * the first-run onboarding auto-pop, the inline-completion hook) all
  * branch on this single source of truth instead of hard-coding the
- * google-ai-mode id.
+ * keyless provider id.
  */
 export function requiresApiKey(id: ApiProvider | undefined | null): boolean {
-  return id !== 'google-ai-mode';
+  return id !== 'local-gemma';
 }

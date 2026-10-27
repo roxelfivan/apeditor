@@ -87,7 +87,6 @@ export const useStore = create<StoreState>()(
       chatCollapsed: false,
       topbarCollapsed: false,
       includeSelection: true,
-      sendSelectionOnly: false,
       persistApiKey: true,
       debugMode: false,
       theme: 'light',
@@ -368,12 +367,6 @@ export const useStore = create<StoreState>()(
       setChatCollapsed: (chatCollapsed) => set({ chatCollapsed }),
       setTopbarCollapsed: (topbarCollapsed) => set({ topbarCollapsed }),
       setIncludeSelection: (includeSelection) => set({ includeSelection }),
-      setSendSelectionOnly: (sendSelectionOnly) =>
-        set((s) => ({
-          sendSelectionOnly,
-          // Selection-only implies sending the highlight.
-          includeSelection: sendSelectionOnly ? true : s.includeSelection,
-        })),
       setPersistApiKey: (persistApiKey) =>
         set((s) => {
           if (persistApiKey) clearSessionApiKey();
@@ -582,7 +575,6 @@ export const useStore = create<StoreState>()(
         chatCollapsed: s.chatCollapsed,
         topbarCollapsed: s.topbarCollapsed,
         includeSelection: s.includeSelection,
-        sendSelectionOnly: s.sendSelectionOnly,
         persistApiKey: s.persistApiKey,
         debugMode: s.debugMode,
         theme: s.theme,
@@ -708,24 +700,33 @@ export const useStore = create<StoreState>()(
             }
           }
           if (commentsPatch) repairs.comments = commentsPatch;
-          // Migration for the `google-ai-mode` provider: any persisted
-          // value not in the closed union (corrupted localStorage, a
-          // typo from a future build, an experimental id we later
-          // removed) is coerced back to the safe default. This keeps
-          // the Settings dropdown and the chat panel from crashing on
-          // an unknown provider id.
+          // Provider migrations: rename retired `google-ai-mode` →
+          // `local-gemma`, and coerce any other unknown id back to
+          // minimax so Settings / chat do not crash.
           if (
             state.api &&
             typeof state.api === 'object' &&
-            'provider' in state.api &&
-            (state.api as ApiConfig).provider !== 'minimax' &&
-            (state.api as ApiConfig).provider !== 'openai' &&
-            (state.api as ApiConfig).provider !== 'google-ai-mode'
+            'provider' in state.api
           ) {
-            repairs.api = {
-              ...(repairs.api ?? (state.api as ApiConfig)),
-              provider: 'minimax',
-            };
+            const provider = (state.api as ApiConfig).provider as string;
+            if (provider === 'google-ai-mode') {
+              repairs.api = {
+                ...(repairs.api ?? (state.api as ApiConfig)),
+                provider: 'local-gemma',
+                model: 'gemma-4-E2B-it-web',
+                apiEndpoint:
+                  'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm',
+              };
+            } else if (
+              provider !== 'minimax' &&
+              provider !== 'openai' &&
+              provider !== 'local-gemma'
+            ) {
+              repairs.api = {
+                ...(repairs.api ?? (state.api as ApiConfig)),
+                provider: 'minimax',
+              };
+            }
           }
           // Migration for Debug Mode: older payloads predate the
           // `debugMode` field. Default to off so the toolbar stays
@@ -744,9 +745,6 @@ export const useStore = create<StoreState>()(
           }
           if (typeof state.persistApiKey !== 'boolean') {
             repairs.persistApiKey = true;
-          }
-          if (typeof state.sendSelectionOnly !== 'boolean') {
-            repairs.sendSelectionOnly = false;
           }
           // Older payloads predate parked conversations. Default to
           // `{}` so History never has to special-case `undefined`.

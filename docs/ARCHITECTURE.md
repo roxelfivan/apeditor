@@ -103,7 +103,7 @@ Key files:
 | File | LoC | Purpose |
 |---|---|---|
 | [`Editor.tsx`](components/Editor.tsx) | 1801 | The core editor: textarea + preview + comment composer + suggestion panel + comment tray. Mixes too many concerns — see REFACTORING.md. |
-| [`ChatPanel.tsx`](components/ChatPanel.tsx) | 1287 | AI chat + keyless fallback (Google AI Mode) + proposed-edit cards + Apply-All + rejection staging. Largest "feature" component. |
+| [`ChatPanel.tsx`](components/ChatPanel.tsx) | 1287 | AI chat + Local Gemma path + proposed-edit cards + Apply-All + rejection staging. Largest "feature" component. |
 | [`SettingsModal.tsx`](components/SettingsModal.tsx) | 822 | API provider, key, model, system message, rationale rules, font sizes. Resizable from 8 edges. |
 | [`CommentPopover.tsx`](components/CommentPopover.tsx) | 883 | Read/edit/delete one comment. Shows diffs of applied proposed edits. Resizable. |
 | [`ProposedEditCard.tsx`](components/ProposedEditCard.tsx) | — | One AI-proposed edit: original ↔ replacement diff, Apply (Exact → Best Effort) / Reject / Highlight Apply. Resizable from 8 edges. |
@@ -162,7 +162,7 @@ Key files:
 | [`comments.ts`](utils/comments.ts) | 566 | Pure: `reanchorComment`, `reanchorAll`, `formatCommentBatch`, `getSelectionRect`, `clampToContainer`, `clampCommentBody`. Zero React. |
 | [`proposedEdit.ts`](utils/proposedEdit.ts) | 521 | Pure: `parseProposedEdits`, `findEditAnchor` (6 fallback strategies), `applyEdit`, `applyAllEdits`, `applyEditAtCaret`, `formatRejectionBatch`, `cleanCommentForPrompt`. |
 | [`ocr.ts`](utils/ocr.ts) | 323 | Browser-side OCR via PaddleOCR. Dynamic-imported. |
-| [`googleAiMode.ts`](utils/googleAiMode.ts) | 174 | Build a Google AI Mode deep-link URL from a chat payload. |
+| [`localGemma.ts`](api/localGemma.ts) | — | In-browser Local Gemma (LiteRT-LM / WebGPU) load, cache, and stream. |
 | [`ocrMarkdown.ts`](utils/ocrMarkdown.ts) | 97 | Turn raw OCR text into reader-friendly Markdown via a small chat-completion call. |
 | [`pdf.ts`](utils/pdf.ts) | 91 | Thin pdfjs-dist wrapper: text extraction + canvas rasterization. |
 | [`diff.ts`](utils/diff.ts) | 77 | `lineDiff` + `splitDiff` for the revision history + ProposedEditCard previews. |
@@ -196,7 +196,7 @@ This is the only state container. Single source of truth for everything except: 
 | `viewMode` | — | yes | `'write' \| 'preview' \| 'split' \| 'graph'` |
 | `editorFontSize`, `uiFontSize` | — | yes | 10–24px and 12–20px, both clamped |
 | `chatOpen`, `sidebarCollapsed`, `chatCollapsed`, `topbarCollapsed` | — | yes | Two flags for chat (intentional — see `useStore.ts:140-160` comment) |
-| `includeSelection`, `sendSelectionOnly`, `persistApiKey`, `debugMode` | — | yes | Toggles |
+| `includeSelection`, `persistApiKey`, `debugMode` | — | yes | Toggles |
 | `theme` | — | yes | `'light' \| 'dark'` |
 | `api` | — | yes | `ApiConfig` — provider, key, endpoint, model, system message, rationale override |
 | `layout` | — | yes | `sidebarWidth`, `chatWidth`, `editorSplitPct`, `splitLeftMode`, `previewSizes` map |

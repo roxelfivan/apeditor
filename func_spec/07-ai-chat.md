@@ -1,6 +1,6 @@
 # AI chat & prompts
 
-> The only network layer in ApEditor. This chapter covers the transport, the three providers, the exact ordered prompt contract, secret redaction, and the keyless Google AI Mode path.
+> The chat / AI layer in ApEditor. This chapter covers keyed SSE transport, Local Model (LiteRT-LM / WebGPU), the ordered prompt contract, secret redaction, and Chat **+** attachments.
 
 ---
 
@@ -73,11 +73,11 @@ An unparseable URL throws `'API endpoint must be an absolute URL (e.g. https://a
 |---|---|---|---|---|
 | `minimax` | Minimax | `https://api.minimax.io/v1` | `MiniMax-M3`, `MiniMax-M3-fast`, `MiniMax-M2.7`, `MiniMax-M2.7-highspeed` | `MiniMax-M2.7` |
 | `openai` | OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini`, `gpt-4o`, `gpt-4-turbo`, `o1-mini`, `o1`, `gpt-3.5-turbo` | `gpt-4o-mini` |
-| `google-ai-mode` | Google AI Mode (no key) | `https://www.google.com/search?udm=50` | *(none)* | `google-ai-mode` *(dummy)* |
+| `local-gemma` | Local Model (require around 2gb disk space) | Hugging Face model page (display only) | *(none)* | `gemma-4-E2B-it-web` |
 
 ```ts
 export function requiresApiKey(id: ApiProvider | undefined | null): boolean {
-  return id !== 'google-ai-mode';
+  return id !== 'local-gemma';
 }
 
 export function getProvider(id): ProviderPreset {
@@ -86,9 +86,11 @@ export function getProvider(id): ProviderPreset {
 }
 ```
 
-`requiresApiKey` is the **single source of truth** for key gating. It is consulted by first-run onboarding, the Predict button, the Settings API-key field, and `ChatPanel`'s keyless branch. Never re-derive "does this provider need a key" anywhere else.
+`requiresApiKey` is the **single source of truth** for key gating. It is consulted by first-run onboarding, the Predict button, the Settings API-key field, and `ChatPanel`'s Local Model branch. Never re-derive "does this provider need a key" anywhere else.
 
-> **The request layer does not branch on `provider`** for `minimax` and `openai` — both speak the same OpenAI Chat Completions wire format, so the provider id is a UI/defaults concern. Only `google-ai-mode` takes a different runtime path.
+First-run default is `local-gemma` (override with `VITE_DEFAULT_PROVIDER=minimax|openai`). Persisted `google-ai-mode` migrates to `local-gemma` on rehydrate.
+
+> **The request layer does not branch on `provider`** for `minimax` and `openai` — both speak the same OpenAI Chat Completions wire format. Only `local-gemma` takes a different runtime path (`streamLocalGemma` in [`localGemma.ts`](../src/api/localGemma.ts)).
 
 ## 4. The request-message contract
 
@@ -98,20 +100,22 @@ export function getProvider(id): ProviderPreset {
 buildRequestMessages(
   history, systemMessage, currentDocument?, rationaleRulesOverride?,
   referencedDocuments?, documentLookup?, mentionsByCommentId?,
-  enableCacheControl = false, sendSelectionOnly = false,
+  enableCacheControl = false, proposedEditPolicy = 'eager',
 )
 ```
+
+`proposedEditPolicy`: `'eager'` (Minimax/OpenAI — always remind fences) vs `'on-demand'` (Local Gemma — prose by default; fences only when the user asks for edits or on comment Send to AI).
 
 ### 4.1 Ordered output
 
 | Order | `id` | Emitted when | Content |
 |---:|---|---|---|
-| 1 | `sys` | Always (unless the effective system message is empty) | `systemMessage.trim() \|\| DEFAULT_SYSTEM_MESSAGE` |
-| 2 | `sys-current-doc` | `currentDocument.content.trim()` is truthy | The outline, or the selection-only block |
-| 3 | `sys-proposed-edit-rules` | Always | Fence schema (always) + rationale rules |
+| 1 | `sys` | Always (unless the effective system message is empty) | Built-in or override; Local Gemma may use a shorter on-demand contract |
+| 2 | `sys-current-doc` | Keyed path + document content | Compact outline (`buildDocOutline`) |
+| 3 | `sys-proposed-edit-rules` | Always (shape depends on policy) | Fence schema + rationale rules (eager) or short Local Gemma rationale (on-demand) |
 | 4 | `${lastUser.id}-comments-xref` | Comment-batch turn **and** `mentionsByCommentId` has ≥2 entries with refs | The `[comment → referenced docs]` map |
 | 5 | `sys-referenced-doc-1..N` | Per ordered mention | One per reference, deduped, budgeted |
-| 6 | *(history)* | Per non-system message | The message, plus `${m.id}-sel` when it carried a selection |
+| 6 | *(history)* | Per non-system message | The message, plus `${m.id}-sel` when it carried a selection; Local Gemma may fold a `<<<DOCUMENT>>>` envelope into the last user turn |
 | 7 | `${lastUser.id}-comments-batch` | Comment-batch turn | Comment-batch instructions |
 
 All system blocks get `createdAt: 0` — they are not ordered by creation time.
@@ -149,22 +153,17 @@ Output:
 
 **This outline replaces the full document.** That single change cut comment-batch prompts by roughly 70% versus v0.4.0.
 
-### 4.4 `sys-current-doc` — selection-only
+### 4.4 Local Gemma document envelope
 
-When `sendSelectionOnly && lastUserSelection && !isCommentBatch`:
+When `proposedEditPolicy === 'on-demand'`, the open document is **not** sent as `sys-current-doc` outline. Instead `packLocalGemmaDocument` attaches a capped full body on the user turn:
 
 ```
-Open document "<title>". This turn sends only the highlighted selection as working
-text — the rest of the document was not included.
-
------ BEGIN EDITOR SELECTION -----
-<selection>
------ END EDITOR SELECTION -----
+<<<DOCUMENT title="…">>
+<body, truncated on a word boundary if over LOCAL_GEMMA_DOC_CHARS_CAP>
+<<<END DOCUMENT>>>
 ```
 
-The duplicate `${m.id}-sel` history note is suppressed for that turn. A comment batch **always** uses the outline, even with selection-only toggled on.
-
-`ChatPanel` refuses before the builder runs: toggling selection-only without a highlight raises `'Highlight text in the editor to send selection only.'`
+Above the cap, the builder falls back to the outline. Include-selection still adds a `BEGIN/END EDITOR SELECTION` note on the history message when toggled.
 
 ### 4.5 `sys-proposed-edit-rules` — the fence schema
 
@@ -293,14 +292,13 @@ const REDACTED = '[redacted]';
 
 1. Guard `currentDocumentId`, `!streaming`, `!ocrBusy`, and either non-empty text or at least one ready Chat **+** attachment.
 2. `parseMentions(input)` strips sentinels → the plain text is the user message body.
-3. `selectionOnly = sendSelectionOnly && Boolean(selection.trim())`. Toggle with no highlight → error.
-4. **Auto-snapshot:** `saveRevision(documentId, 'Before AI send')`.
-5. Reset local state; build `userMsg` with `selection` when `includeSelection || selectionOnly`, `selectionOnly: true` only in the latter case, and optional `attachments` (name / mime / raw extract).
-6. `appendMessage` stores the typed prose. The request clone uses `withOutboundAttachmentPrompt` so the model sees a single format-then-answer body (`BEGIN ATTACHED FILE` + `BEGIN USER REQUEST`) when files are present. No pre-send `formatOcrAsMarkdown()` call.
-7. **Keyless branch** (§7) or **keyed branch**.
-8. Keyed: append an empty `assistantMsg`, dispatch `mvp:chat-streaming { streaming: true }`, create an `AbortController`, build and redact the request, stream, and on each delta call `updateLastAssistant(documentId, accumulator)`.
-9. Errors: `AbortError` is silent; `ApiError` sets its message; anything else sets `err.message || 'Unknown error'`.
-10. `finally`: `setStreaming(false)`, dispatch `mvp:chat-streaming { streaming: false }`, clear `abortRef`.
+3. **Auto-snapshot:** `saveRevision(documentId, 'Before AI send')`.
+4. Reset local state; build `userMsg` with `selection` when `includeSelection`, and optional `attachments` (name / mime / raw extract).
+5. `appendMessage` stores the typed prose. The request clone uses `withOutboundAttachmentPrompt` so the model sees a single format-then-answer body (`BEGIN ATTACHED FILE` + `BEGIN USER REQUEST`) when files are present. No pre-send `formatOcrAsMarkdown()` call.
+6. **Local Model branch** (§7) or **keyed SSE branch**.
+7. Both paths: append an empty `assistantMsg`, dispatch `mvp:chat-streaming { streaming: true }`, create an `AbortController`, build and redact the request, stream deltas into `updateLastAssistant`.
+8. Errors: `AbortError` is silent; `ApiError` sets its message; anything else sets `err.message || 'Unknown error'`.
+9. `finally`: `setStreaming(false)`, dispatch `mvp:chat-streaming { streaming: false }`, clear `abortRef`.
 
 > Auto-snapshots happen on **chat send** and on **Apply All**. Individual card Apply does **not** snapshot — use the toolbar floppy disk or the history modal if you want a point-in-time restore before a single edit.
 
@@ -308,52 +306,27 @@ const REDACTED = '[redacted]';
 
 The streaming tail without the input-handling. Used by the rejection-commit path, which needs a follow-up turn that does not touch the chat textarea.
 
-## 7. Google AI Mode (keyless)
+## 7. Local Model (`local-gemma`)
 
-When `!requiresApiKey(api.provider)` the send path does not stream at all.
+When `!requiresApiKey(api.provider)` the send path streams via LiteRT-LM instead of SSE:
 
-1. Build history locally, using the outbound clone when the turn has Chat **+** attachments.
-2. `buildGoogleAiModeUrl(history, api.systemMessage, docSnap, mentions, documentLookup)`.
-3. Append an **empty placeholder assistant message**.
-4. Set `lastAiModeUrl`, `awaitingPaste = assistantMsg.id`, `pasteDraft = ''`.
-5. `window.open(url, '_blank', 'noopener,noreferrer')`.
+1. Ensure the model is loaded (`ensureLocalGemmaReady` — Cache API, or prior disk load).
+2. `buildRequestMessages(..., proposedEditPolicy: 'on-demand')`.
+3. `splitMessagesForLocalGemma` — system preface + a single user turn (LiteRT history contract).
+4. `streamLocalGemma` yields text chunks; `ChatPanel` mirrors the keyed assistant accumulator / AbortController lifecycle.
+5. Fences in the reply still go through `parseProposedEdits` (on-demand: usually prose unless the user asked for edits or used Comment **Send to AI**).
 
-The UI shows a paste card above the input with **Re-open AI Mode tab** and **Cancel**, and a numbered hint: (1) AI Mode opened in a new tab with your prompt, (2) copy the answer out, (3) paste it below — ⌘/Ctrl+Enter to commit.
-
-`submitPasteAnswer` calls `updateLastAssistant(currentDocumentId, text)`. The pasted text then runs through the **normal `parseProposedEdits` pipeline**, so fences in an AI Mode answer become track-changes cards exactly like a streamed reply.
-
-### `buildGoogleAiModeUrl` — the URL is the payload
-
-| Constant | Value |
-|---|---|
-| `GOOGLE_AI_MODE_URL` | `https://www.google.com/search?udm=50` |
-| `MAX_URL_LENGTH` | `6000` |
-| `MAX_CURRENT_DOC_PREVIEW_CHARS` | `1500` |
-| Referenced-doc budget | `2000` (tighter than the OpenAI path's `8000` — the URL ceiling is hard here) |
-
-Assembly order:
-
-1. Selection-only block, or `[Context — document "<title>"]` + truncated preview, then a `[Context — editor selection]` block if a selection exists.
-2. Per referenced doc: `[Context — referenced document "<title>"]` … `[End context]`, reusing `buildReferencedDocMessage` so the outline-vs-verbatim and budget downgrade match the OpenAI path.
-3. `[System instructions]` … `[End]`.
-4. Every non-system message as `User: …` / `Assistant: …`, skipped when empty.
-5. Strip a trailing `Assistant:` so AI Mode does not try to complete an assistant half-sentence.
-6. Empty → `(empty prompt)`.
-7. Over `6000` → truncate and append `\n\n[…prompt truncated to fit URL length limit…]`.
-8. `url.searchParams.set('q', prompt)`.
+Settings UI (`LocalGemmaControls`): download from Hugging Face into Cache API `apeditor-local-gemma-v1`, **Load from disk**, **Save to Disk** (File System Access or download fallback), **Last saved** filename + time, **Clear cached model**. Tips every 5% from `localGemmaTips.ts`. Predict and OCR→Markdown rewrite remain keyed-only.
 
 ## 8. Chat input context controls
 
-Two checkboxes above the input, plus a paste-selection shortcut.
-
 | Control | Store field | Effect |
 |---|---|---|
-| **include selection** | `includeSelection` (default `true`) | Attaches the highlight on top of the document outline |
-| **selection only** | `sendSelectionOnly` (default `false`) | Omits the outline entirely; sends only the `BEGIN/END EDITOR SELECTION` block. Disabled with no highlight. Forces `includeSelection = true`. |
+| **include selection** | `includeSelection` (default `true`) | Attaches the highlight on top of document context (outline or Local Gemma envelope) |
 | **paste selection ({count})** | — | Drops the current selection text straight into the input (no sentinel) |
 | **+** (composer) | local `pendingAttachments` | Hidden file input, `accept={IMPORT_FILE_ACCEPT}` (`image/*,application/pdf`). In-browser OCR via `extractTextFromFiles`. Does not insert into the editor. |
 
-Setting `sendSelectionOnly` to `true` also force-sets `includeSelection = true` inside the action, because selection-only implies sending the highlight.
+**selection only** was removed in v0.6.4.
 
 ## 9. Editing or adding to the prompt contract
 

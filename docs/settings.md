@@ -8,9 +8,9 @@ Drag the edges of the window to resize it. **Cancel** discards unsaved edits; **
 
 | Option | API key | Typical use |
 | --- | --- | --- |
-| **Minimax** | Required | Default. Streaming Chat in the panel |
+| **Local Model (require around 2gb disk space)** | None | Default on first launch. In-browser Gemma via WebGPU; download once from Hugging Face |
+| **Minimax** | Required | Streaming Chat in the panel |
 | **OpenAI** | Required | Streaming Chat with OpenAI models |
-| **Google AI Mode (no key)** | None | Opens Google in a new tab; you paste the answer back |
 
 Changing provider updates the default endpoint and model list. You can still type a custom model name.
 
@@ -20,7 +20,7 @@ Paste the key from your provider. **Show** / **Hide** toggles visibility.
 
 The key is stored only in this browser’s local storage by default. Check **Forget API key when this tab closes** to keep it in session storage instead — closing the tab forgets the key; documents and chat stay. It is sent as a Bearer token to the HTTPS endpoint you set — not to an ApEditor backend. Do not leave a key on a shared computer; clear site data when you are done.
 
-For Google AI Mode the field is unused.
+For Local Gemma the field is unused — use the download / load controls instead.
 
 ## API endpoint and model
 
@@ -31,27 +31,27 @@ For Google AI Mode the field is unused.
 - Minimax: `MiniMax-M3`, `MiniMax-M3-fast`, `MiniMax-M2.7`, `MiniMax-M2.7-highspeed` (default `MiniMax-M2.7`)
 - OpenAI: `gpt-4o-mini`, `gpt-4o`, `gpt-4-turbo`, `o1-mini`, `o1`, `gpt-3.5-turbo` (default `gpt-4o-mini`)
 
-Google AI Mode does not use these fields for requests.
+Local Gemma does not use these fields for requests. Download **gemma-4-E2B-it-web** (~2 GB) from Hugging Face (cached in this browser), or **Load from disk** a `.litertlm` file. After it is cached, **Save to Disk** exports a copy you choose (or downloads to your Downloads folder). The box shows **Last saved** as the filename and time — browsers do not expose the full folder path. Clear the cached model from Settings when you want to free browser storage. While downloading, short ApEditor tips appear every 5%.
+
+## Debug Mode
+
+When **off** (default), Settings hides **System message**, **Rationale rules**, and **Temperature**. Turn **Debug Mode** on to edit those advanced prompt controls, and to show inline-completion status (`thinking` / `ready · tab` / `idle`) and request/accept counters on the editor toolbar. Click the counters to reset them. Most people can leave this off.
 
 ## System message
 
-This is the standing instruction for the assistant (voice, how it should propose edits, and so on).
+Visible only when **Debug Mode** is on. Standing instruction for the assistant (voice, how it should propose edits, and so on).
 
 Edit the box, then **Save**. **Reset** restores the built-in default. Changes apply to the **next** send; existing Chat history is unchanged.
 
 ## Rationale rules
 
-These rules shape the **rationale** on each proposed edit (what you read on the comment badge after **Apply**). The default is a long, structured style in Markdown, with numbered points and important terms **bold and underlined**.
+Visible only when **Debug Mode** is on. These rules shape the **rationale** on each proposed edit (what you read on the comment badge after **Apply**). The default is a long, structured style in Markdown, with numbered points and important terms **bold and underlined**.
 
 Leave the field as the default, customize it, or **Reset**. An empty field after save uses the built-in default.
 
 ## Temperature
 
-Default **0.7**. Lower values make replies more repeatable; higher values more varied. Drag the slider and **Save**.
-
-## Debug Mode
-
-When on, the editor toolbar shows inline-completion status (`thinking` / `ready · tab` / `idle`) and request/accept counters. Click the counters to reset them. Most people can leave this off.
+Visible only when **Debug Mode** is on. Default **0.7**. Lower values make replies more repeatable; higher values more varied. Drag the slider and **Save**.
 
 ## UI font size
 

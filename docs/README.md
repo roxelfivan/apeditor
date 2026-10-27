@@ -12,7 +12,7 @@ This guide is for people using the app. It covers every screen and everyday task
 - See [What's new](whats-new.md) for the current release
 - Keep many documents in the sidebar
 - Comment on a passage, then **Send to AI** in one batch
-- Chat with MiniMax, OpenAI, or **Google AI Mode (no key)**
+- Chat with MiniMax, OpenAI, or **Local Model (require around 2gb disk space)**
 - Review proposed edits as cards — **Apply**, **Reject**, or apply several at once
 - Save and restore **revisions**
 - Import text from photos or PDFs
@@ -21,13 +21,13 @@ This guide is for people using the app. It covers every screen and everyday task
 
 ## Start here
 
-1. [What's new](whats-new.md) — current release (Chat attachments in v0.6.3)
+1. [What's new](whats-new.md) — current release (Local Model default, Chat attachments in v0.6.4)
 2. [Getting started](getting-started.md) — first launch, connect AI, first document
 3. [Your workspace](workspace.md) — layout, theme, panels, Help
 4. [Documents](documents.md) — create, rename, switch, delete
 5. [Writing](writing.md) — editor, formatting, Predict, Graph
 6. [Comments](comments.md) — highlights, badges, Send to AI
-7. [Chat](chat.md) — messages, selection, Google AI Mode
+7. [Chat](chat.md) — messages, selection, Local Model
 8. [Proposed edits](proposed-edits.md) — Apply, Reject, Highlight Apply
 9. [Prompt library](prompt-library.md) — saved prompts
 10. [Revision history](revisions.md) — snapshots and restore

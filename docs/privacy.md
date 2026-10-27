@@ -23,9 +23,9 @@ You send data when you:
 - **Send** a Chat message, **Send to AI** comments, or send rejection feedback — to the **Minimax or OpenAI endpoint** you configured (including any `@`-referenced documents attached to that turn, and any photo/PDF text attached with Chat **+**)
 - **Import** a photo or PDF — recognition is local; the extracted text is then sent to that same endpoint to format as Markdown
 - **Chat +** — recognition is local, same as Import; only the extracted text (plus your typed request) is sent on Send. There is no separate Markdown-rewrite call; formatting is part of that one chat prompt
-- Use **Google AI Mode** — Google’s site loads in a new tab with a prompt you chose to open there
+- Use **Local Model** — after a one-time model download from Hugging Face, chat runs entirely in the browser (WebGPU). Prompts for that provider do not leave the device
 
-ApEditor does not intermediate those requests. Your API key is sent only as `Authorization: Bearer …` to the HTTPS URL in Settings. Non-HTTPS endpoints are refused, except `http://localhost` for local development.
+ApEditor does not intermediate keyed-provider requests. Your API key is sent only as `Authorization: Bearer …` to the HTTPS URL in Settings. Non-HTTPS endpoints are refused, except `http://localhost` for local development.
 
 ## Shared and public computers
 

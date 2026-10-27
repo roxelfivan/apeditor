@@ -25,8 +25,6 @@ export interface ChatMessage {
   attachments?: ChatAttachment[];
   // Optional context included at send time (e.g. selected text from the editor).
   selection?: string;
-  /** True when this turn omitted the document outline and sent only `selection`. */
-  selectionOnly?: boolean;
   /**
    * Optional provider-specific metadata attached at request-assembly
    * time. Currently used to thread Anthropic / OpenAI prompt-
@@ -98,16 +96,15 @@ export type Theme = 'light' | 'dark';
 // the OpenAI Chat Completions wire format, so the request layer does not
 // branch on `provider` for them — it's a UI / defaults concern (which
 // endpoint, model list, and help text to show). The third option
-// (`google-ai-mode`) does NOT speak that wire format and does NOT need an
-// API key; ChatPanel branches on it to open a new browser tab instead of
-// calling the OpenAI-shaped endpoint.
-export type ApiProvider = 'minimax' | 'openai' | 'google-ai-mode';
+// (`local-gemma`) does NOT speak that wire format and does NOT need an
+// API key; ChatPanel streams via in-browser LiteRT-LM + WebGPU instead.
+export type ApiProvider = 'minimax' | 'openai' | 'local-gemma';
 
 // Union of providers that require an API key in Settings. The
-// keyless `google-ai-mode` provider is intentionally excluded so the
+// keyless `local-gemma` provider is intentionally excluded so the
 // first-run onboarding, inline-completion gating, and the Settings
 // "no key required" affordance can branch on a single source of truth.
-export type KeyedApiProvider = Exclude<ApiProvider, 'google-ai-mode'>;
+export type KeyedApiProvider = Exclude<ApiProvider, 'local-gemma'>;
 
 export interface ApiConfig {
   provider: ApiProvider;
