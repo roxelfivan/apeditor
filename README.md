@@ -14,22 +14,22 @@
 > functional specification). See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.6.4](https://img.shields.io/badge/version-0.6.4-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.4)
+[![v0.6.5](https://img.shields.io/badge/version-0.6.5-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.5)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
 
 ---
 
-## What's new in v0.6.4
+## What's new in v0.6.5
 
-> On-device **Local Model** is the default (Gemma in the browser, ~2 GB, no API key). Chat can attach photos and PDFs. Settings hides advanced prompt fields unless Debug Mode is on. Patch on top of [v0.6.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.3).
+> A **Debug Mode token counter** now sits next to both send buttons, so you can see how big the next request is — and whether the Local Model has room for a full reply — before sending. Comment batches no longer transmit the message body twice. Patch on top of [v0.6.4](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.4).
 
-1. **Local Model (require around 2gb disk space).** Replaces Google AI Mode. Download Gemma once (WebGPU), or load/save a `.litertlm` from disk. First launch selects Local Model by default.
-2. **Chat + attachments.** Same images/PDFs as Import; OCR in the browser; chips on the bubble. Does not insert into the document.
-3. **Simpler Settings.** System message, Rationale rules, and Temperature appear only with **Debug Mode**. **selection only** is removed (**include selection** remains).
+1. **Token counter (Debug Mode).** Next to **Send** in Chat and **Send to AI** in the comment tray. Measures the real packed request — document, `@` references, comment batch — not just the typed text. Rough estimate, no tokenizer dependency.
+2. **Local Model budget.** The pill shows the on-device limit (8,192 tokens total, 1,024 reserved for the reply). Amber when close, red when the prompt does not fit.
+3. **Comment batches sent once.** The comment send and rejection send paths no longer append the user message twice, which had doubled the prompt and risked the on-device KV cache.
 
-See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.4 entry and prior changelogs.
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.5 entry and prior changelogs.
 
 ---
 
@@ -705,6 +705,7 @@ per-release notes also ship on the GitHub release pages.
 
 | Version | Highlights |
 | --- | --- |
+| [v0.6.5](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.5) | **Debug token counter** next to Chat **Send** and comment **Send to AI**, with the Local Model budget. Comment batches sent once, not twice. |
 | [v0.6.4](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.4) | **Local Model default**, Chat **+** attachments, Debug-gated System/Rationale/Temperature, **selection only** removed. Replaces Google AI Mode. |
 | [v0.6.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.3) | **Chat + attachments.** Same images/PDFs as Import; one format-then-answer prompt; composer bar. |
 | [v0.6.2](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.2) | Phone overlay shell, Chat archives, Graph Filter stacking. |

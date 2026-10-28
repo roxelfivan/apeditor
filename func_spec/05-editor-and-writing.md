@@ -85,10 +85,12 @@ const showWriteTools = showWrite;
 | **Comment** | ✅ | — | ✅ | — | — |
 | Predict | ✅ | — | ✅ | — | — |
 | Debug status pill / counters | ✅\* | — | ✅\* | — | — |
+| Comment tray **Send to AI** token counter | ✅† | — | ✅† | — | — |
 | File actions | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Save revision | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 \* only when `debugMode` is on.
+† the comment tray only renders in Write panes, and the counter only renders when `debugMode` is on. See [AI chat & prompts](07-ai-chat.md#6a-debug-mode-token-counter).
 
 In full `graph` mode the text panes are replaced entirely; Format, Comment, and Predict hide because they need the textarea. In Split they appear only when the left pane is Write. File actions and Save stay.
 

@@ -237,12 +237,15 @@ npm run typecheck
 npm run test:heading-sections
 npm run test:proposed-edit
 npm run test:graph
+npm run test:send-comments-dup
+npm run test:token-estimate
+npm run test:token-counter-render
 npm run build
 ```
 
 Then:
 
-1. Bump `package.json`'s `version` — `VITE_APP_VERSION` follows automatically into the topbar, Help, and Functional Specification.
+1. Bump `package.json`'s `version` (and the matching `version` fields in `package-lock.json`) — `VITE_APP_VERSION` follows automatically into the topbar, Help, and Functional Specification.
 2. Write a `.release-notes-v<version>.md` at the repo root, following the existing pattern.
 3. Add the entry to `RELEASE_NOTES.md` and the version table in `README.md`.
 4. Update [`docs/whats-new.md`](../docs/whats-new.md) — it is a Help page and is shown to users.

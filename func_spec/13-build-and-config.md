@@ -20,8 +20,11 @@
 | `test:graph` | `node scripts/test-graph.mjs` | Wikilink parse, graph compile, layout, camera fixtures |
 | `test:chat-attachments` | `node scripts/test-chat-attachments.mjs` | Format-then-answer prompt for Chat **+** files |
 | `test:local-prompt-compact` | `node scripts/test-local-prompt-compact.mjs` | Local Model comment-batch packing: one snippet copy, keep comment bodies |
+| `test:send-comments-dup` | `node scripts/test-send-comments-dup.mjs` | Comment batch / rejection send paths must not send the user message twice |
+| `test:token-estimate` | `node scripts/test-token-estimate.mjs` | The chars/4 token heuristic and `buildRequestPreview` packing |
+| `test:token-counter-render` | `node scripts/test-token-counter-render.mjs` | `TokenCounter` markup: counts, budget tones, tooltip text |
 
-There is **no lint script and no CI configuration**. `npm run typecheck` plus the three `test:*` scripts is the full quality gate.
+There is **no lint script and no CI configuration**. `npm run typecheck` plus the `test:*` scripts is the full quality gate.
 
 ## 2. `vite.config.ts`
 

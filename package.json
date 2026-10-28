@@ -1,7 +1,7 @@
 {
   "name": "apeditor",
   "private": true,
-  "version": "0.6.4",
+  "version": "0.6.5",
   "type": "module",
   "description": "Minimal local-first AI markdown editor (MVP).",
   "scripts": {
@@ -19,7 +19,10 @@
     "test:chat-archive": "node scripts/test-chat-archive.mjs",
     "test:chat-attachments": "node scripts/test-chat-attachments.mjs",
     "test:send-comments-tdz": "node scripts/test-send-comments-tdz.mjs",
+    "test:send-comments-dup": "node scripts/test-send-comments-dup.mjs",
     "test:local-prompt-compact": "node scripts/test-local-prompt-compact.mjs",
+    "test:token-estimate": "node scripts/test-token-estimate.mjs",
+    "test:token-counter-render": "node scripts/test-token-counter-render.mjs",
     "check:docs": "node scripts/check-func-spec-links.mjs"
   },
   "dependencies": {

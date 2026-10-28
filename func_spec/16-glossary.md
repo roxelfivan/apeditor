@@ -364,6 +364,9 @@ Write-only as of v0.5.3. The `version` field exists so a future importer can det
 | **Gated state** | A UI element that is visible but disabled, with a tooltip explaining what is missing |
 | **Transient / ephemeral** | Store state that is deliberately not persisted — `editorFocus`, `proposedEditHighlights`, `commentUndoStack` |
 | **Reconcile** | Collapsing a stale stored prompt back to `undefined` so the live built-in applies |
+| **Token estimate** | The rough prompt size shown by the Debug Mode counters. ~4 characters per token for Latin text, ~1 per CJK character. Not a real tokenizer |
+| **Prompt budget** | The tokens left for the prompt once the reply's decode budget is reserved. On the Local Model: `8192 − 1024 = 7168` |
+| **KV cache** | The on-device model's shared memory for the prompt and the reply. Overflowing it truncates the reply |
 
 ## 8. Next
 

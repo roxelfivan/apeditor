@@ -12,6 +12,7 @@ Everything outbound lives in [`src/api/chat.ts`](../src/api/chat.ts), with one e
 |---|---|
 | `streamChatCompletion(messages, config, options)` | Transport. SSE reader. |
 | `buildRequestMessages(...)` | Prompt assembly. Ten parameters, all optional after the first two. |
+| `buildRequestPreview(...)` | Debug Mode wrapper: packs the request the same way and returns `{ messages, tokens }`. |
 | `resolveChatEndpoint(endpoint)` | Base URL → final URL |
 | `assertSafeChatEndpoint(endpoint)` | Security gate before a Bearer token is attached |
 | `ApiError` | The only error class the API path throws |
@@ -308,9 +309,64 @@ const REDACTED = '[redacted]';
 
 > Auto-snapshots happen on **chat send** and on **Apply All**. Individual card Apply does **not** snapshot — use the toolbar floppy disk or the history modal if you want a point-in-time restore before a single edit.
 
-### `runAssistantReplyAfterCommit(userMsg, extraMentions?)`
+### `runAssistantReplyAfterCommit(extraMentions?)`
 
 The streaming tail without the input-handling. Used by the rejection-commit path, which needs a follow-up turn that does not touch the chat textarea.
+
+The user message is **not** a parameter: the caller has already appended it to the store, so the history snapshot already contains it. Passing it in and re-adding it would send the message body to the model **twice**.
+
+### History snapshots — read BEFORE the append
+
+Every send path builds its outbound history as `[...historyFromStore, ...newMessages]`. The `historyFromStore` snapshot must be read **before** the user message is appended to the store:
+
+| Path | Snapshot taken | User message added by |
+|---|---|---|
+| `handleSend` | render closure (`messages`) | the spread |
+| `onSendComments` (comment batch) | `getState().chats[docId]` **before** `appendMessage` | the spread |
+| `runAssistantReplyAfterCommit` | `getState().chats[docId]` (already contains it) | the caller's earlier `appendMessage` |
+
+Reading the snapshot after the append puts `userMsg` in the array twice. The model then sees the whole comment batch (or rejection body) twice — doubling the prompt size, which on the Local Model path is enough to blow the 8192-token KV cache. The bug is invisible in the UI because the chat bubble renders normally.
+
+Regression test: `npm run test:send-comments-dup` parses `ChatPanel.tsx` and asserts the ordering.
+
+## 6a. Debug Mode token counter
+
+A rough estimate of what the **next** request will cost, shown only when `debugMode` is on.
+
+| Surface | Shows |
+|---|---|
+| Chat composer (next to **Send**) | estimated tokens for the next chat send, plus `sent ~N` for the last completed send |
+| Comment tray (next to **Send to AI**) | estimated tokens for the next comment batch |
+
+### How the number is produced
+
+`buildRequestPreview(...)` in [`chat.ts`](../src/api/chat.ts) calls `buildRequestMessages` with the same arguments the real send uses and returns `{ messages, tokens }`. The estimate is therefore derived from the **same packing function** as the real request — not a parallel reimplementation — so it includes the document outline / full body, the referenced-doc blocks, the comment batch, and the selection context.
+
+`estimateMessageTokens` ([`tokenEstimate.ts`](../src/utils/tokenEstimate.ts)) sums `estimateTokens(content)` plus `TOKENS_PER_MESSAGE` (4) per message.
+
+### The estimator
+
+`estimateTokens` is a heuristic, not a tokenizer — deliberately, to avoid a dependency and per-keystroke compute:
+
+- Latin text: `ceil(chars / 4)` — the same rule of thumb used by `scripts/measure-prompt.ts`.
+- CJK text: ~1 token per character (SentencePiece splits most CJK characters individually).
+- Whitespace-only text: 0.
+
+The error direction is deliberate: for English prose the heuristic sits slightly **above** the true SentencePiece count, so it can warn that a prompt is too big when it technically still fits — but it will not let a prompt silently exceed the context window.
+
+### Budget check
+
+For the Local Model the prompt and the reply share one KV cache, so a full-length reply needs the prompt to fit in `LOCAL_MAX_NUM_TOKENS - LOCAL_MAX_OUTPUT_TOKENS` (8192 − 1024 = 7168) tokens. The pill turns amber above 90 % of that and red above it. Keyed providers have no comparable local budget, so no budget check is shown for them.
+
+`LOCAL_MAX_NUM_TOKENS` and `LOCAL_MAX_OUTPUT_TOKENS` are exported from [`localGemma.ts`](../src/api/localGemma.ts) and used by the runtime itself, so the UI cannot drift from what the engine enforces.
+
+### Performance
+
+Both previews are debounced (250 ms) and skipped entirely when `debugMode` is off, because the Local Model path inlines the whole document on every pack and `doc` gets a new identity on every editor keystroke.
+
+The chat preview re-packs when the input, mentions, attachments, selection, chat history, or API settings change. The comment-tray preview re-packs when the document, the comments, the chat history, or the API settings change.
+
+Tests: `npm run test:token-estimate`, `npm run test:token-counter-render`.
 
 ## 7. Local Model (`local-gemma`)
 
@@ -319,7 +375,7 @@ When `!requiresApiKey(api.provider)` the send path streams via LiteRT-LM instead
 1. Ensure the model is loaded (`ensureLocalGemmaReady` — Cache API, or prior disk load).
 2. `buildRequestMessages(..., proposedEditPolicy: 'on-demand')`.
 3. `splitMessagesForLocalGemma` — system preface + a single user turn (LiteRT history contract).
-4. `createConversation` sets `sessionConfig.maxOutputTokens: 1024` so decode shares the 8192 KV cache with the prompt (`maxNumTokens`).
+4. `createConversation` sets `sessionConfig.maxOutputTokens: LOCAL_MAX_OUTPUT_TOKENS` (1024) so decode shares the `LOCAL_MAX_NUM_TOKENS` (8192) KV cache with the prompt. Both are exported constants so the Debug Mode token counter measures against the same numbers the runtime enforces.
 5. `streamLocalGemma` yields text chunks; `ChatPanel` mirrors the keyed assistant accumulator / AbortController lifecycle.
 6. Fences in the reply still go through `parseProposedEdits` (on-demand: usually prose unless the user asked for edits or used Comment **Send to AI**).
 

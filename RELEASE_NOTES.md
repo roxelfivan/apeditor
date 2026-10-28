@@ -1,3 +1,22 @@
+## v0.6.5 — Debug token counter, single-send comment batches
+
+Patch on top of [v0.6.4](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.4). A Debug Mode token counter sits next to both send buttons so you can see how big the next request is — and whether the Local Model has room for a full reply — before sending. Comment batches and rejection sends no longer transmit the message body twice.
+
+### Added
+
+- **Debug token counter.** Next to **Send** in Chat and **Send to AI** in the comment tray, when **Debug Mode** is on. Measures the **real packed request** (document, `@` references, comment batch), not just the typed text. Rough estimate at about 4 characters per token — no tokenizer dependency.
+- **Local Model budget.** The pill shows the on-device limit: 8,192 tokens total, 1,024 reserved for the reply, so about 7,168 for the prompt. Amber when close, red when it does not fit, with a tooltip explaining that the reply will be cut short.
+
+### Fixed
+
+- **Comment batches sent twice.** The comment **Send to AI** path and the staged-rejection path read the chat history after appending the user message, then appended it again — so the model saw the whole batch twice, doubling the prompt and risking the 8192-token KV cache. Both now snapshot correctly.
+
+### Internal
+
+- See [`.release-notes-v0.6.5.md`](.release-notes-v0.6.5.md) for the full surface list.
+- `package.json` version bumped to `0.6.5`.
+- `npm run test:token-estimate`, `npm run test:token-counter-render`, `npm run test:send-comments-dup`.
+
 ## v0.6.4 — Local Model (Gemma), Chat attachments
 
 Patch on top of [v0.6.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.3). Keyless Google AI Mode is replaced by in-browser **Local Model** (Gemma / LiteRT-LM / WebGPU); first launch defaults to that provider; Settings hides advanced prompt fields unless Debug Mode is on. Chat **+** attachments from v0.6.3 remain.

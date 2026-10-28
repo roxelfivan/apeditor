@@ -73,6 +73,7 @@ ApEditor is built for a single, narrow audience:
 | **include selection** context mode | [`ChatPanel.tsx`](../src/components/ChatPanel.tsx) |
 | Outbound secret redaction | [`utils/secrets.ts`](../src/utils/secrets.ts) |
 | Customizable System Message + Rationale Rules (Debug Mode) | [`api/chat.ts`](../src/api/chat.ts), [`SettingsModal.tsx`](../src/components/SettingsModal.tsx) |
+| Prompt token counter for Chat + Comment sends (Debug Mode) | [`utils/tokenEstimate.ts`](../src/utils/tokenEstimate.ts), [`TokenCounter.tsx`](../src/components/TokenCounter.tsx) |
 | Proposed-edit cards with Apply / Reject / Highlight Apply | [`ProposedEditCard.tsx`](../src/components/ProposedEditCard.tsx), [`utils/proposedEdit.ts`](../src/utils/proposedEdit.ts) |
 | Per-edit rationale stored on the comment round | `recordAppliedEdit` in [`store/actions.ts`](../src/store/actions.ts) |
 | Reject-with-feedback batching | `formatRejectionBatch` in [`utils/proposedEdit.ts`](../src/utils/proposedEdit.ts) |

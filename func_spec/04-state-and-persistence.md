@@ -92,7 +92,7 @@ All three are `Record<documentId, …>`. They are deleted with the document.
 | `includeSelection` | `boolean` | `true` | ✅ | Attaches the highlight on top of the outline |
 | `sendSelectionOnly` | `boolean` | `false` | ✅ | Setting it force-sets `includeSelection = true` |
 | `persistApiKey` | `boolean` | `true` | ✅ | `false` moves the key to `sessionStorage` |
-| `debugMode` | `boolean` | `false` | ✅ | Shows the Predict status pill and counters |
+| `debugMode` | `boolean` | `false` | ✅ | Shows the Predict status pill and counters, the editor toolbar diagnostics, and the token counters next to **Send** / **Send to AI** |
 
 ### 3.7 Settings
 

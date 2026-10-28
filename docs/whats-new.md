@@ -2,6 +2,20 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## v0.6.5 — Debug token counter
+
+**See how big the next request is before you send it — and whether the Local Model has room for a full reply.**
+
+- **Token counter.** Turn on **Debug Mode** in Settings and a count appears next to **Send** in Chat and next to **Send to AI** in the comment tray. It measures the whole request — your document, any `@`-referenced files, the comment batch — not just what you typed. The Chat panel also shows `sent ~N` for the previous send.
+- **Budget warning.** On the Local Model the pill shows the limit: about 7,168 tokens for the prompt (8,192 total, 1,024 kept back for the reply). It turns amber when you are close and red when the prompt will not fit, which is when replies get cut off mid-sentence.
+- **Comment batches are sent once.** Comment **Send to AI** and staged rejections were transmitting the message body twice, which doubled the prompt and could exhaust the on-device memory. Fixed.
+
+The count is a rough estimate (about 4 characters per token), so treat it as a guide. Minimax and OpenAI have no local limit, so they show the size without a budget check.
+
+No migration.
+
+---
+
 ## v0.6.4 — Local Model (Gemma), Chat attachments
 
 **Run AI on your device by default, attach files in Chat, and simplify Settings.**

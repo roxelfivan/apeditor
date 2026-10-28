@@ -140,6 +140,7 @@ Keyed providers use this HTTP path. Local Model (`local-gemma`) streams via [`lo
 | [`mentions/MentionInput.tsx`](../src/components/mentions/MentionInput.tsx) | 1,042 | `@`-aware textarea: caption injection, ZWSP anchors, chip overlay, serialize/hydrate. |
 | [`mentions/SectionPicker.tsx`](../src/components/mentions/SectionPicker.tsx) | 218 | Second-stage picker: heading-grouped checkboxes with cascade. |
 | [`CommentTray.tsx`](../src/components/CommentTray.tsx) | 204 | **Send to AI** bar + the stale-comment Re-link / Dismiss list. |
+| [`TokenCounter.tsx`](../src/components/TokenCounter.tsx) | — | Debug Mode pill: estimated prompt tokens, with an over-budget warning against the Local Model's limit. |
 | [`Sidebar.tsx`](../src/components/Sidebar.tsx) | 193 | Document list, inline rename, delete, width resize, narrow drawer. |
 | [`HelpDocs.tsx`](../src/components/HelpDocs.tsx) | 185 | In-app viewer for `docs/*.md`. |
 | [`mentions/DocPicker.tsx`](../src/components/mentions/DocPicker.tsx) | 135 | First-stage picker: filtered document list. |
@@ -151,12 +152,13 @@ Keyed providers use this HTTP path. Local Model (`local-gemma`) streams via [`lo
 | [`CommentMargin.tsx`](../src/components/CommentMargin.tsx) | 112 | Numbered badges in the right margin column. |
 | [`EdgeAnchor.tsx`](../src/components/EdgeAnchor.tsx) | 70 | Edge-pinned chevron that reveals a collapsed panel. |
 
-### `src/utils/` — 19 files
+### `src/utils/` — 20 files
 
 | File | Lines | Responsibility |
 |---|---:|---|
 | [`proposedEdit.ts`](../src/utils/proposedEdit.ts) | 1,292 | Fence parsing, `findEditAnchor` (6 strategies), the Best Effort matcher, `applyEdit`, `applyAllEdits`, `applyEditAtCaret`, `formatRejectionBatch`. Zero React. |
 | [`comments.ts`](../src/utils/comments.ts) | 634 | `reanchorComment` / `reanchorAll`, `reattachCommentToRange`, `formatCommentBatch`, `getSelectionRect`, `clampToContainer`, `clampCommentBody`. Zero React. |
+| [`tokenEstimate.ts`](../src/utils/tokenEstimate.ts) | — | The chars/4 token heuristic behind the Debug Mode counters. `estimateTokens`, `estimateMessageTokens`, `formatTokenCount`. Zero React, zero deps. |
 | [`graph/layoutWorkspaceGraph.ts`](../src/utils/graph/layoutWorkspaceGraph.ts) | 501 | Atomic radial layout, cluster placement, relaxation, label placement. |
 | [`ocr.ts`](../src/utils/ocr.ts) | 400 | Lazy PaddleOCR singleton, MIME dispatch, size caps, strict cleanup. |
 | [`mentions/parseMentions.ts`](../src/utils/mentions/parseMentions.ts) | 389 | The **only** place that knows the mention sentinel format. `parseRawWithMentions`, `serializeRawWithMentions`, `summarizeMention`, `plainTextDiff`. |

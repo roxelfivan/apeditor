@@ -256,7 +256,7 @@ Rejecting is only half the loop. Reject-with-feedback stages a reason for a foll
    - `appendMessage` the batch.
    - Mark each `editId` as `committed` so the cards hide without a flicker.
    - Clear the bucket.
-   - `runAssistantReplyAfterCommit(userMsg, mergedMentions)` for a follow-up reply.
+   - `runAssistantReplyAfterCommit(mergedMentions)` for a follow-up reply. The user message is already in the store, so it is not passed in again — re-adding it would send the rejection body twice.
 
 `formatRejectionBatch` uses a different header for one item versus several:
 

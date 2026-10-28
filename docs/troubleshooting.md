@@ -58,13 +58,31 @@ If you still have a **revision** in the same profile, open [Revision history](re
 - If download fails under a corporate proxy, use Load from disk after fetching the file outside the browser
 - **Clear cached model** in Settings, then download again if the cache looks corrupt
 
+## Local Model reply is cut short
+
+The reply stops mid-sentence because the prompt used up the model's memory. The on-device model has a total budget of **8,192 tokens** for the prompt *and* the reply, and reserves **1,024** of them for the reply. That leaves about **7,168 tokens** for what you send.
+
+Turn on **Debug Mode** in Settings and look at the token counter next to **Send** (Chat) or **Send to AI** (comments):
+
+- **Green / grey** — the prompt fits, a full reply should come through.
+- **Amber** — close to the limit. The reply may be trimmed.
+- **Red** — the prompt does not fit. The reply will be cut off.
+
+To shrink the prompt:
+
+- Send fewer comments at once, or send them in smaller batches.
+- Shorten the document, or work on a section rather than the whole file.
+- Remove `@`-references you do not need — each one adds its own text.
+
+The counter is a rough estimate (about 4 characters per token), so treat it as a guide rather than an exact number. On Minimax and OpenAI there is no local memory limit, so the counter shows the size without a budget check.
+
 ## Undo typed the wrong thing
 
 `Ctrl+Z` / `⌘Z` in the editor undoes the last **comment** operation if one is on the stack; otherwise the browser undoes typing. Use **Revision history** to roll back a large AI apply.
 
 ## Debug numbers on the toolbar
 
-**Debug Mode** is on in Settings. Turn it off and **Save** if you do not need completion counters.
+**Debug Mode** is on in Settings. Turn it off and **Save** if you do not need completion counters or the token counters next to **Send** / **Send to AI**.
 
 ## `@` picker shows No matching documents
 

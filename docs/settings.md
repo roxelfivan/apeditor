@@ -37,6 +37,13 @@ Local Gemma does not use these fields for requests. Download **gemma-4-E2B-it-we
 
 When **off** (default), Settings hides **System message**, **Rationale rules**, and **Temperature**. Turn **Debug Mode** on to edit those advanced prompt controls, and to show inline-completion status (`thinking` / `ready · tab` / `idle`) and request/accept counters on the editor toolbar. Click the counters to reset them. Most people can leave this off.
 
+Debug Mode also shows a **token counter** next to both send buttons:
+
+- **Chat** — next to **Send**, the estimated size of the message you are about to send, plus `sent ~N` for the previous send.
+- **Comments** — next to **Send to AI**, the estimated size of the comment batch.
+
+The number is a rough estimate (about 4 characters per token), not an exact count. On the Local Model the pill turns amber when the prompt is close to the budget and red when it does not fit — a red pill means the reply will be cut short. See [Troubleshooting](troubleshooting.md#local-model-reply-is-cut-short).
+
 ## System message
 
 Visible only when **Debug Mode** is on. Standing instruction for the assistant (voice, how it should propose edits, and so on).
