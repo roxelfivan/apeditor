@@ -279,7 +279,8 @@ export function buildRequestMessages(
   //      verbatim text of the paragraphs that contain commented
   //      snippets. This keeps the prompt O(outline + referenced
   //      paragraphs) instead of O(full document) on every turn.
-  //      Local Gemma instead gets a full-body envelope (capped).
+  //      Local Gemma instead gets a full-body envelope; comment
+  //      batches are compacted so excerpts are not sent twice.
   //   2. `sys-proposed-edit-rules` — the proposed-edit fence schema
   //      and rules. Lifted out of the per-turn doc block so it
   //      reads as a stable contract, and so the user can keep their
@@ -289,13 +290,15 @@ export function buildRequestMessages(
   const lastUser = [...history].reverse().find((m) => m.role === 'user');
   const isCommentBatch =
     !!lastUser && looksLikeCommentBatch(lastUser.content);
+  const isLocalPack = proposedEditPolicy === 'on-demand';
 
   if (currentDocument && currentDocument.content.trim()) {
     const title = currentDocument.title?.trim() || 'Untitled';
-    if (proposedEditPolicy === 'on-demand') {
-      // Local Gemma: full body (capped) in a clean envelope. The
-      // LiteRT adapter lifts this onto the user turn so the small
-      // model cannot miss it.
+    if (isLocalPack) {
+      // Local Gemma: full body in a clean envelope (no outline
+      // fallback — truncating the open document would drop user
+      // text). The LiteRT adapter lifts this onto the user turn so
+      // the small model cannot miss it.
       push({
         id: 'sys-current-doc',
         role: 'system',
@@ -351,18 +354,18 @@ export function buildRequestMessages(
       if (seen.has(key)) continue;
       const doc = documentLookup?.(token.documentId);
       if (!doc || !doc.content.trim()) continue;
-      // Self-reference suppression: skipping whole-doc mentions of
-      // the doc already rendered in `sys-current-doc` saves the
-      // duplicate outline (~60 chars × paragraph-count chars).
-      // Section-scoped mentions are kept — their picked paragraphs
-      // are different from the outline and useful.
-      if (
-        currentDocument?.id &&
-        token.documentId === currentDocument.id &&
-        (token.kind === 'doc' || token.paragraphIndexes.length === 0)
-      ) {
-        seen.set(key, token);
-        continue;
+      // Self-reference suppression: skipping mentions of the doc
+      // already rendered in `sys-current-doc`. Keyed path keeps
+      // section-scoped mentions (verbatim paragraphs vs outline).
+      // Local Model already inlines the full body, so section
+      // mentions of the current doc are also dropped.
+      if (currentDocument?.id && token.documentId === currentDocument.id) {
+        const wholeDoc =
+          token.kind === 'doc' || token.paragraphIndexes.length === 0;
+        if (wholeDoc || isLocalPack) {
+          seen.set(key, token);
+          continue;
+        }
       }
       seen.set(key, token);
       ordered.push({ token, doc });
@@ -415,43 +418,34 @@ export function buildRequestMessages(
   }
   for (const m of history) {
     if (m.role === 'system') continue;
-    out.push(m);
+    const packedUser =
+      isLocalPack && m.role === 'user' && looksLikeCommentBatch(m.content)
+        ? { ...m, content: compactCommentBatchForLocal(m.content) }
+        : m;
+    out.push(packedUser);
     if (m.role === 'user' && m.selection && m.selection.trim()) {
       out.push({
         id: `${m.id}-sel`,
         role: 'system',
-        content:
-          `Highlighted selection from the document:\n\n` +
-          formatSelectionBlock(m.selection),
+        content: formatSelectionContext(
+          m.selection,
+          isLocalPack ? currentDocument?.content : undefined
+        ),
         createdAt: 0,
       });
     }
   }
 
   // Comment-batch instruction: how to address each `[id]` block.
-  // Keep labels in sync with `formatCommentBatch`.
+  // Keep eager labels in sync with `formatCommentBatch`. Local Model
+  // omits snippet / Before / After (the envelope already has the body).
   if (lastUser && isCommentBatch) {
     out.push({
       id: `${lastUser.id}-comments-batch`,
       role: 'system',
-      content:
-        `Latest user message is an inline-comment batch. Each block:\n` +
-        `  [id] (paragraph N/M, doc offset S–E)\n` +
-        `  "<verbatim snippet>"\n` +
-        `  Before: """…"""\n` +
-        `  After: """…"""\n` +
-        `  Comment: <text>\n\n` +
-        `Address every [id]: emit a proposed-edit fence, or briefly ` +
-        `say why no edit is possible.\n` +
-        `Consistency:\n` +
-        `- Replacements must match the document's voice, terms, ` +
-        `names, facts, numbers, style. Use Before/After and the ` +
-        `doc outline.\n` +
-        `- If one fix implies another change elsewhere, emit an ` +
-        `extra proposed-edit; do not leave inconsistencies.\n` +
-        `- On conflicting [id]s, prefer document coherence; note ` +
-        `the conflict briefly.\n` +
-        `- Tie replies to [id]s. Do not quote Before/After back.`,
+      content: isLocalPack
+        ? COMMENT_BATCH_INSTRUCTION_LOCAL
+        : COMMENT_BATCH_INSTRUCTION_EAGER,
       createdAt: 0,
     });
   }
@@ -466,6 +460,44 @@ export function formatSelectionBlock(selection: string): string {
     `${selection.trimEnd()}\n` +
     `----- END EDITOR SELECTION -----`
   );
+}
+
+/**
+ * Local Model: if the highlight is a unique substring of the open
+ * document, point at offsets instead of pasting the same text again.
+ * Ambiguous or missing matches keep the verbatim selection block.
+ */
+export function formatSelectionContext(
+  selection: string,
+  currentDocContent?: string
+): string {
+  const trimmed = selection.trimEnd();
+  if (currentDocContent && trimmed) {
+    const start = uniqueSubstringOffset(currentDocContent, trimmed);
+    if (start !== null) {
+      return (
+        `Highlighted selection from the document: unique match at ` +
+        `offset ${start}–${start + trimmed.length}. Copy that span ` +
+        `from <<<DOCUMENT>>> (do not ask the user to paste it).`
+      );
+    }
+  }
+  return (
+    `Highlighted selection from the document:\n\n` +
+    formatSelectionBlock(selection)
+  );
+}
+
+/** First index of `needle` in `haystack`, or null if missing / not unique. */
+export function uniqueSubstringOffset(
+  haystack: string,
+  needle: string
+): number | null {
+  if (!needle) return null;
+  const first = haystack.indexOf(needle);
+  if (first < 0) return null;
+  if (haystack.indexOf(needle, first + 1) >= 0) return null;
+  return first;
 }
 
 /**
@@ -582,14 +614,84 @@ function describeMention(token: MentionToken): string {
  * `src/utils/comments.ts`. We require at least one `[id]` block
  * (the new shape is `[cN] (paragraph …)`) followed eventually by a
  * `Comment:` line. Matches `c1`, `c2`, … which is what the
- * serializer uses.
+ * serializer uses. Also matches the Local Model packed form that
+ * omits snippet / Before / After.
  */
-function looksLikeCommentBatch(content: string): boolean {
+export function looksLikeCommentBatch(content: string): boolean {
   if (!content) return false;
   // At least one `[cN] (paragraph ...)` header followed by a
   // `Comment:` line somewhere later in the block.
   return /\[c\d+\] \(paragraph\b[\s\S]*?Comment:/.test(content);
 }
+
+const COMMENT_HEADER_RE = /^\[c\d+\] \(paragraph\b/;
+const COMMENT_BODY_RE = /^Comment:/m;
+
+/**
+ * Strip duplicated document excerpts from a stored comment-batch
+ * user message for Local Model packing. Keeps `[cN]` headers and
+ * every `Comment:` body (including continuation lines). Idempotent
+ * on an already-compact batch.
+ */
+export function compactCommentBatchForLocal(content: string): string {
+  if (!looksLikeCommentBatch(content)) return content;
+  const parts = content.split(/(?=\[c\d+\] \(paragraph\b)/);
+  const out: string[] = [];
+  for (const part of parts) {
+    if (!part) continue;
+    if (!COMMENT_HEADER_RE.test(part)) {
+      const trimmed = part.trimEnd();
+      if (trimmed) out.push(trimmed);
+      continue;
+    }
+    const headerLine = part.split('\n', 1)[0] ?? part;
+    const commentMatch = part.match(COMMENT_BODY_RE);
+    if (!commentMatch || commentMatch.index === undefined) {
+      out.push(headerLine);
+      continue;
+    }
+    const commentBlock = part.slice(commentMatch.index).trimEnd();
+    out.push(`${headerLine}\n${commentBlock}`);
+  }
+  return out.join('\n\n').trimEnd() + '\n';
+}
+
+const COMMENT_BATCH_INSTRUCTION_EAGER =
+  `Latest user message is an inline-comment batch. Each block:\n` +
+  `  [id] (paragraph N/M, doc offset S–E)\n` +
+  `  "<verbatim snippet>"\n` +
+  `  Before: """…"""\n` +
+  `  After: """…"""\n` +
+  `  Comment: <text>\n\n` +
+  `Address every [id]: emit a proposed-edit fence, or briefly ` +
+  `say why no edit is possible.\n` +
+  `Consistency:\n` +
+  `- Replacements must match the document's voice, terms, ` +
+  `names, facts, numbers, style. Use Before/After and the ` +
+  `doc outline.\n` +
+  `- If one fix implies another change elsewhere, emit an ` +
+  `extra proposed-edit; do not leave inconsistencies.\n` +
+  `- On conflicting [id]s, prefer document coherence; note ` +
+  `the conflict briefly.\n` +
+  `- Tie replies to [id]s. Do not quote Before/After back.`;
+
+const COMMENT_BATCH_INSTRUCTION_LOCAL =
+  `Latest user message is an inline-comment batch. Each block:\n` +
+  `  [id] (paragraph N/M, doc offset S–E)\n` +
+  `  Comment: <text>\n\n` +
+  `The working text is already between <<<DOCUMENT>>> and ` +
+  `<<<END DOCUMENT>>>. Copy "original" byte-for-byte from that ` +
+  `body at the given offsets (not the markers).\n` +
+  `Address every [id]: emit a proposed-edit fence, or briefly ` +
+  `say why no edit is possible.\n` +
+  `Consistency:\n` +
+  `- Replacements must match the document's voice, terms, ` +
+  `names, facts, numbers, style.\n` +
+  `- If one fix implies another change elsewhere, emit an ` +
+  `extra proposed-edit; do not leave inconsistencies.\n` +
+  `- On conflicting [id]s, prefer document coherence; note ` +
+  `the conflict briefly.\n` +
+  `- Tie replies to [id]s.`;
 
 /**
  * Proposed-edit fence schema + rules. Extracted from the per-turn
@@ -888,17 +990,12 @@ function buildProposedEditRulesMessage(
 }
 
 /**
- * Cap for Local Gemma / on-demand full-document packing. Above this,
- * fall back to the compact outline so the local context window stays
- * usable.
- */
-export const LOCAL_FULL_DOC_CHARS_CAP = 6000;
-
-/**
  * Full working-document envelope for Local Gemma. Markers are
  * instructions only — `"original"` must quote the body between them,
  * never the markers themselves (the old `--- DOC ---` wrapper was
- * being copied into proposed-edit originals).
+ * being copied into proposed-edit originals). Always inlines the
+ * full body; Local packing saves tokens by not duplicating excerpts
+ * elsewhere, not by truncating the open document.
  */
 export function buildFullWorkingDocMessage(
   title: string,
@@ -910,20 +1007,11 @@ export function buildFullWorkingDocMessage(
     `"the paragraph" / "the points" / "each point" refer to it. ` +
     `Do not ask the user to paste it. Quote "original" only from ` +
     `inside the markers.\n\n`;
-  if (content.length <= LOCAL_FULL_DOC_CHARS_CAP) {
-    return (
-      header +
-      `<<<DOCUMENT>>>\n` +
-      content +
-      `\n<<<END DOCUMENT>>>`
-    );
-  }
   return (
     header +
-    `The document is ${content.length} chars — too large to inline ` +
-    `fully. Outline below (first ~60 chars per paragraph). Prefer ` +
-    `selection-only for edits on large drafts.\n\n` +
-    buildDocOutline(title, content, false)
+    `<<<DOCUMENT>>>\n` +
+    content +
+    `\n<<<END DOCUMENT>>>`
   );
 }
 

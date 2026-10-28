@@ -19,6 +19,7 @@
 | `test:proposed-edit` | `node scripts/test-proposed-edit.mjs` | Anchor, Best Effort, and Apply fixtures |
 | `test:graph` | `node scripts/test-graph.mjs` | Wikilink parse, graph compile, layout, camera fixtures |
 | `test:chat-attachments` | `node scripts/test-chat-attachments.mjs` | Format-then-answer prompt for Chat **+** files |
+| `test:local-prompt-compact` | `node scripts/test-local-prompt-compact.mjs` | Local Model comment-batch packing: one snippet copy, keep comment bodies |
 
 There is **no lint script and no CI configuration**. `npm run typecheck` plus the three `test:*` scripts is the full quality gate.
 
