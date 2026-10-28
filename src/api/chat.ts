@@ -2,6 +2,7 @@
 // The user supplies apiKey + apiEndpoint (and optionally model/systemMessage).
 import type { ApiConfig, ChatMessage, DocumentRecord, MentionToken } from '@/types';
 import { previewParagraph, splitParagraphs } from '@/utils/paragraphs';
+import { estimateMessageTokens } from '@/utils/tokenEstimate';
 
 /**
  * Built-in default system message. Single source of truth for the
@@ -145,6 +146,44 @@ export async function streamChatCompletion(
       }
     }
   }
+}
+
+/**
+ * Build the exact request that a send would produce, plus an estimate
+ * of how many tokens it costs.
+ *
+ * This is the Debug Mode "what would this send?" counter. It is a
+ * thin wrapper over `buildRequestMessages` rather than a parallel
+ * implementation, so the number always reflects the real payload —
+ * the document outline / full body, the referenced-doc blocks, the
+ * comment batch, the selection context — and not just the text the
+ * user typed.
+ *
+ * Callers MUST pass the same arguments the real send path passes,
+ * or the estimate will drift from what actually goes on the wire.
+ */
+export function buildRequestPreview(
+  history: ChatMessage[],
+  systemMessage: string | undefined,
+  currentDocument?: { title: string; content: string; id?: string } | null,
+  rationaleRulesOverride?: string,
+  referencedDocuments?: MentionToken[],
+  documentLookup?: (id: string) => DocumentRecord | null,
+  mentionsByCommentId?: Record<string, MentionToken[]>,
+  proposedEditPolicy: ProposedEditPolicy = 'eager'
+): { messages: ChatMessage[]; tokens: number } {
+  const messages = buildRequestMessages(
+    history,
+    systemMessage,
+    currentDocument,
+    rationaleRulesOverride,
+    referencedDocuments,
+    documentLookup,
+    mentionsByCommentId,
+    false,
+    proposedEditPolicy
+  );
+  return { messages, tokens: estimateMessageTokens(messages) };
 }
 
 /**

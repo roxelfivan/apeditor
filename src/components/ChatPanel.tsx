@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { v4 as uuid } from 'uuid';
 import ReactMarkdown from 'react-markdown';
 import { useStore } from '@/store/useStore';
-import { buildRequestMessages, streamChatCompletion, ApiError } from '@/api/chat';
+import { buildRequestMessages, buildRequestPreview, streamChatCompletion, ApiError } from '@/api/chat';
 import {
   isLocalGemmaEngineReady,
   streamLocalGemmaCompletion,
@@ -30,7 +30,13 @@ import {
 import { useIsNarrow } from '@/hooks/useMediaQuery';
 import { ChatHistory } from '@/components/ChatHistory';
 import { ChatTurnFrame } from '@/components/ChatTurnFrame';
+import { TokenCounter } from '@/components/TokenCounter';
 import { groupChatTurns } from '@/utils/chatArchive';
+import { estimateMessageTokens } from '@/utils/tokenEstimate';
+import {
+  LOCAL_MAX_NUM_TOKENS,
+  LOCAL_MAX_OUTPUT_TOKENS,
+} from '@/api/localGemma';
 
 // Maximum fraction of the viewport width the chat panel is allowed to
 // occupy. The static MAX_CHAT_WIDTH is still used as a floor so the panel
@@ -95,6 +101,8 @@ export function ChatPanel() {
   const api = useStore((s) => s.api);
   const includeSelection = useStore((s) => s.includeSelection);
   const setIncludeSelection = useStore((s) => s.setIncludeSelection);
+  // Debug Mode gates the token counter next to the Send button.
+  const debugMode = useStore((s) => s.debugMode);
 
   const [input, setInput] = useState('');
   // Document mentions attached to the current chat input. Populated by
@@ -150,14 +158,109 @@ export function ChatPanel() {
     isLocalGemmaEngineReady()
   );
 
-  const messages: ChatMessage[] = currentDocumentId
-    ? chats[currentDocumentId] ?? []
-    : [];
+  // Memoized so the identity is stable when the document has no chat
+  // yet (`?? []` would otherwise allocate a new array on every render,
+  // which would re-trigger the token-preview effect below forever).
+  const messages: ChatMessage[] = useMemo(
+    () => (currentDocumentId ? chats[currentDocumentId] ?? [] : []),
+    [chats, currentDocumentId]
+  );
   const turns = useMemo(() => groupChatTurns(messages), [messages]);
   const latestTurnId = turns[turns.length - 1]?.id;
   const [turnExpanded, setTurnExpanded] = useState<Record<string, boolean>>(
     {}
   );
+
+  // ---------------------------------------------------------------------------
+  // Debug Mode: estimated size of the NEXT chat send.
+  //
+  // Mirrors `handleSend`'s packing exactly (same history, same synthetic
+  // user turn, same mention list, same proposed-edit policy) so the number
+  // reflects the real payload rather than the length of the typed text.
+  //
+  // Packing is not free — the Local Model path inlines the whole document —
+  // so the recompute is debounced and skipped entirely when Debug Mode is
+  // off. `buildRequestPreview` delegates to the same `buildRequestMessages`
+  // the real send uses, so the two cannot drift.
+  // ---------------------------------------------------------------------------
+  const [previewTokens, setPreviewTokens] = useState(0);
+  // Debug Mode: the prompt size of the most recent completed send.
+  // Useful for confirming whether the Local Model actually had room for
+  // a full reply (a reply that stops mid-sentence usually means the
+  // prompt ate the decode budget).
+  const [lastSentTokens, setLastSentTokens] = useState(0);
+  const previewInput = useMemo(() => {
+    // Cheap snapshot of everything the packed payload depends on. Used as
+    // the debounce key so we only re-pack when one of these changes.
+    const { plain } = parseMentions(input);
+    const readyAttachments: ChatAttachment[] = pendingAttachments
+      .filter((a) => !a.reading && a.extractedText.trim())
+      .map(({ id, name, mime, extractedText }) => ({
+        id,
+        name,
+        mime,
+        extractedText,
+      }));
+    return {
+      text: plain.trim(),
+      mentions,
+      attachments: readyAttachments,
+      selection: includeSelection ? selection : '',
+    };
+  }, [input, mentions, pendingAttachments, selection, includeSelection]);
+
+  useEffect(() => {
+    if (!debugMode) {
+      setPreviewTokens(0);
+      return;
+    }
+    // Debounce: packing runs over the whole document, so a per-keystroke
+    // recompute would be wasteful on a long draft.
+    const timer = window.setTimeout(() => {
+      const userMsg: ChatMessage = {
+        id: 'preview-user',
+        role: 'user',
+        content: previewInput.text,
+        selection: previewInput.selection || undefined,
+        ...(previewInput.attachments.length > 0
+          ? { attachments: previewInput.attachments }
+          : {}),
+        createdAt: 0,
+      };
+      const outboundUserMsg = withOutboundAttachmentPrompt(userMsg);
+      const assistantMsg: ChatMessage = {
+        id: 'preview-assistant',
+        role: 'assistant',
+        content: '',
+        createdAt: 0,
+      };
+      const docSnap = currentDocumentId
+        ? useStore.getState().documents.find((d) => d.id === currentDocumentId)
+        : null;
+      const preview = buildRequestPreview(
+        [...messages, outboundUserMsg, assistantMsg],
+        api.systemMessage,
+        docSnap
+          ? { title: docSnap.title, content: docSnap.content, id: docSnap.id }
+          : null,
+        api.rationaleRulesOverride,
+        previewInput.mentions,
+        lookupDocumentById,
+        undefined,
+        api.provider === 'local-gemma' ? 'on-demand' : 'eager'
+      );
+      setPreviewTokens(preview.tokens);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [
+    debugMode,
+    messages,
+    api.systemMessage,
+    api.rationaleRulesOverride,
+    api.provider,
+    currentDocumentId,
+    previewInput,
+  ]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [messagesCollapsed, setMessagesCollapsed] = useState(() => {
     try {
@@ -438,6 +541,8 @@ export function ChatPanel() {
             } from this send.`
           );
         }
+        // Debug Mode: remember the prompt size that actually went out.
+        setLastSentTokens(estimateMessageTokens(packed.messages));
         await streamAssistantReply(packed.messages, api, {
           signal: abortRef.current.signal,
           onDelta: (delta) => {
@@ -668,6 +773,8 @@ export function ChatPanel() {
           } from this send.`
         );
       }
+      // Debug Mode: remember the prompt size that actually went out.
+      setLastSentTokens(estimateMessageTokens(packed.messages));
       await streamAssistantReply(packed.messages, api, {
         signal: abortRef.current.signal,
         onDelta: (delta) => {
@@ -975,6 +1082,8 @@ export function ChatPanel() {
           } from this send.`
         );
       }
+      // Debug Mode: remember the prompt size that actually went out.
+      setLastSentTokens(estimateMessageTokens(packed.messages));
       await streamAssistantReply(packed.messages, api, {
         signal: abortRef.current.signal,
         onDelta: (delta) => {
@@ -1315,6 +1424,27 @@ export function ChatPanel() {
               >
                 Send
               </button>
+            )}
+            {/* Debug Mode: estimated tokens for the next send, measured
+                against the Local Model's budget so the user can tell
+                whether a full reply will fit. */}
+            {debugMode && (
+              <>
+                <TokenCounter
+                  tokens={previewTokens}
+                  budget={isKeyless ? LOCAL_MAX_NUM_TOKENS : undefined}
+                  reserve={isKeyless ? LOCAL_MAX_OUTPUT_TOKENS : undefined}
+                  label="this chat send"
+                />
+                {lastSentTokens > 0 && (
+                  <span
+                    className="text-[11px] font-mono text-paper-inkSoft dark:text-cyber-muted whitespace-nowrap select-none"
+                    title={`The previous send used about ${lastSentTokens} tokens of prompt.`}
+                  >
+                    sent ~{lastSentTokens.toLocaleString('en-US')}
+                  </span>
+                )}
+              </>
             )}
           </div>
         </div>

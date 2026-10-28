@@ -29,6 +29,21 @@ export const LOCAL_GEMMA_MODEL_LABEL = 'gemma-4-E2B-it-web';
 /** Approx on-disk size shown in UI copy (HF reports ~2.01 GB). */
 export const LOCAL_GEMMA_SIZE_LABEL = '~2 GB';
 
+/**
+ * Total token budget of the on-device engine: the prompt AND the
+ * reply share this KV cache. Exported so the Debug Mode token
+ * counter measures the prompt against the same number the runtime
+ * enforces — the two cannot drift.
+ */
+export const LOCAL_MAX_NUM_TOKENS = 8192;
+
+/**
+ * Decode budget for a single reply. The prompt occupies the rest of
+ * `LOCAL_MAX_NUM_TOKENS`, so a full-length reply needs the prompt to
+ * fit in `LOCAL_MAX_NUM_TOKENS - LOCAL_MAX_OUTPUT_TOKENS` tokens.
+ */
+export const LOCAL_MAX_OUTPUT_TOKENS = 1024;
+
 const CACHE_NAME = 'apeditor-local-gemma-v1';
 const CACHE_REQUEST = new Request(LOCAL_GEMMA_MODEL_URL, { method: 'GET' });
 
@@ -280,7 +295,7 @@ export async function ensureLocalGemmaEngine(
     const engine = await Engine.create({
       model,
       mainExecutorSettings: {
-        maxNumTokens: 8192,
+        maxNumTokens: LOCAL_MAX_NUM_TOKENS,
       },
     });
     if (options?.signal?.aborted) {
@@ -321,7 +336,7 @@ async function getOrCreateConversation(
     // Prompt + this decode budget share maxNumTokens (8192). Without
     // a cap the runtime may request the rest of the KV cache and
     // throw "Too Many Token requested" on comment Send to AI.
-    sessionConfig: { maxOutputTokens: 1024 },
+    sessionConfig: { maxOutputTokens: LOCAL_MAX_OUTPUT_TOKENS },
   });
   return conversationSingleton;
 }

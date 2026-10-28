@@ -19,8 +19,14 @@ import {
   getSelectionRect,
   reanchorAll,
   clampCommentBody,
+  formatCommentBatch,
 } from '@/utils/comments';
-import type { Comment, MentionToken } from '@/types';
+import { buildRequestPreview } from '@/api/chat';
+import {
+  LOCAL_MAX_NUM_TOKENS,
+  LOCAL_MAX_OUTPUT_TOKENS,
+} from '@/api/localGemma';
+import type { ChatMessage, Comment, MentionToken } from '@/types';
 import { CommentLayer } from '@/components/CommentLayer';
 import { CommentMargin } from '@/components/CommentMargin';
 import { CommentComposer } from '@/components/CommentComposer';
@@ -215,6 +221,16 @@ export function Editor() {
   // document change.
   const currentComments = useStore(
     (s) => (doc ? s.comments[doc.id] ?? [] : [])
+  );
+  // Chat history for the current document. We subscribe to the whole
+  // `chats` map (a stable reference that only changes when a chat
+  // actually changes) and derive the per-document list in a memo, so
+  // the Debug Mode token counter refreshes when a reply lands without
+  // the subscription returning a fresh `[]` on every store change.
+  const chats = useStore((s) => s.chats);
+  const currentChatMessages = useMemo(
+    () => (doc ? chats[doc.id] ?? [] : []),
+    [chats, doc]
   );
   const proposedEditHighlights = useStore(
     (s) => (doc ? s.proposedEditHighlights?.[doc.id] ?? [] : [])
@@ -1065,6 +1081,95 @@ export function Editor() {
   },
     [doc, currentComments]
   );
+
+  // ---------------------------------------------------------------------------
+  // Debug Mode: estimated tokens for the next **Send to AI** batch.
+  //
+  // Mirrors the batch the chat panel will actually build: the same
+  // `formatCommentBatch` body, the same merged mention list, the same
+  // proposed-edit policy. `buildRequestPreview` packs it with the same
+  // `buildRequestMessages` the real send uses, so the number reflects
+  // the real payload (Local Model inlines the whole document plus the
+  // compacted comment blocks).
+  //
+  // Debounced rather than a plain `useMemo`: `doc` gets a new identity
+  // on every editor keystroke, and the Local Model path inlines the
+  // whole document on every pack — so re-packing per keystroke would be
+  // wasteful on a long draft.
+  // ---------------------------------------------------------------------------
+  const [commentBatchTokens, setCommentBatchTokens] = useState(0);
+  useEffect(() => {
+    if (!debugMode) {
+      setCommentBatchTokens(0);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      if (!doc) {
+        setCommentBatchTokens(0);
+        return;
+      }
+      const sendable = currentComments.filter((c) => !c.outdated);
+      if (sendable.length === 0) {
+        setCommentBatchTokens(0);
+        return;
+      }
+
+      // Same mention merge the chat panel's send-comments listener does:
+      // first emission wins per mention id.
+      const seen = new Set<string>();
+      const mergedMentions: MentionToken[] = [];
+      const mentionsByCommentId: Record<string, MentionToken[]> = {};
+      for (const c of sendable) {
+        const last = c.rounds[c.rounds.length - 1];
+        const list = last?.mentions ?? [];
+        if (list.length === 0) continue;
+        mentionsByCommentId[c.id] = list.map((m) => ({
+          ...m,
+          referrerId: m.referrerId ?? c.id,
+          reason: m.reason ?? 'context',
+        }));
+        for (const m of list) {
+          if (seen.has(m.id)) continue;
+          seen.add(m.id);
+          mergedMentions.push(m);
+        }
+      }
+
+      const body = formatCommentBatch(doc.content, sendable);
+      const userMsg: ChatMessage = {
+        id: 'preview-comment-batch',
+        role: 'user',
+        content: body,
+        createdAt: 0,
+      };
+      const assistantMsg: ChatMessage = {
+        id: 'preview-assistant',
+        role: 'assistant',
+        content: '',
+        createdAt: 0,
+      };
+      const preview = buildRequestPreview(
+        [...currentChatMessages, userMsg, assistantMsg],
+        api.systemMessage,
+        { title: doc.title, content: doc.content, id: doc.id },
+        api.rationaleRulesOverride,
+        mergedMentions,
+        (id) => useStore.getState().documents.find((d) => d.id === id) ?? null,
+        mentionsByCommentId,
+        api.provider === 'local-gemma' ? 'on-demand' : 'eager'
+      );
+      setCommentBatchTokens(preview.tokens);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [
+    debugMode,
+    doc,
+    currentComments,
+    currentChatMessages,
+    api.systemMessage,
+    api.rationaleRulesOverride,
+    api.provider,
+  ]);
 
   // Close the popover / composer when clicking outside.
   useEffect(() => {
@@ -2006,6 +2111,18 @@ export function Editor() {
                 // tray can render the per-row Re-link / Dismiss list.
                 outdatedComments={currentComments.filter((c) => c.outdated)}
                 sending={chatStreaming}
+                // Debug Mode only: estimated tokens for the next batch.
+                tokenEstimate={debugMode ? commentBatchTokens : undefined}
+                tokenBudget={
+                  debugMode && !requiresApiKey(api.provider)
+                    ? LOCAL_MAX_NUM_TOKENS
+                    : undefined
+                }
+                tokenReserve={
+                  debugMode && !requiresApiKey(api.provider)
+                    ? LOCAL_MAX_OUTPUT_TOKENS
+                    : undefined
+                }
                 onSend={handleSendToAi}
                 onDismissOutdated={() => {
                   if (!doc) return;

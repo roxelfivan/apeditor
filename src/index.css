@@ -1559,6 +1559,21 @@ html.dark .cm-tray__btn--primary:disabled {
   color: #5a554a;
   border-color: #2a2825;
 }
+/* Debug Mode token counter pill in the tray row. The tray uses plain
+   CSS custom colours (not Tailwind tokens), so the pill's neutral
+   state is overridden here to match the tray surface. The warning /
+   over-budget tones come from the Tailwind classes in TokenCounter
+   and are left alone. */
+.cm-tray__token {
+  background: transparent;
+  border-color: #e5dfd3;
+  color: #8a8070;
+}
+html.dark .cm-tray__token {
+  background: transparent;
+  border-color: #2a2825;
+  color: #8a8070;
+}
 
 /* v0.5.3: ghost variant of the tray button — quieter than the
    primary CTA but matches the size + shape so the per-row Re-link /

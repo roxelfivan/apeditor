@@ -14,6 +14,7 @@
  */
 import { useState } from 'react';
 import type { Comment } from '@/types';
+import { TokenCounter } from '@/components/TokenCounter';
 
 interface Props {
   /** Total number of comments on the current document. */
@@ -29,6 +30,23 @@ interface Props {
   outdatedComments?: Comment[];
   /** Whether a chat send / stream is already in flight. */
   sending?: boolean;
+  /**
+   * Estimated tokens for the next **Send to AI** batch. Supplied by
+   * `Editor.tsx` from the same `buildRequestPreview` the real send
+   * uses. When omitted (or when Debug Mode is off) no counter is
+   * rendered.
+   */
+  tokenEstimate?: number;
+  /**
+   * Total token budget the batch must fit into (the Local Model's
+   * 8192 KV cache). Omit to render the count without a budget check.
+   */
+  tokenBudget?: number;
+  /**
+   * Tokens reserved for the reply's decode. The batch must fit in
+   * `tokenBudget - tokenReserve` for a full-length reply.
+   */
+  tokenReserve?: number;
   /** Send handler. */
   onSend: () => void;
   /**
@@ -55,6 +73,9 @@ export function CommentTray({
   outdatedCount,
   outdatedComments,
   sending,
+  tokenEstimate,
+  tokenBudget,
+  tokenReserve,
   onSend,
   onDismissOutdated,
   onDismissOne,
@@ -101,6 +122,16 @@ export function CommentTray({
         >
           {sending ? 'Sending…' : 'Send to AI'}
         </button>
+        {/* Debug Mode: estimated tokens for this batch. */}
+        {tokenEstimate !== undefined && (
+          <TokenCounter
+            tokens={tokenEstimate}
+            budget={tokenBudget}
+            reserve={tokenReserve}
+            className="cm-tray__token"
+            label="this Send to AI batch"
+          />
+        )}
       </div>
 
       {/* Per-comment stale list. Hidden until the user expands it so
