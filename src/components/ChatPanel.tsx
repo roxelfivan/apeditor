@@ -370,6 +370,14 @@ export function ChatPanel() {
         content: body,
         createdAt: Date.now(),
       };
+      // Snapshot the history BEFORE appending `userMsg`. Reading it
+      // after the append would put `userMsg` in the store already, and
+      // the `[..., userMsg, ...]` spread below would then send the
+      // whole comment batch to the model TWICE — doubling the prompt
+      // size and, on the Local Model path, blowing the 8192-token KV
+      // cache.
+      const historyFromStore =
+        useStore.getState().chats[currentDocumentId] ?? [];
       appendMessage(currentDocumentId, userMsg);
       // Mark the sent comments in the store + notify any open
       // popover that the comments have been committed.
@@ -385,8 +393,6 @@ export function ChatPanel() {
       // normal chat send. We inline the streaming body here so the
       // listener doesn't need to reference `runAssistantReplyAfterCommit`
       // (which is defined further down the component body).
-      const historyFromStore =
-        useStore.getState().chats[currentDocumentId] ?? [];
       const assistantMsg: ChatMessage = {
         id: uuid(),
         role: 'assistant',
@@ -789,7 +795,7 @@ export function ChatPanel() {
     // state. The rejection-card mentions are forwarded as
     // `extraMentions` so the prompt builder emits a `sys-referenced-doc-N`
     // message for each referenced document.
-    void runAssistantReplyAfterCommit(userMsg, mergedMentions);
+    void runAssistantReplyAfterCommit(mergedMentions);
   };
 
   const clearStagedRejections = (messageId: string) => {
@@ -908,19 +914,26 @@ export function ChatPanel() {
   // instead of the textarea contents. Returns when the stream ends;
   // errors are surfaced via the same `error` state.
   //
+  // The user message is NOT passed in: the caller has already appended
+  // it to the store, so the history snapshot below already contains
+  // it. Re-adding it would send the body to the model twice.
+  //
   // `extraMentions` lets the caller attach @-document references
   // gathered from comment rounds that have their own mentions.
   // Defaults to the current chat-panel `mentions` so the regular
   // `handleSend` path (which already passed mentions to its own
   // `streamChatCompletion` call) is unchanged.
   const runAssistantReplyAfterCommit = async (
-    userMsg: ChatMessage,
     extraMentions?: MentionToken[]
   ) => {
     if (!currentDocumentId) return;
     const docSnap = useStore.getState().documents.find(
       (d) => d.id === currentDocumentId
     );
+    // The caller has ALREADY appended the user message to the store,
+    // so the snapshot below already contains it. Append only the
+    // assistant placeholder — adding the user message again would send
+    // the body twice and double the prompt size.
     const historyFromStore = useStore.getState().chats[currentDocumentId] ?? [];
     const assistantMsg: ChatMessage = {
       id: uuid(),
@@ -929,7 +942,7 @@ export function ChatPanel() {
       createdAt: Date.now(),
     };
     appendMessage(currentDocumentId, assistantMsg);
-    const history = [...historyFromStore, userMsg, assistantMsg];
+    const history = [...historyFromStore, assistantMsg];
     const effectiveMentions = extraMentions ?? mentions;
     setStreaming(true);
     setError(null);
