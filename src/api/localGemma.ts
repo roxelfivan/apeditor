@@ -318,6 +318,10 @@ async function getOrCreateConversation(
   conversationSingleton = await engineSingleton.createConversation({
     preface: preface.length > 0 ? { messages: preface } : undefined,
     prefillPrefaceOnInit: preface.length > 0,
+    // Prompt + this decode budget share maxNumTokens (8192). Without
+    // a cap the runtime may request the rest of the KV cache and
+    // throw "Too Many Token requested" on comment Send to AI.
+    sessionConfig: { maxOutputTokens: 1024 },
   });
   return conversationSingleton;
 }

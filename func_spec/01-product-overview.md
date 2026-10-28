@@ -128,7 +128,7 @@ Every AI change is a `ProposedEdit` the user must accept. The model emits *propo
 
 ### 5.5 Tokens are a budget, not an afterthought
 
-Keyed providers send a **document outline** (one truncated line per paragraph) rather than the full document, unless the user asks for a section. Local Model packs a capped full-body `<<<DOCUMENT>>>` envelope on the user turn (`LOCAL_GEMMA_DOC_CHARS_CAP`). Referenced documents are capped at 4,000 chars each and 8,000 chars per turn. Import is capped at 50 MB per file, 200 MB per batch, 500 PDF pages. These caps are enforced in code, not in the prompt text.
+Keyed providers send a **document outline** (one truncated line per paragraph) rather than the full document, unless the user asks for a section. Local Model packs a full-body `<<<DOCUMENT>>>` envelope on the user turn and compact comment batches (offsets + comment text, no duplicated snippets). Referenced **other** documents are capped at 4,000 chars each and 8,000 chars per turn. Import is capped at 50 MB per file, 200 MB per batch, 500 PDF pages. These caps are enforced in code, not in the prompt text.
 
 ### 5.6 Degrade, do not block
 

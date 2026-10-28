@@ -155,15 +155,19 @@ Output:
 
 ### 4.4 Local Gemma document envelope
 
-When `proposedEditPolicy === 'on-demand'`, the open document is **not** sent as `sys-current-doc` outline. Instead `packLocalGemmaDocument` attaches a capped full body on the user turn:
+When `proposedEditPolicy === 'on-demand'`, the open document is **not** sent as `sys-current-doc` outline. `buildFullWorkingDocMessage` inlines the **full** body (no char-cap / outline fallback) in:
 
 ```
-<<<DOCUMENT title="…">>
-<body, truncated on a word boundary if over LOCAL_GEMMA_DOC_CHARS_CAP>
+<<<DOCUMENT>>>
+<body>
 <<<END DOCUMENT>>>
 ```
 
-Above the cap, the builder falls back to the outline. Include-selection still adds a `BEGIN/END EDITOR SELECTION` note on the history message when toggled.
+The LiteRT adapter lifts that envelope onto the user turn. Token budget is saved by **not duplicating** excerpts, not by truncating user text:
+
+- Comment-batch user messages are compacted for the request (`compactCommentBatchForLocal`): keep `[cN] (paragraph …, doc offset S–E)` and `Comment:` bodies; drop snippet / Before / After (those spans are already in the envelope). Stored chat bubbles stay in the fat `formatCommentBatch` shape.
+- `@` of the **current** document (whole **or** section) is suppressed; other documents are unchanged.
+- **include selection:** if the highlight is a unique substring of the open document, emit an offset note; otherwise keep `BEGIN/END EDITOR SELECTION`.
 
 ### 4.5 `sys-proposed-edit-rules` — the fence schema
 
@@ -229,7 +233,7 @@ The override replaces **only** the rationale section. The schema reminder is alw
 
 One system message per ordered mention. Full rules in [@-references](09-mentions.md). Two behaviours worth stating here:
 
-- **Self-reference suppression** — a whole-document mention of the *current* document is dropped, because the document is already in `sys-current-doc`. Section-scoped mentions of the current document are **kept**.
+- **Self-reference suppression** — a whole-document mention of the *current* document is dropped, because the document is already in `sys-current-doc`. Section-scoped mentions of the current document are **kept** on the keyed (`eager`) path. Local Model (`on-demand`) also drops section mentions of the current document (the envelope already has the full body).
 - **Dedupe key** — `<docId>::<kind>::<sortedParagraphsCSV>`. A section-scoped mention and a whole-document mention of the same document are distinct and both survive.
 
 Budget: `REFERENCED_SECTION_CHARS_CAP = 4000` per document, `REFERENCED_DOCS_TOTAL_CHARS_CAP = 8000` per turn. Once the turn-wide budget is exhausted, later references **downgrade to the outline** rather than verbatim paragraphs.
@@ -252,7 +256,9 @@ Consistency:
 - Tie replies to [id]s. Do not quote Before/After back.
 ```
 
-The field labels here must match `formatCommentBatch` in [`utils/comments.ts`](../src/utils/comments.ts). **Three places agree on this shape:** the formatter, the instruction block, and the `looksLikeCommentBatch` regex.
+The field labels here must match `formatCommentBatch` in [`utils/comments.ts`](../src/utils/comments.ts) on the keyed path. **Three places agree on the fat shape:** the formatter, the eager instruction block, and the `looksLikeCommentBatch` regex (which also matches the compact Local form).
+
+**Local Model (`on-demand`)** uses a shorter instruction: header + `Comment:` only, and tells the model to copy `"original"` from `<<<DOCUMENT>>>` at the given offsets. Snippet / Before / After are not restated.
 
 ### 4.9 `enableCacheControl`
 
@@ -313,8 +319,9 @@ When `!requiresApiKey(api.provider)` the send path streams via LiteRT-LM instead
 1. Ensure the model is loaded (`ensureLocalGemmaReady` — Cache API, or prior disk load).
 2. `buildRequestMessages(..., proposedEditPolicy: 'on-demand')`.
 3. `splitMessagesForLocalGemma` — system preface + a single user turn (LiteRT history contract).
-4. `streamLocalGemma` yields text chunks; `ChatPanel` mirrors the keyed assistant accumulator / AbortController lifecycle.
-5. Fences in the reply still go through `parseProposedEdits` (on-demand: usually prose unless the user asked for edits or used Comment **Send to AI**).
+4. `createConversation` sets `sessionConfig.maxOutputTokens: 1024` so decode shares the 8192 KV cache with the prompt (`maxNumTokens`).
+5. `streamLocalGemma` yields text chunks; `ChatPanel` mirrors the keyed assistant accumulator / AbortController lifecycle.
+6. Fences in the reply still go through `parseProposedEdits` (on-demand: usually prose unless the user asked for edits or used Comment **Send to AI**).
 
 Settings UI (`LocalGemmaControls`): download from Hugging Face into Cache API `apeditor-local-gemma-v1`, **Load from disk**, **Save to Disk** (File System Access or download fallback), **Last saved** filename + time, **Clear cached model**. Tips every 5% from `localGemmaTips.ts`. Predict and OCR→Markdown rewrite remain keyed-only.
 
@@ -322,7 +329,7 @@ Settings UI (`LocalGemmaControls`): download from Hugging Face into Cache API `a
 
 | Control | Store field | Effect |
 |---|---|---|
-| **include selection** | `includeSelection` (default `true`) | Attaches the highlight on top of document context (outline or Local Gemma envelope) |
+| **include selection** | `includeSelection` (default `true`) | Attaches the highlight on top of document context. Keyed path pastes the span; Local Model uses an offset note when the span is unique in the open document. |
 | **paste selection ({count})** | — | Drops the current selection text straight into the input (no sentinel) |
 | **+** (composer) | local `pendingAttachments` | Hidden file input, `accept={IMPORT_FILE_ACCEPT}` (`image/*,application/pdf`). In-browser OCR via `extractTextFromFiles`. Does not insert into the editor. |
 
@@ -332,7 +339,7 @@ Settings UI (`LocalGemmaControls`): download from Hugging Face into Cache API `a
 
 1. Change the constant in [`api/chat.ts`](../src/api/chat.ts).
 2. If it is `DEFAULT_SYSTEM_MESSAGE` or `PROPOSED_EDIT_RULES_DEFAULT`, update the matching `isStale*` detector so already-persisted copies of the old built-in normalise away.
-3. If you change `formatCommentBatch`'s output, update **both** the comment-batch instruction block and `looksLikeCommentBatch`.
+3. If you change `formatCommentBatch`'s output, update **both** comment-batch instruction blocks (`COMMENT_BATCH_INSTRUCTION_EAGER` / `_LOCAL`) and `looksLikeCommentBatch` / `compactCommentBatchForLocal`.
 4. If you change `buildDocOutline`'s paragraph boundary, change `splitParagraphs` in [`paragraphs.ts`](../src/utils/paragraphs.ts) — heading sections and outline offsets import the same helper.
 5. Run `npx vite-node scripts/measure-prompt.ts` to check the token impact.
 

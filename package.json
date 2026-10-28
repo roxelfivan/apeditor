@@ -19,6 +19,7 @@
     "test:chat-archive": "node scripts/test-chat-archive.mjs",
     "test:chat-attachments": "node scripts/test-chat-attachments.mjs",
     "test:send-comments-tdz": "node scripts/test-send-comments-tdz.mjs",
+    "test:local-prompt-compact": "node scripts/test-local-prompt-compact.mjs",
     "check:docs": "node scripts/check-func-spec-links.mjs"
   },
   "dependencies": {
