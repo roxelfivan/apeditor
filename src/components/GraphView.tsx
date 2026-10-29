@@ -37,7 +37,10 @@ import {
 import {
   layoutMindmap,
   mindmapCrossPath,
+  mindmapLabelWidth,
   mindmapTreePath,
+  MINDMAP_LABEL_MAX_CHARS,
+  MINDMAP_LABEL_MAX_LINES,
 } from '@/utils/graph/layoutMindmap';
 import {
   useGraphCamera,
@@ -605,7 +608,13 @@ export function GraphView({
     const xs = placed.map((n) => n.x);
     const ys = placed.map((n) => n.y);
     const minX = (xs.length ? Math.min(...xs) : -100) - 400;
-    const maxX = (xs.length ? Math.max(...xs) : 100) + 400;
+    const labelReach = isMindmap
+      ? Math.max(
+          400,
+          ...placed.map((n) => mindmapLabelWidth(n.label, n.r) + 80)
+        )
+      : 400;
+    const maxX = (xs.length ? Math.max(...xs) : 100) + labelReach;
     const minY = (ys.length ? Math.min(...ys) : -100) - 400;
     const maxY = (ys.length ? Math.max(...ys) : 100) + 400;
     return {
@@ -614,7 +623,7 @@ export function GraphView({
       width: Math.max(maxX - minX, 240),
       height: Math.max(maxY - minY, 240),
     };
-  }, [placed]);
+  }, [placed, isMindmap]);
 
   // The fisheye lens is a planar, focus+context device. It stays off
   // for Mindmap and Concept — Concept is a tilted floor, and Mindmap
@@ -676,7 +685,10 @@ export function GraphView({
 
   const userFont = labelPx / Math.max(cam.camera.scale, 1e-6);
   const lineGap = userFont * 1.2;
-  const maxChars = Math.max(10, Math.min(22, Math.round((18 * 16) / labelPx)));
+  const maxChars = isMindmap
+    ? MINDMAP_LABEL_MAX_CHARS
+    : Math.max(10, Math.min(22, Math.round((18 * 16) / labelPx)));
+  const maxLines = isMindmap ? MINDMAP_LABEL_MAX_LINES : 3;
 
   const openRange = (documentId: string, start: number, end: number) => {
     if (current?.id !== documentId) setCurrentDocument(documentId);
@@ -1049,14 +1061,14 @@ export function GraphView({
               ? byId.get(`doc:${node.documentId}`) ?? node
               : node;
             const label = labelOffset(node.x, node.y, node.r, hub, userFont);
-            const lines = wrapLines(node.label, maxChars);
+            const lines = wrapLines(node.label, maxChars, maxLines);
             if (!node.visible) return null;
             const dimmed = active ? 1 : 0.25;
             const labelPos = isMindmap
               ? {
-                  labelDx: 0,
-                  labelDy: -(node.r + userFont * 0.85),
-                  labelAnchor: 'middle' as const,
+                  labelDx: node.r + Math.max(18, userFont * 0.45),
+                  labelDy: userFont * 0.35,
+                  labelAnchor: 'start' as const,
                 }
               : label;
             return (

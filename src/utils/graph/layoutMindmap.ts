@@ -15,10 +15,21 @@ import {
   type LaidOutNode,
 } from '@/utils/graph/layoutWorkspaceGraph';
 
-/** Horizontal gap between tree depths, in layout units. */
+/** Floor for the horizontal gap between a parent and its child column. */
 export const MINDMAP_LAYER_X = 320;
-/** Vertical gap between successive leaves. Sized for labels sitting above dots. */
-export const MINDMAP_LEAF_GAP = 140;
+/** Floor for the vertical gap between successive leaves. */
+export const MINDMAP_LEAF_GAP = 240;
+/** Prefer one long title line so wording uses width, not stacked rows. */
+export const MINDMAP_LABEL_MAX_CHARS = 44;
+export const MINDMAP_LABEL_MAX_LINES = 2;
+/** Layout-unit width of one title character, used to push children past the parent label. */
+export const MINDMAP_CHAR_W = 28;
+/** Layout-unit height of one wrapped title line, used for leaf Y stride. */
+export const MINDMAP_LINE_H = 72;
+/** Extra gap between the end of a parent label and the child column. */
+export const MINDMAP_CONNECTOR = 90;
+const MINDMAP_LABEL_PAD = 20;
+const MINDMAP_ROW_PAD = 36;
 
 export interface MindmapLayout {
   nodes: LaidOutNode[];
@@ -151,15 +162,52 @@ function mindmapLabel(
   r: number
 ): Pick<LaidOutNode, 'labelDx' | 'labelDy' | 'labelAnchor'> {
   return {
-    labelDx: 0,
-    labelDy: -(r + 16),
-    labelAnchor: 'middle',
+    labelDx: r + MINDMAP_LABEL_PAD,
+    labelDy: 8,
+    labelAnchor: 'start',
   };
 }
 
+/** Word-wrap line count matching GraphView's Mindmap wrap. */
+export function countMindmapLines(label: string): number {
+  const words = label.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return 1;
+  const lines: string[] = [];
+  let cur = '';
+  for (const word of words) {
+    if (lines.length >= MINDMAP_LABEL_MAX_LINES) break;
+    const chunk =
+      word.length > MINDMAP_LABEL_MAX_CHARS
+        ? `${word.slice(0, MINDMAP_LABEL_MAX_CHARS - 1)}…`
+        : word;
+    const next = cur ? `${cur} ${chunk}` : chunk;
+    if (next.length <= MINDMAP_LABEL_MAX_CHARS) {
+      cur = next;
+    } else {
+      if (cur) lines.push(cur);
+      cur = chunk;
+    }
+  }
+  if (lines.length < MINDMAP_LABEL_MAX_LINES && cur) lines.push(cur);
+  return Math.max(1, Math.min(MINDMAP_LABEL_MAX_LINES, lines.length));
+}
+
+export function mindmapLabelWidth(label: string, r: number): number {
+  const chars = Math.min(Math.max(label.length, 1), MINDMAP_LABEL_MAX_CHARS);
+  return r + MINDMAP_LABEL_PAD + chars * MINDMAP_CHAR_W;
+}
+
+export function mindmapLeafStride(label: string): number {
+  return Math.max(
+    MINDMAP_LEAF_GAP,
+    countMindmapLines(label) * MINDMAP_LINE_H + MINDMAP_ROW_PAD
+  );
+}
+
 /**
- * Place every node on a left-to-right tidy tree: depth on X, packed
- * leaves on Y, parents at the vertical midpoint of their children.
+ * Place every node on a left-to-right tidy tree: each child column
+ * starts after the parent's label, leaves pack on Y by title height,
+ * parents sit at the vertical midpoint of their children.
  */
 export function layoutMindmap(
   nodes: GraphNode[],
@@ -170,20 +218,35 @@ export function layoutMindmap(
   const current =
     docs.find((n) => n.documentId === currentDocumentId) ?? docs[0] ?? null;
   const tree = spanningTree(nodes, edges, current?.id ?? null);
+  const byId = new Map(nodes.map((n) => [n.id, n]));
   const pos = new Map<string, { x: number; y: number }>();
   let nextLeafY = 0;
 
-  const place = (id: string, depth: number) => {
+  const radiusOf = (id: string): number => {
+    const n = byId.get(id);
+    if (!n) return 16;
+    const isHub = current != null && n.id === current.id;
+    return nodeRadius(n.kind, isHub);
+  };
+
+  const place = (id: string, x: number) => {
+    const node = byId.get(id);
     const kids = tree.childrenOf.get(id) ?? [];
     if (kids.length === 0) {
-      pos.set(id, { x: depth * MINDMAP_LAYER_X, y: nextLeafY });
-      nextLeafY += MINDMAP_LEAF_GAP;
+      pos.set(id, { x, y: nextLeafY });
+      nextLeafY += mindmapLeafStride(node?.label ?? '');
       return;
     }
-    for (const kid of kids) place(kid, depth + 1);
+    const childX =
+      x +
+      Math.max(
+        MINDMAP_LAYER_X,
+        mindmapLabelWidth(node?.label ?? '', radiusOf(id)) + MINDMAP_CONNECTOR
+      );
+    for (const kid of kids) place(kid, childX);
     const ys = kids.map((k) => pos.get(k)!.y);
     pos.set(id, {
-      x: depth * MINDMAP_LAYER_X,
+      x,
       y: (Math.min(...ys) + Math.max(...ys)) / 2,
     });
   };
