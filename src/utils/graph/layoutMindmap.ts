@@ -18,7 +18,7 @@ import {
 /** Floor for the horizontal gap between a parent and its child column. */
 export const MINDMAP_LAYER_X = 360;
 /** Floor for the vertical gap between successive leaves. */
-export const MINDMAP_LEAF_GAP = 280;
+export const MINDMAP_LEAF_GAP = 320;
 /**
  * Titles stay on one line so they use width instead of stacking into the
  * next sibling. Layout width estimates cap at this many characters so a
@@ -29,15 +29,28 @@ export const MINDMAP_LABEL_MAX_LINES = 1;
 /** Layout-unit width of one title character, used to push children past the parent label. */
 export const MINDMAP_CHAR_W = 22;
 /** Extra gap between the end of a parent label and the child column. */
-export const MINDMAP_CONNECTOR = 120;
+export const MINDMAP_CONNECTOR = 160;
 const MINDMAP_LABEL_PAD = 24;
-/** Many siblings wrap into extra columns so they use pane width, not one tall stack. */
-export const MINDMAP_SIBLING_COL_AFTER = 7;
+/** Minimum on-screen row height so one-line titles do not sit on each other. */
+export const MINDMAP_MIN_ROW_PX = 44;
+/** CSS-px width of a glyph as a fraction of `labelPx` (typical sans). */
+export const MINDMAP_GLYPH_EM = 0.62;
 
-export function mindmapSiblingColumns(count: number): number {
-  if (count >= 15) return 3;
-  if (count >= MINDMAP_SIBLING_COL_AFTER) return 2;
-  return 1;
+/**
+ * Floor for the Mindmap camera fit scale.
+ *
+ * Labels are a fixed CSS size (`labelPx`) while the tree is in world
+ * units. Fitting twelve long titles into a phone pane makes the world
+ * shrink until those CSS labels overlap. This scale keeps one world
+ * character at least as wide as one on-screen glyph, and one leaf row
+ * at least `MINDMAP_MIN_ROW_PX` tall. The map may overflow; the user pans.
+ */
+export function mindmapMinScale(labelPx: number): number {
+  const px = Number.isFinite(labelPx) ? Math.max(6, labelPx) : 16;
+  return Math.max(
+    MINDMAP_MIN_ROW_PX / MINDMAP_LEAF_GAP,
+    (px * MINDMAP_GLYPH_EM) / MINDMAP_CHAR_W
+  );
 }
 
 export interface MindmapLayout {
@@ -225,30 +238,9 @@ export function layoutMindmap(
         MINDMAP_LAYER_X,
         mindmapLabelWidth(node?.label ?? '', radiusOf(id)) + MINDMAP_CONNECTOR
       );
-    const cols = mindmapSiblingColumns(kids.length);
-    const colW = Math.max(
-      MINDMAP_LAYER_X,
-      ...kids.map((kid) =>
-        mindmapLabelWidth(byId.get(kid)?.label ?? '', radiusOf(kid))
-      )
-    );
-    if (cols === 1) {
-      for (const kid of kids) place(kid, originX);
-    } else {
-      const rows = Math.ceil(kids.length / cols);
-      for (let row = 0; row < rows; row++) {
-        const yRow = nextLeafY;
-        let yMax = yRow;
-        for (let col = 0; col < cols; col++) {
-          const i = row * cols + col;
-          if (i >= kids.length) break;
-          nextLeafY = yRow;
-          place(kids[i], originX + col * colW);
-          yMax = Math.max(yMax, nextLeafY);
-        }
-        nextLeafY = yMax;
-      }
-    }
+    // One column. Two columns of one-line titles overlap on a phone
+    // because CSS labels stay 16px while fit-to-pane shrinks world gaps.
+    for (const kid of kids) place(kid, originX);
     const ys = kids.map((k) => pos.get(k)!.y);
     pos.set(id, {
       x,

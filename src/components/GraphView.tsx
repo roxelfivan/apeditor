@@ -39,7 +39,7 @@ import {
   mindmapCrossPath,
   mindmapLabelWidth,
   mindmapTreePath,
-  MINDMAP_LEAF_GAP,
+  mindmapMinScale,
 } from '@/utils/graph/layoutMindmap';
 import {
   useGraphCamera,
@@ -638,7 +638,7 @@ export function GraphView({
     layoutBounds,
     zoom,
     onZoomChange ?? (() => {}),
-    isMindmap ? 36 / MINDMAP_LEAF_GAP : 0
+    isMindmap ? mindmapMinScale(labelPx) : 0
   );
 
   // Concept mode is not in this pipeline: the three.js scene reads `lensed`
@@ -987,7 +987,7 @@ export function GraphView({
             const active = !hot || (hot.has(edge.source) && hot.has(edge.target));
             const midX = (a.x + b.x) / 2;
             const midY = (a.y + b.y) / 2;
-            const showCaption = hoverId && active && hot;
+            const showCaption = !isMindmap && hoverId && active && hot;
             const isTree = isMindmap && treeEdgeIds.has(edge.id);
             const isCross = isMindmap && !isTree;
             return (
