@@ -16,20 +16,29 @@ import {
 } from '@/utils/graph/layoutWorkspaceGraph';
 
 /** Floor for the horizontal gap between a parent and its child column. */
-export const MINDMAP_LAYER_X = 320;
+export const MINDMAP_LAYER_X = 360;
 /** Floor for the vertical gap between successive leaves. */
-export const MINDMAP_LEAF_GAP = 240;
-/** Prefer one long title line so wording uses width, not stacked rows. */
-export const MINDMAP_LABEL_MAX_CHARS = 44;
-export const MINDMAP_LABEL_MAX_LINES = 2;
+export const MINDMAP_LEAF_GAP = 280;
+/**
+ * Titles stay on one line so they use width instead of stacking into the
+ * next sibling. Layout width estimates cap at this many characters so a
+ * single long heading cannot blow the tree up to a mile.
+ */
+export const MINDMAP_LABEL_MAX_CHARS = 96;
+export const MINDMAP_LABEL_MAX_LINES = 1;
 /** Layout-unit width of one title character, used to push children past the parent label. */
-export const MINDMAP_CHAR_W = 28;
-/** Layout-unit height of one wrapped title line, used for leaf Y stride. */
-export const MINDMAP_LINE_H = 72;
+export const MINDMAP_CHAR_W = 22;
 /** Extra gap between the end of a parent label and the child column. */
-export const MINDMAP_CONNECTOR = 90;
-const MINDMAP_LABEL_PAD = 20;
-const MINDMAP_ROW_PAD = 36;
+export const MINDMAP_CONNECTOR = 120;
+const MINDMAP_LABEL_PAD = 24;
+/** Many siblings wrap into extra columns so they use pane width, not one tall stack. */
+export const MINDMAP_SIBLING_COL_AFTER = 7;
+
+export function mindmapSiblingColumns(count: number): number {
+  if (count >= 15) return 3;
+  if (count >= MINDMAP_SIBLING_COL_AFTER) return 2;
+  return 1;
+}
 
 export interface MindmapLayout {
   nodes: LaidOutNode[];
@@ -168,40 +177,13 @@ function mindmapLabel(
   };
 }
 
-/** Word-wrap line count matching GraphView's Mindmap wrap. */
-export function countMindmapLines(label: string): number {
-  const words = label.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return 1;
-  const lines: string[] = [];
-  let cur = '';
-  for (const word of words) {
-    if (lines.length >= MINDMAP_LABEL_MAX_LINES) break;
-    const chunk =
-      word.length > MINDMAP_LABEL_MAX_CHARS
-        ? `${word.slice(0, MINDMAP_LABEL_MAX_CHARS - 1)}…`
-        : word;
-    const next = cur ? `${cur} ${chunk}` : chunk;
-    if (next.length <= MINDMAP_LABEL_MAX_CHARS) {
-      cur = next;
-    } else {
-      if (cur) lines.push(cur);
-      cur = chunk;
-    }
-  }
-  if (lines.length < MINDMAP_LABEL_MAX_LINES && cur) lines.push(cur);
-  return Math.max(1, Math.min(MINDMAP_LABEL_MAX_LINES, lines.length));
-}
-
 export function mindmapLabelWidth(label: string, r: number): number {
   const chars = Math.min(Math.max(label.length, 1), MINDMAP_LABEL_MAX_CHARS);
   return r + MINDMAP_LABEL_PAD + chars * MINDMAP_CHAR_W;
 }
 
-export function mindmapLeafStride(label: string): number {
-  return Math.max(
-    MINDMAP_LEAF_GAP,
-    countMindmapLines(label) * MINDMAP_LINE_H + MINDMAP_ROW_PAD
-  );
+export function mindmapLeafStride(_label?: string): number {
+  return MINDMAP_LEAF_GAP;
 }
 
 /**
@@ -237,13 +219,36 @@ export function layoutMindmap(
       nextLeafY += mindmapLeafStride(node?.label ?? '');
       return;
     }
-    const childX =
+    const originX =
       x +
       Math.max(
         MINDMAP_LAYER_X,
         mindmapLabelWidth(node?.label ?? '', radiusOf(id)) + MINDMAP_CONNECTOR
       );
-    for (const kid of kids) place(kid, childX);
+    const cols = mindmapSiblingColumns(kids.length);
+    const colW = Math.max(
+      MINDMAP_LAYER_X,
+      ...kids.map((kid) =>
+        mindmapLabelWidth(byId.get(kid)?.label ?? '', radiusOf(kid))
+      )
+    );
+    if (cols === 1) {
+      for (const kid of kids) place(kid, originX);
+    } else {
+      const rows = Math.ceil(kids.length / cols);
+      for (let row = 0; row < rows; row++) {
+        const yRow = nextLeafY;
+        let yMax = yRow;
+        for (let col = 0; col < cols; col++) {
+          const i = row * cols + col;
+          if (i >= kids.length) break;
+          nextLeafY = yRow;
+          place(kids[i], originX + col * colW);
+          yMax = Math.max(yMax, nextLeafY);
+        }
+        nextLeafY = yMax;
+      }
+    }
     const ys = kids.map((k) => pos.get(k)!.y);
     pos.set(id, {
       x,
