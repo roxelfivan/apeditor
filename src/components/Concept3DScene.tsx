@@ -1,6 +1,6 @@
 /**
  * 3D Concept projection — a three.js view of the same workspace graph the
- * SVG Graph and the stereographic Globe draw.
+ * SVG Graph and the horizontal Mindmap draw.
  *
  * The layout from `layoutWorkspaceGraph` is planar, so this scene treats it
  * as a **floor**: `layout.x → world.x`, `layout.y → world.z`, and the third

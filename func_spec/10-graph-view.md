@@ -1,6 +1,6 @@
 # Graph view
 
-> A local knowledge graph of the workspace, compiled entirely in the browser from documents, headings, `[[wikilinks]]`, and `@` mentions. No LLM call, no new dependency, no store-schema change. Added in v0.5.4. Pan / orbit navigation and the Globe projection added in v0.5.7. The 3D Concept projection added in v0.5.8. Spreading the Concept stack and OrbitControls-driven free navigation in v0.5.8. The document / section scope filter added in v0.5.9, together with zoom widened to 0.25×–12× (which also fixes a silent Concept distance clamp), labels widened to 6–48px across all three projections, and heading tiers made depth-compressed so deep `Comment > A > B > …` paths stay legible. In v0.6.0 the Concept labels were made legible while rotating — typographic hierarchy by node kind, a camera-distance ramp, near-over-far paint order, and a halo — the dark-mode sphere colours were lifted off the background, and the editor toolbar became a single non-wrapping row.
+> A local knowledge graph of the workspace, compiled entirely in the browser from documents, headings, `[[wikilinks]]`, and `@` mentions. No LLM call, no new dependency, no store-schema change. Added in v0.5.4. Pan / orbit navigation added in v0.5.7. The 3D Concept projection added in v0.5.8. Spreading the Concept stack and OrbitControls-driven free navigation in v0.5.8. The document / section scope filter added in v0.5.9, together with zoom widened to 0.25×–12× (which also fixes a silent Concept distance clamp), labels widened to 6–48px across all three projections, and heading tiers made depth-compressed so deep `Comment > A > B > …` paths stay legible. In v0.6.0 the Concept labels were made legible while rotating — typographic hierarchy by node kind, a camera-distance ramp, near-over-far paint order, and a halo — the dark-mode sphere colours were lifted off the background, and the editor toolbar became a single non-wrapping row. The Globe projection was later replaced by a horizontal **Mindmap** (spanning tree plus dashed cross-links), and Graph / Mindmap / 3D collapsed into one toolbar dropdown.
 
 ---
 
@@ -17,13 +17,13 @@ Graph is available as a full-pane viewMode and as the **right pane of Split** (l
 
 In full `graph` mode, Format / Comment / Predict hide because they need the textarea. In Split they appear when the left pane is Write. File actions and Save revision stay. A short click on a heading / term from full Graph switches to Split with left Write so the caret can land; from Split with Write already open, `viewMode` does not change.
 
-**`viewMode` is unchanged by the Globe and Concept work.** It remains `'write' | 'preview' | 'split' | 'graph'`. A projection is a navigation aid *within* the Graph view, not a fifth pane:
+**`viewMode` is unchanged by the Mindmap and Concept work.** It remains `'write' | 'preview' | 'split' | 'graph'`. A projection is a navigation aid *within* the Graph view, not a fifth pane:
 
 | Why not a fifth `viewMode` |
 |---|
-| Flat, Globe and Concept are the same data with a different camera; a sibling pane would imply different capabilities |
+| Flat, Mindmap and Concept are the same data with a different layout / camera; a sibling pane would imply different capabilities |
 | `viewMode` is persisted via `partialize`, so a new default would silently change what the app opens to between sessions |
-| Keeping them all reachable preserves the papers' own comparison — same nodes, undistorted, wrapped, and extruded |
+| Keeping them all reachable preserves the comparison — same nodes, undistorted, treed, and extruded |
 
 ## 2. Data model
 
@@ -331,17 +331,17 @@ Nodes pass through three pure transforms, in this order:
 
 ```
 filterWorkspaceGraph                      (prunes the scope filter; see §11)
-  → layoutWorkspaceGraph
+  → layoutWorkspaceGraph                  (flat + concept)
+    or layoutMindmap                      (mindmap: spanning tree on X)
   → manual drag overrides                 (layout space)
-  → applyFisheyeToNodes                   (layout space; m = 0 is an exact identity)
-  → toSphere → rotateSphere → toScreen   (sphere space; flat and concept skip this)
+  → applyFisheyeToNodes                   (layout space; currently inert, m = 0)
 ```
 
-The fisheye lens runs **before** the projection because edge orientation is only well defined on the plane — the refinement solve assumes a planar target.
-
-`projection: 'flat'` returns the layout coordinates unchanged and is the default. That is an invariant the test suite asserts, not merely a convention.
+`projection: 'flat'` returns the radial layout coordinates unchanged and is the default.
 
 **Concept is the exception.** It reads `lens.lensed` directly and builds a three.js world from the *unprojected* coordinates; see [§9d](#9d-3d-concept-projection).
+
+**Mindmap is a layout, not a camera.** Switching to it re-runs `layoutMindmap` instead of wrapping the atom. Leftover edges stay in `graph.edges` and are drawn as dashed cross-links; see [§9b](#9b-mindmap-projection).
 
 ### SVG structure
 
@@ -390,7 +390,7 @@ A `role="status"` `div[data-graph-label-tooltip]` pinned top-centre showing `hov
 | Coordinate conversion | `svg.getScreenCTM()` + `createSVGPoint().matrixTransform(ctm.inverse())`, so the handler works off-node too |
 | Storage | `overrides` is a plain `useState` map applied over `laidOut` in a `useMemo` |
 
-> **Overrides live in layout space, not screen space.** They are recorded in the coordinate system the layout produced, *before* the fisheye lens and the sphere projection. Recording a projected position would make manual drags drift as the globe turns. This is also why the label notes the origin is recovered from `placed`, not from the projected node.
+> **Overrides live in layout space, not screen space.** They are recorded in the coordinate system the layout produced, *before* the fisheye lens. Recording a screen position would make manual drags drift as the camera pans. This is also why the label notes the origin is recovered from `placed`, not from the projected node. Overrides are cleared when the projection changes, because Mindmap and the radial map do not share coordinates.
 
 > **Drag overrides are ephemeral.** They are lost on re-layout or remount. That is why `GraphViewControls`'s **Reset** bumps `graphEpoch`, which is used as `key={graphEpoch}` on `<GraphView>` — the remount is what clears the map.
 
@@ -412,7 +412,7 @@ Dragging empty SVG space starts a **navigation** session (`useGraphCamera`), dis
 | Projection | `kind` | Effect |
 |---|---|---|
 | `flat` | `pan` | `panCamera` — content follows the pointer at any zoom |
-| `sphere` | `orbit` | `dragToOrientation` — the globe rotates |
+| `mindmap` | `pan` | `panCamera` — same as flat |
 | `concept` | `conceptOrbit` | `dragToConceptPose` — the eye orbits its target |
 
 All three start at `DRAG_THRESHOLD_PX = 3`. The node drag threshold stays at `5`; they are separate sessions with separate refs, so a node drag never rotates the scene.
@@ -421,9 +421,9 @@ All three start at `DRAG_THRESHOLD_PX = 3`. The node drag threshold stays at `5`
 
 Each `<circle>` has `role="button"` and `tabIndex={0}`, with an `onKeyDown` that fires `onNodeClick` on `Enter` or `' '` (both `preventDefault()`).
 
-**There are no arrow-key panning, wheel zoom, or wheel handlers.** Zoom is buttons-only. The globe and the 3D scene can still be explored with a pointer.
+**There are no arrow-key panning, wheel zoom, or wheel handlers.** Zoom is buttons-only. The 3D scene can still be explored with a pointer.
 
-> **Concept has no keyboard path.** Flat and Globe put every node in the DOM as a focusable `<circle>`, so `Tab` reaches them and `Enter` opens them. A `<canvas>` cannot host focusable children, so the 3D view is pointer-only. This is a real accessibility gap, not an oversight — the [§9d](#9d-3d-concept-projection) label layer is `pointer-events: none` by design.
+> **Concept has no keyboard path.** Flat and Mindmap put every node in the DOM as a focusable `<circle>`, so `Tab` reaches them and `Enter` opens them. A `<canvas>` cannot host focusable children, so the 3D view is pointer-only. This is a real accessibility gap, not an oversight — the [§9d](#9d-3d-concept-projection) label layer is `pointer-events: none` by design.
 
 ## 9. `GraphViewControls`
 
@@ -435,7 +435,7 @@ Each `<circle>` has `role="button"` and `tabIndex={0}`, with an `onKeyDown` that
 | **Zoom −** | `zoom /= 1.25`, clamped | `zoom <= 0.25` |
 | **Zoom +** | `zoom *= 1.25`, clamped | `zoom >= 12` |
 | Zoom readout | `{Math.round(zoom * 100)}%` | — |
-| **Graph / Globe / 3D** | Segmented `role="group"` toggle, `aria-pressed` on each. Driven by the `PROJECTION_OPTIONS` table, so the three buttons cannot drift apart | Never |
+| **Graph / Mindmap / 3D** | Single dropdown (`aria-haspopup="menu"`). Driven by the `PROJECTION_OPTIONS` table, so the trigger label and the menu rows cannot drift apart. `position: fixed` so the toolbar scroller cannot clip it | Never |
 | **Filter** | Toggles the scope popover. `aria-expanded` tracks it; an `on` badge appears when the scope is non-empty | Never |
 | **Reset** | `labelPx → 16`, `zoom → 1`, `projection → 'flat'`, `scope → empty`, `graphEpoch++` | Never |
 
@@ -461,42 +461,25 @@ Both are now `flex-nowrap`, and the toolbar row scrolls horizontally instead:
 
 **The Filter popover is portaled to `document.body`** (v0.6.2) with a dim backdrop and solid fills (`.graph-scope-filter`, `z-index: 10000`). Concept-mode HTML labels use z-index up to 2000 for depth sorting; that layer is `isolate`d so those values cannot compete with Filter. The panel is still `position: fixed` and clamped; `GraphViewControls` re-measures the Filter button on capture-phase `scroll` and on `resize` so a toolbar scroll cannot leave the panel stranded. The **Format** menu in `Editor.tsx` follows the same fixed + re-measure contract (fixed in v0.6.1 after the scroller clipped an absolute dropdown).
 
-## 9b. Globe projection
+## 9b. Mindmap projection
 
-[`utils/graph/sphereProject.ts`](../src/utils/graph/sphereProject.ts)
+[`utils/graph/layoutMindmap.ts`](../src/utils/graph/layoutMindmap.ts)
 
-The layout plane is treated as tangent to a sphere at the **near** pole, so the layout origin `(0, 0)` maps to `(0, 0, +R)` and is visible on load. `SPHERE_RADIUS = 2600` layout units.
+Replaces the former Globe wrap. The same compiled graph is stripped to a **spanning tree** (the hierarchical bones) and drawn left-to-right. Loops and secondary relationships stay in `graph.edges` and are painted as **dashed, low-opacity cross-links**.
 
-| Function | Behaviour |
+| Piece | Behaviour |
 |---|---|
-| `toSphere(x, y, R)` | Inverse stereographic. `z = R(R² − x² − y²) / S` — the `R² − …` ordering is what puts the origin at `+R`. `\|P\| = R` exactly |
-| `toScreen(p, R)` | Forward stereographic, `(R·x)/(R + z)`. Valid only for `z > 0` |
-| `isFrontFacing(p)` | `z > 0`; the visible cap |
-| `rotateSphere(p, {yaw, pitch})` | **Yaw spins about Y**, pitch about X |
-| `clampPitch(p)` | `±0.92·(π/2)`, short of the degenerate pole |
-| `dragToOrientation(base, dx, dy, pixelsPerRadian)` | `yaw += dx / gain`, `pitch += dy / gain`, pitch clamped |
-| `angularDistance(a, b)` | Great-circle angle in radians, via `acos` of the clamped dot product |
+| Root | The open document node, else `docs[0]`, else the first node |
+| Tree growth | BFS. Heading children of a node are claimed first, then `wikilink`, then `@`. Disconnected components become extra roots, stacked in Y |
+| Placement | Depth on X (`MINDMAP_LAYER_X = 320`). Leaves packed on Y (`MINDMAP_LEAF_GAP = 140`). A parent sits at the vertical midpoint of its children. The drawing is then centred on the origin |
+| Tree edges | Cubic `mindmapTreePath` — control points stay on each endpoint's Y so the curve leaves a parent going right and arrives at a child from the left |
+| Cross-links | Quadratic `mindmapCrossPath`, `stroke-dasharray: 8 10`, opacity ~0.45. Vertical-ish leftovers bow to the right (away from the root) |
+| Navigation | Identical to Flat: background drag pans. No sphere, no far-side culling |
+| Labels | Sit above the node (`textAnchor: middle`) so they do not ride the outgoing cubic |
 
-### Why yaw rotates about Y
+`layoutMindmap` returns `{ nodes, treeEdgeIds }`. `treeEdgeIds` is a `Set` of `GraphEdge.id`; `GraphView` uses it only for stroke style. Click, hover, Filter, and Reset are the Flat path.
 
-The near pole sits on the **+Z** axis, and Z is also the viewing axis. Rotating about Z would spin the globe *toward the camera*, which is visually a no-op. Yaw therefore rotates about Y, which rolls the visible cap horizontally. This is asserted directly by `sphere: yaw carries the near pole off the visible cap`.
-
-### Rotation gain
-
-`pixelsPerRadian = max(viewport.w, 320) / π`, so dragging across the full pane turns the globe a half revolution — one drag, one hemisphere.
-
-The gain is deliberately derived from the **viewport**, not from `camera.scale`. A world-derived gain shrinks as you zoom in, which makes the globe spin wildly when zoomed out and barely move when zoomed in.
-
-### Culling and depth
-
-| Detail | Rule |
-|---|---|
-| Back hemisphere | `isFrontFacing` false → node is not rendered. Projecting it would place it behind the eye and render it mirrored |
-| Edges | An edge is dropped unless **both** endpoints survive; otherwise it would stretch across the viewport to an undrawn node |
-| Depth ramp | `depthScale(d) = 0.55 + 0.45·d` where `d = (z/R + 1) / 2`, applied to node and edge `opacity` |
-| Lookup | `byId` is a `Map`, replacing the previous `placed.find()` scan inside `edges.map()` — that was O(E·N) and became the hot loop once every node re-projects on each `pointermove` |
-
-> **The horizon loses context.** Culling the back hemisphere is what makes the globe readable, but it also means a far node can be entirely off-screen. The 2018 paper's own participants reported this of iSphere (*"the other far-way node is often lost"*). `Reset` returns to the fitted flat view as the escape hatch.
+`sphereProject.ts` remains in the tree as the rotation helper Concept reuses (`dragToOrientation`); it is no longer a Graph projection.
 
 ## 9c. Fisheye lens
 
@@ -520,31 +503,30 @@ x' = c + (b − c)·β'
 | Focus | `applyFisheye(c, c, …)` returns `c`; the focus never moves |
 | State | `useGraphLens` — `focal` starts `null` and `magnification` starts `0`, so the lens is inert until both exist |
 
-**The lens is currently not exposed in the UI.** `useGraphLens` is wired into the pipeline and gated on `projection === 'sphere'`, but nothing sets a focal point yet; it activates when focal-point placement lands.
+**The lens is currently not exposed in the UI.** `useGraphLens` is wired into the pipeline with `enabled: false`, so it is an identity until a focal-point control lands.
 
 ## 9d. 3D Concept projection
 
 [`utils/graph/conceptProject.ts`](../src/utils/graph/conceptProject.ts) · [`components/Concept3DScene.tsx`](../src/components/Concept3DScene.tsx)
 
-The third projection. Where Globe **wraps** the layout on a sphere, Concept keeps the layout planar and **extrudes** it: `layout.x → world.x`, `layout.y → world.z`, and heading tiers rise along `world.y`. The atom becomes a floor plan with a stack over it.
+The third projection. Where Mindmap **re-lays** the graph as a tree, Concept keeps the radial layout planar and **extrudes** it: `layout.x → world.x`, `layout.y → world.z`, and heading tiers rise along `world.y`. The atom becomes a floor plan with a stack over it.
 
-> `viewMode` is still `'write' | 'preview' | 'split' | 'graph'`. Concept is the third entry in the same projection toggle as Flat and Globe, for the reason [§1](#1-what-it-is) gives: same nodes, same clicks, different camera. It is **not** a fifth pane.
+> `viewMode` is still `'write' | 'preview' | 'split' | 'graph'`. Concept is the third entry in the same projection dropdown as Graph and Mindmap, for the reason [§1](#1-what-it-is) gives: same nodes, same clicks, different camera. It is **not** a fifth pane.
 
 ### Pipeline divergence
 
 ```
-buildWorkspaceGraph → layoutWorkspaceGraph → drag overrides → fisheye lens
+buildWorkspaceGraph → filter → layout (radial or mindmap) → drag overrides → fisheye (inert)
                                                              │
         ┌────────────────────────────────────────────────────┤
         │                                                    │
-   flat: identity                                    sphere: toSphere
-   concept: THREE.WebGLRenderer                        → rotateSphere
-            (reads `lens.lensed` directly)                 → toScreen
+   flat / mindmap: <svg>                             concept: THREE.WebGLRenderer
+                                                              (reads `lens.lensed` directly)
 ```
 
-Concept is the one projection **not** implemented as a pure coordinate map on `placed`. It hands `lens.lensed` to a `three.js` scene, because building a 3D world needs the *unprojected* layout coordinates — a projected point cannot be lifted onto an axis. `projected` still returns them unchanged (with `depth: 1, visible: true`) so `byId`, the hover ring, and `onNodeClick` stay identical across all three.
+Concept is the one projection **not** implemented as an SVG coordinate map on `placed`. It hands `lens.lensed` to a `three.js` scene, because building a 3D world needs the *unprojected* layout coordinates — a projected point cannot be lifted onto an axis. `projected` still returns them unchanged (with `depth: 1, visible: true`) so `byId`, the hover ring, and `onNodeClick` stay identical across all three.
 
-The fisheye lens stays **off** in Concept, as it is in Globe: `β` is a planar boundary ratio and has no meaning on a tilted floor.
+The fisheye lens stays **off** in Concept and Mindmap: `β` is a planar boundary ratio and has no meaning on a tilted floor, and Mindmap already unpacks hierarchy in layout.
 
 ### Heights — two opposing y-bands
 
@@ -592,7 +574,7 @@ The spacing test walks **all 60 tiers** rather than checking depth 1 — with a 
 
 `GraphView` exposes `MIN/MAX_GRAPH_LABEL_PX` for the SVG; `Concept3DScene` re-clamps its own projected label layer. The scene is lazy-loaded and cannot import those constants without a static cycle back through `GraphView`, so the literals are the duplication.
 
-> They were silently wrong before this: the SVG allowed `12–28px` while the 3D layer clamped to `[10, 26]`. A user at 28px would see larger labels in Flat and Globe and identical labels in 3D, with no indication anything had been dropped. Both now read `[6, 48]`, and the test suite asserts the two agree by parsing both files.
+> They were silently wrong before this: the SVG allowed `12–28px` while the 3D layer clamped to `[10, 26]`. A user at 28px would see larger labels in Flat and identical labels in 3D, with no indication anything had been dropped. Both now read `[6, 48]`, and the test suite asserts the two agree by parsing both files.
 
 ### Label legibility — hierarchy, depth, and separation
 
@@ -603,7 +585,7 @@ Four mechanisms now compose, all inside the existing label loop:
 | Mechanism | Rule | Why |
 |---|---|---|
 | **Kind hierarchy** | `conceptLabelStyle` — document `1.0` / `700`, heading `0.92` / `600`, term `0.82` / `500`. The current document is pinned to `1.0` / `700` | Mirrors `nodeRadius` (`36` / `20–26` / `16`). Type now carries the same distinction the geometry already draws |
-| **Depth ramp** | `conceptLabelDepth` — opacity `1 → 0.25`, scale `1 → 0.7` across `[0.55, 1.9] × poseDistance` | Flat and Globe fade by `depthScale`; the 3D layer had **no** depth cue, so a node 50 units away and one 3000 units away looked identical |
+| **Depth ramp** | `conceptLabelDepth` — opacity `1 → 0.25`, scale `1 → 0.7` across `[0.55, 1.9] × poseDistance` | The 3D layer had **no** depth cue, so a node 50 units away and one 3000 units away looked identical |
 | **Z-order** | `z-index = 2000 · (1 − t)`, from the ramp's own `t` | DOM order decided occlusion, so rotating the scene arbitrarily shuffled which label won an overlap |
 | **Halo** | Three-pass `text-shadow` in the canvas surface colour | The standard map-label treatment — keeps two overlapping words individually readable without a background plate |
 
@@ -661,15 +643,15 @@ interface ConceptPose { yaw: number; pitch: number; distance: number; target: Po
 | Distance | Eye-to-target radius. `conceptDistanceFromZoom(zoom) = zoom · 1800`, clamped `[400, 6000]` |
 | Target | Layout-space orbit centre; re-centred by the same `fitKey` effect that drives the flat camera's `center`, so a resize or data change still reframes |
 | Default | `{ yaw: -0.6, pitch: 0.7, distance: 1800 }` — front-right, ~40° up. At pitch 0 the floor is edge-on and the tiers line up into a single row |
-| Clamp | `clampConceptPose` reuses `clampPitch`, so the pole limit is shared with Globe |
+| Clamp | `clampConceptPose` reuses `clampPitch` from `sphereProject.ts` |
 
    530|### Zoom is derived, not stored
 
 `distance` is recomputed from the toolbar's `zoom` multiplier on every change rather than held as independent state. `GraphViewControls` drives **one** `zoom` for all three projections; a separate `distance` would drift the moment the user pressed `Zoom +` in one projection and switched to another — the same failure mode as storing an absolute SVG scale alongside a fit scale.
 
-### Rotation gain is shared with Globe
+### Rotation gain
 
-`dragToConceptPose` delegates to `dragToOrientation` with the same `pixelsPerRadian = max(viewport.w, 320) / π`. One full-pane drag is a half revolution in both Globe and Concept, so the mouse does not need retuning when switching. This is asserted for both.
+`dragToConceptPose` delegates to `dragToOrientation` with `pixelsPerRadian = max(viewport.w, 320) / π`. One full-pane drag is a half revolution. This is asserted.
 
 ### Free navigation (v0.5.8)
 
@@ -709,7 +691,7 @@ The scene owns a `Raycaster`, but **not** the drag model. On every pointer event
 |---|---|
 | Hover | `onHoverChange(id)` sets the same `hoverId` the SVG uses, so the tooltip and the `neighborsOf` dimming ring are the same code |
 | Click | Resolved on `pointerup` from a fresh pick, then `onConceptNodeClick` routes through `byId`. `endNodeDrag(…, fireClick = false)` suppresses the SVG's own click so it cannot double-fire |
-| Node drag | The scene reports the pointer ray's intersection with `y = 0` in **layout** space (`floorPointFromRay`); the override is anchored at `floorAnchorRef` captured on pointer-down. Overrides stay layout-space, so a node dragged in 3D keeps its position when you switch back to Flat or Globe |
+| Node drag | The scene reports the pointer ray's intersection with `y = 0` in **layout** space (`floorPointFromRay`); the override is anchored at `floorAnchorRef` captured on pointer-down. Overrides stay layout-space within a projection; switching projection clears them because Mindmap does not share the radial coordinates |
 | Orbit | Background press with no hovered node → `cam.beginDrag(e, 'conceptOrbit')` |
 | Label | A `position: absolute` div per node. The anchor is the layout label offset (`labelDx` / `labelDy`) at `slot.y`, projected each frame, so wording rides the heading helix instead of a fixed screen-pixel nudge. `p.z > 1` hides nodes behind the camera |
 
@@ -769,11 +751,11 @@ The whole design follows from one placement decision:
 ```
 buildWorkspaceGraph
   → filterWorkspaceGraph          ← the scope filter
-  → layoutWorkspaceGraph
-  → drag overrides → fisheye lens → (flat | sphere | concept)
+  → layout (radial or mindmap)
+  → drag overrides → fisheye lens → (flat | mindmap | concept)
 ```
 
-`layoutWorkspaceGraph` is a pure derivation of `(nodes, edges)`, so a pruned graph simply **lays out smaller**. Nothing downstream learns that a filter exists — the fisheye lens, the stereographic projection, and `Concept3DScene` are untouched, and all three projections inherit the filter for free.
+Layout is a pure derivation of `(nodes, edges)`, so a pruned graph simply **lays out smaller**. Nothing downstream learns that a filter exists — the fisheye lens, the mindmap strokes, and `Concept3DScene` are untouched, and all three projections inherit the filter for free.
 
 > Filtering *after* layout would have been the obvious alternative and the wrong one. The excluded nodes would still occupy layout space, still widen the camera's fitted bounds, and still force every downstream pass to re-derive what to skip — in three places instead of one.
 
@@ -809,7 +791,7 @@ Two shorthands, both resolved by helpers rather than at the call site:
 | 4 | `term` | At least one surviving node links to it, transitively |
 | 5 | any edge | **Both** endpoints survive |
 
-Rule 4 is a worklist, not a single pass, so a term chained to another term still terminates. Rule 5 is the same guarantee the globe's back-hemisphere culling already relies on: an edge to a node that is not drawn would otherwise stretch across the viewport to nothing.
+Rule 4 is a worklist, not a single pass, so a term chained to another term still terminates. Rule 5 is the same guarantee SVG already relies on: an edge to a node that is not drawn would otherwise stretch across the viewport to nothing.
 
 > **The empty scope returns the input object by reference.** The unfiltered case is the overwhelmingly common one, and it should cost a comparison rather than two array filters.
 

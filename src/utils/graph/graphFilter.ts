@@ -1,12 +1,12 @@
 // Narrow a compiled workspace graph to a user-chosen scope of
 // documents and sections. Pure — no React, no store access — so the
-// same pruning runs for the flat map, the globe, and the 3D Concept
+// same pruning runs for the flat map, the mindmap, and the 3D Concept
 // projection, and is assertable from `scripts/test-graph.mjs`.
 //
 // Filtering happens *before* layout on purpose. `layoutWorkspaceGraph`
 // is a pure derivation of `(nodes, edges)`, so a smaller graph simply
-// lays out smaller — nothing downstream (fisheye lens, sphere
-// projection, three.js scene) has to learn that a filter exists.
+// lays out smaller — nothing downstream (fisheye lens, mindmap layout,
+// three.js scene) has to learn that a filter exists.
 
 import type {
   GraphEdge,

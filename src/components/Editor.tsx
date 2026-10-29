@@ -189,7 +189,7 @@ export function Editor() {
   const editorFontSize = useStore((s) => s.editorFontSize);
   const [graphLabelPx, setGraphLabelPx] = useState(DEFAULT_GRAPH_LABEL_PX);
   const [graphZoom, setGraphZoom] = useState(DEFAULT_GRAPH_ZOOM);
-  // Flat map or globe. Deliberately local state, not a store field: a
+  // Flat map, mindmap, or 3D. Deliberately local state, not a store field: a
   // projection is a navigation aid within the Graph view, not a view mode,
   // and persisting it would change what the app opens to between sessions.
   const [graphProjection, setGraphProjection] = useState<GraphProjection>('flat');

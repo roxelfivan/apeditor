@@ -58,7 +58,7 @@ No new Settings. No migration.
 
 - **Format menu is visible and clickable.** Making the toolbar a horizontal scroller in v0.6.0 clipped the Format menu — it opened in the accessibility tree but sat below the scroller edge, so you could not see Bold / Italic / Underline / Size. The menu now floats above the page (`position: fixed`) and stays on screen, the same way Import / Export and Filter already do.
 - **Split is Write or Preview on the left, Graph on the right.** Use the tabs at the top of the left pane to switch Write / Preview; the choice is remembered. Full Write, Preview, and Graph modes are unchanged. The view dropdown order is Write → Preview → Graph → Split.
-- **Clicking a Graph heading or term scrolls the Write pane** to that passage (Flat, Globe, and 3D). Words and the selection stay locked together while you scroll.
+- **Clicking a Graph heading or term scrolls the Write pane** to that passage (Graph, Mindmap, and 3D). Words and the selection stay locked together while you scroll.
 
 No new settings, no migration.
 

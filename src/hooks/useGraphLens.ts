@@ -22,7 +22,7 @@ export interface UseGraphLens<T extends Point> {
 }
 
 export interface UseGraphLensOptions {
-  /** True when a focal point should be meaningful (sphere mode). */
+  /** True when a focal point should be meaningful. Currently unused in the UI. */
   enabled: boolean;
   /** Bounds of the layout, used for the boundary intersection. */
   bounds: FisheyeBounds;

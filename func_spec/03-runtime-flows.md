@@ -254,21 +254,12 @@ viewMode === 'graph' || viewMode === 'split'
   → filterWorkspaceGraph(compiled, scope)          ← v0.5.9 scope filter
       empty scope → identity (same object reference)
       else prune documents / headings / path spine / unreachable terms
-  → layoutWorkspaceGraph(graph, currentDocumentId)
-      1. seed the CURRENT document as an atom at the origin
-           (or docs[0] when the current document was filtered out)
-           assignAngles weighted by subtreeWidth
-           assignShells collapses a lone H1 + its children so the ring does not collapse
-           shellRadii → radii[0] = NUCLEUS_RING (88), then +SHELL_GAP (280) floors
-      2. term satellites at currentExtent + 90, placed on circularMean of their neighbours
-      3. each OTHER document laid out as its own mini-atom at minSep = 204
-           placed at currentExtent + extent + CLUSTER_GAP (340)
-      4. six refinement passes slide clusters toward the mean incoming ray
-      5. RELAX_ITERS = 80 separation passes; the current doc node is pinned
-      6. labelPlacement pushes labels outward, anchors start/middle/end by radial x
+  → layout (chosen by projection)
+      'flat' / 'concept' → layoutWorkspaceGraph (radial atom)
+      'mindmap' → layoutMindmap (horizontal spanning tree + leftover cross-links)
   → GraphView renders, wires drag / zoom / hover / click
-      projection 'flat'    → <svg>, layout coordinates unchanged
-      projection 'sphere'  → toSphere → rotateSphere → toScreen, back-hemisphere culled
+      projection 'flat'    → <svg>, radial layout coordinates unchanged
+      projection 'mindmap' → <svg>, tidy tree on X; tree edges cubic, leftovers dashed
       projection 'concept' → <Concept3DScene> (lazy), three.js WebGL
           headingDepthByNode(edges) → depth → ConceptSlot {y, term}
              document 0, heading via conceptZForDepth (gaps compress past depth 6),

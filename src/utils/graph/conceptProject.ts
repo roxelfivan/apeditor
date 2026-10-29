@@ -1,7 +1,8 @@
 /**
  * Geometry for the 3D Concept projection.
  *
- * The Globe projection wraps the atom on a sphere; Concept instead keeps
+ * The Mindmap projection lays the same graph out as a left-to-right tree;
+ * Concept instead keeps
  * the layout's (x, y) as the *floor* and lifts nodes along a third axis by
  * heading depth, so the document outline reads as a stack of layers you can
  * orbit around. This module holds the pure math; `Concept3DScene.tsx` owns
@@ -330,8 +331,7 @@ export function clampConceptPose(pose: ConceptPose): ConceptPose {
  * Orbit from a pointer drag.
  *
  * The gain rule is `dragToOrientation`'s, deliberately: one full pane drag
- * turns a half revolution in both projections, so switching between Flat,
- * Globe and Concept does not retune the mouse.
+ * turns a half revolution, so switching into Concept does not retune the mouse.
  */
 export function dragToConceptPose(
   base: ConceptPose,
@@ -532,7 +532,7 @@ export interface ConceptLabelDepth {
  * with `MAX_CONCEPT_DISTANCE` the moment either was retuned — the exact
  * class of bug that constant is derived to prevent.
  *
- * Flat and Globe already fade by depth (`depthScale` in `GraphView`); the
+ * Flat already fades by hover-neighbour dimming in `GraphView`; the
  * 3D layer had no depth ramp at all, which is why orbiting it piled every
  * distance onto one visual plane.
  */
