@@ -16,12 +16,12 @@
 
 export const DEFAULT_GRAPH_ZOOM = 1;
 /**
- * Zoom floor: 0.25× shows the whole graph at a quarter of its fitted size,
- * which is the useful end of "too far out" — past that a multi-document
- * workspace is a field of unreadable dots and the user is better served by
- * the flat map's fit-to-pane.
+ * Zoom floor: 0.05× (5%). Far enough out to take in a dense workspace
+ * without the toolbar refusing Zoom − at a still-useful 25%. Past this
+ * the map is a field of unreadable dots; Mindmap browsing of a tall tree
+ * is native overflow, not further zoom-out.
  */
-export const MIN_GRAPH_ZOOM = 0.25;
+export const MIN_GRAPH_ZOOM = 0.05;
 /**
  * Zoom ceiling: 12×. Enough to read a single heading's label from a
  * dense atom without letting the user get so far in that the viewBox

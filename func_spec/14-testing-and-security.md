@@ -70,7 +70,7 @@ Case 1 is the regression guard for the `mention:` filter that keeps comment sent
 
 | # | Case | Asserts |
 |---|---|---|
-| 11 | `zoom boxes shrink toward the center` | `zoomedViewBox(-100,-50,200,100,2)` → `{ w: 100, h: 50, x: -50, y: -25 }`; `clampGraphZoom(99) === 4`; `clampGraphZoom(0) === 0.5`; `stepGraphZoom(1,1) > 1`; `stepGraphZoom(1,-1) < 1` |
+| 11 | `zoom boxes shrink toward the center` | `zoomedViewBox(-100,-50,200,100,2)` → `{ w: 100, h: 50, x: -50, y: -25 }`; `clampGraphZoom(99) === MAX_GRAPH_ZOOM`; `clampGraphZoom(0) === MIN_GRAPH_ZOOM` (0.05); `stepGraphZoom(1,1) > 1`; `stepGraphZoom(1,-1) < 1` |
 
 ### Layout
 

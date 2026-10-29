@@ -36,13 +36,13 @@ await fs.writeFile(
 import { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview } from '${path.join(ROOT, 'src/utils/graph/parseWikilinks.ts').replace(/\\/g, '/')}';
 import { buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath } from '${path.join(ROOT, 'src/utils/graph/buildWorkspaceGraph.ts').replace(/\\/g, '/')}';
 import { layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, headingDepthByNode } from '${path.join(ROOT, 'src/utils/graph/layoutWorkspaceGraph.ts').replace(/\\/g, '/')}';
-import { layoutMindmap, spanningTree, mindmapTreePath, mindmapCrossPath, mindmapMinScale, MINDMAP_LAYER_X, MINDMAP_LEAF_GAP, MINDMAP_CHAR_W, MINDMAP_GLYPH_EM } from '${path.join(ROOT, 'src/utils/graph/layoutMindmap.ts').replace(/\\/g, '/')}';
+import { layoutMindmap, spanningTree, mindmapTreePath, mindmapCrossPath, mindmapMinScale, mindmapSvgPx, mindmapWorldAtScrollCenter, mindmapScrollToWorld, MINDMAP_LAYER_X, MINDMAP_LEAF_GAP, MINDMAP_CHAR_W, MINDMAP_GLYPH_EM } from '${path.join(ROOT, 'src/utils/graph/layoutMindmap.ts').replace(/\\/g, '/')}';
 import { filterWorkspaceGraph, createScope, createNoneScope, isScopeEmpty, isNoneScope, normalizeScope, resolveDocumentIds, resolveSectionIds } from '${path.join(ROOT, 'src/utils/graph/graphFilter.ts').replace(/\\/g, '/')}';
 import { clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, MIN_GRAPH_ZOOM, MAX_GRAPH_ZOOM } from '${path.join(ROOT, 'src/utils/graph/graphCamera.ts').replace(/\\/g, '/')}';
 import { toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION } from '${path.join(ROOT, 'src/utils/graph/sphereProject.ts').replace(/\\/g, '/')}';
 import { applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes } from '${path.join(ROOT, 'src/utils/graph/fisheyeLens.ts').replace(/\\/g, '/')}';
 import { conceptZForDepth, conceptZStep, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, clampConceptDistance, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, conceptLabelStyle, conceptLabelDepth, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, MIN_CONCEPT_Z_STEP, CONCEPT_Z_COMPRESS_AFTER, CONCEPT_Z_COMPRESS_RATIO, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE, MIN_CONCEPT_LABEL_PX, CONCEPT_LABEL_NEAR_RATIO, CONCEPT_LABEL_FAR_RATIO, CONCEPT_LABEL_MIN_OPACITY, CONCEPT_LABEL_MIN_SCALE } from '${path.join(ROOT, 'src/utils/graph/conceptProject.ts').replace(/\\/g, '/')}';
-export { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, layoutMindmap, spanningTree, mindmapTreePath, mindmapCrossPath, mindmapMinScale, MINDMAP_LAYER_X, MINDMAP_LEAF_GAP, MINDMAP_CHAR_W, MINDMAP_GLYPH_EM, nodeRadius, countProperEdgeCrossings, headingDepthByNode, filterWorkspaceGraph, createScope, createNoneScope, isScopeEmpty, isNoneScope, normalizeScope, resolveDocumentIds, resolveSectionIds, clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, MIN_GRAPH_ZOOM, MAX_GRAPH_ZOOM, toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION, applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes, conceptZForDepth, conceptZStep, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, clampConceptDistance, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, conceptLabelStyle, conceptLabelDepth, MIN_CONCEPT_LABEL_PX, CONCEPT_LABEL_NEAR_RATIO, CONCEPT_LABEL_FAR_RATIO, CONCEPT_LABEL_MIN_OPACITY, CONCEPT_LABEL_MIN_SCALE, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, MIN_CONCEPT_Z_STEP, CONCEPT_Z_COMPRESS_AFTER, CONCEPT_Z_COMPRESS_RATIO, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE };
+export { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, layoutMindmap, spanningTree, mindmapTreePath, mindmapCrossPath, mindmapMinScale, mindmapSvgPx, mindmapWorldAtScrollCenter, mindmapScrollToWorld, MINDMAP_LAYER_X, MINDMAP_LEAF_GAP, MINDMAP_CHAR_W, MINDMAP_GLYPH_EM, nodeRadius, countProperEdgeCrossings, headingDepthByNode, filterWorkspaceGraph, createScope, createNoneScope, isScopeEmpty, isNoneScope, normalizeScope, resolveDocumentIds, resolveSectionIds, clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, MIN_GRAPH_ZOOM, MAX_GRAPH_ZOOM, toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION, applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes, conceptZForDepth, conceptZStep, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, clampConceptDistance, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, conceptLabelStyle, conceptLabelDepth, MIN_CONCEPT_LABEL_PX, CONCEPT_LABEL_NEAR_RATIO, CONCEPT_LABEL_FAR_RATIO, CONCEPT_LABEL_MIN_OPACITY, CONCEPT_LABEL_MIN_SCALE, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, MIN_CONCEPT_Z_STEP, CONCEPT_Z_COMPRESS_AFTER, CONCEPT_Z_COMPRESS_RATIO, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE };
 `
 );
 
@@ -76,6 +76,9 @@ const {
   mindmapTreePath,
   mindmapCrossPath,
   mindmapMinScale,
+  mindmapSvgPx,
+  mindmapWorldAtScrollCenter,
+  mindmapScrollToWorld,
   MINDMAP_LAYER_X,
   MINDMAP_LEAF_GAP,
   MINDMAP_CHAR_W,
@@ -432,6 +435,19 @@ test('zoom: the Concept eye distance never clamps below its own zoom range', () 
   );
   assert.ok(MIN_CONCEPT_DISTANCE < DEFAULT_CONCEPT_DISTANCE);
   assert.ok(MIN_GRAPH_ZOOM < 1 && MAX_GRAPH_ZOOM > 1, 'the default must sit inside the range');
+  assert.equal(MIN_GRAPH_ZOOM, 0.05);
+  assert.equal(
+    MIN_CONCEPT_DISTANCE,
+    MIN_GRAPH_ZOOM * DEFAULT_CONCEPT_DISTANCE,
+    'Concept floor must track Zoom −'
+  );
+  assert.equal(
+    conceptDistanceFromZoom(MIN_GRAPH_ZOOM),
+    MIN_GRAPH_ZOOM * DEFAULT_CONCEPT_DISTANCE
+  );
+  let z = 1;
+  for (let i = 0; i < 40; i++) z = stepGraphZoom(z, -1);
+  assert.equal(z, MIN_GRAPH_ZOOM);
 });
 
 test('layout: node bullets are at least double the original size', () => {
@@ -1815,6 +1831,23 @@ test('mindmap: the toolbar names the projection Mindmap, not Globe', () => {
   assert.equal(src.includes("id: 'sphere'"), false);
   assert.match(src, /aria-haspopup="menu"/);
   assert.match(src, /data-graph-projection-menu/);
+});
+
+test('mindmap: a tree larger than the pane is a scrollable SVG', () => {
+  const bounds = { minX: 0, minY: 0, width: 4000, height: 8000 };
+  const px = mindmapSvgPx(bounds, 0.5);
+  assert.equal(px.w, 2000);
+  assert.equal(px.h, 4000);
+  const world = mindmapWorldAtScrollCenter(bounds, 0.5, 100, 200, { w: 400, h: 300 });
+  assert.equal(world.x, 0 + (100 + 200) / 0.5);
+  assert.equal(world.y, 0 + (200 + 150) / 0.5);
+  const back = mindmapScrollToWorld(bounds, 0.5, world, { w: 400, h: 300 });
+  assert.equal(back.left, 100);
+  assert.equal(back.top, 200);
+  const src = readFileSync(path.join(ROOT, 'src/components/GraphView.tsx'), 'utf8');
+  assert.match(src, /data-graph-mindmap-scroll/);
+  assert.match(src, /overflow-auto/);
+  assert.match(src, /if \(isMindmap\) return/);
 });
 
 console.log(`${passed} passed`);

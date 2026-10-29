@@ -41,7 +41,7 @@
  */
 
 import type { Point } from '@/utils/graph/graphCamera';
-import { MAX_GRAPH_ZOOM } from '@/utils/graph/graphCamera';
+import { MAX_GRAPH_ZOOM, MIN_GRAPH_ZOOM } from '@/utils/graph/graphCamera';
 import type { GraphEdge, GraphNodeKind } from '@/utils/graph/buildWorkspaceGraph';
 import { headingDepthByNode } from '@/utils/graph/layoutWorkspaceGraph';
 import { clampPitch, dragToOrientation } from '@/utils/graph/sphereProject';
@@ -240,9 +240,17 @@ export function conceptTermSlot(layoutAnchor: Point): ConceptSlot {
 /* Camera distance                                                         */
 /* --------------------------------------------------------------------- */
 
-export const MIN_CONCEPT_DISTANCE = 400;
 /** Reference distance that the toolbar's `100%` zoom reads as. */
 export const DEFAULT_CONCEPT_DISTANCE = 1800;
+/**
+ * Eye-distance floor.
+ *
+ * **Derived from `MIN_GRAPH_ZOOM`, not chosen independently.** The toolbar
+ * holds one `zoom` multiplier for all three projections; a floor here
+ * higher than `MIN_GRAPH_ZOOM × DEFAULT_CONCEPT_DISTANCE` would let Zoom −
+ * read "5%" while the eye sat still at ~22%.
+ */
+export const MIN_CONCEPT_DISTANCE = MIN_GRAPH_ZOOM * DEFAULT_CONCEPT_DISTANCE;
 /**
  * Eye-distance ceiling.
  *
@@ -527,7 +535,7 @@ export interface ConceptLabelDepth {
  * **Both bounds are ratios of `poseDistance`, never absolute distances.**
  * That is the whole design: the band `[NEAR, FAR] × poseDistance` scales
  * with the orbit radius, so zooming tightens the readable band along with
- * the geometry and the ramp looks identical at 25% and 1200%. Absolute
+ * the geometry and the ramp looks identical at 5% and 1200%. Absolute
  * bounds would need a ceiling of their own and would silently disagree
  * with `MAX_CONCEPT_DISTANCE` the moment either was retuned — the exact
  * class of bug that constant is derived to prevent.

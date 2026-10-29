@@ -1,6 +1,6 @@
 # Graph view
 
-> A local knowledge graph of the workspace, compiled entirely in the browser from documents, headings, `[[wikilinks]]`, and `@` mentions. No LLM call, no new dependency, no store-schema change. Added in v0.5.4. Pan / orbit navigation added in v0.5.7. The 3D Concept projection added in v0.5.8. Spreading the Concept stack and OrbitControls-driven free navigation in v0.5.8. The document / section scope filter added in v0.5.9, together with zoom widened to 0.25×–12× (which also fixes a silent Concept distance clamp), labels widened to 6–48px across all three projections, and heading tiers made depth-compressed so deep `Comment > A > B > …` paths stay legible. In v0.6.0 the Concept labels were made legible while rotating — typographic hierarchy by node kind, a camera-distance ramp, near-over-far paint order, and a halo — the dark-mode sphere colours were lifted off the background, and the editor toolbar became a single non-wrapping row. The Globe projection was later replaced by a horizontal **Mindmap** (spanning tree plus dashed cross-links), and Graph / Mindmap / 3D collapsed into one toolbar dropdown.
+> A local knowledge graph of the workspace, compiled entirely in the browser from documents, headings, `[[wikilinks]]`, and `@` mentions. No LLM call, no new dependency, no store-schema change. Added in v0.5.4. Pan / orbit navigation added in v0.5.7. The 3D Concept projection added in v0.5.8. Spreading the Concept stack and OrbitControls-driven free navigation in v0.5.8. The document / section scope filter added in v0.5.9, together with zoom widened to 0.05×–12× (which also fixes a silent Concept distance clamp), labels widened to 6–48px across all three projections, and heading tiers made depth-compressed so deep `Comment > A > B > …` paths stay legible. In v0.6.0 the Concept labels were made legible while rotating — typographic hierarchy by node kind, a camera-distance ramp, near-over-far paint order, and a halo — the dark-mode sphere colours were lifted off the background, and the editor toolbar became a single non-wrapping row. The Globe projection was later replaced by a horizontal **Mindmap** (spanning tree plus dashed cross-links), and Graph / Mindmap / 3D collapsed into one toolbar dropdown.
 
 ---
 
@@ -284,7 +284,7 @@ The first two exist so `scripts/test-graph.mjs` can assert "no initial edges cro
 
 ```ts
 DEFAULT_GRAPH_ZOOM = 1
-MIN_GRAPH_ZOOM     = 0.25
+MIN_GRAPH_ZOOM     = 0.05
 MAX_GRAPH_ZOOM     = 12
 GRAPH_ZOOM_FACTOR  = 1.25
 
@@ -294,7 +294,7 @@ interface Bounds { minX: number; minY: number; width: number; height: number }
 
 | Function | Behaviour |
 |---|---|
-| `clampGraphZoom(z)` | Non-finite → `1`; otherwise clamped to `[0.5, 4]` |
+| `clampGraphZoom(z)` | Non-finite → `1`; otherwise clamped to `[0.05, 12]` |
 | `stepGraphZoom(zoom, direction)` | `zoom * 1.25` or `zoom / 1.25`, then clamped |
 | `fitCameraTo(bounds, viewport)` | "Meet" fit: `scale = min(vp.w / w, vp.h / h)`, centre at the bounds centre |
 | `panCamera(camera, dx, dy)` | Moves the world **against** the drag: `cx -= dx / scale`, `cy -= dy / scale`. Scale is untouched |
@@ -412,7 +412,7 @@ Dragging empty SVG space starts a **navigation** session (`useGraphCamera`), dis
 | Projection | `kind` | Effect |
 |---|---|---|
 | `flat` | `pan` | `panCamera` — content follows the pointer at any zoom |
-| `mindmap` | `pan` | `panCamera` — same as flat |
+| `mindmap` | (none) | Native overflow on `[data-graph-mindmap-scroll]`. Background drag does not pan. Zoom keeps the world point under the pane centre |
 | `concept` | `conceptOrbit` | `dragToConceptPose` — the eye orbits its target |
 
 All three start at `DRAG_THRESHOLD_PX = 3`. The node drag threshold stays at `5`; they are separate sessions with separate refs, so a node drag never rotates the scene.
@@ -421,7 +421,7 @@ All three start at `DRAG_THRESHOLD_PX = 3`. The node drag threshold stays at `5`
 
 Each `<circle>` has `role="button"` and `tabIndex={0}`, with an `onKeyDown` that fires `onNodeClick` on `Enter` or `' '` (both `preventDefault()`).
 
-**There are no arrow-key panning, wheel zoom, or wheel handlers.** Zoom is buttons-only. The 3D scene can still be explored with a pointer.
+**There are no arrow-key panning, wheel zoom, or wheel handlers.** Zoom is buttons-only. Mindmap overflow uses the browser's native scroll (wheel / trackpad / scrollbars). The 3D scene can still be explored with a pointer.
 
 > **Concept has no keyboard path.** Flat and Mindmap put every node in the DOM as a focusable `<circle>`, so `Tab` reaches them and `Enter` opens them. A `<canvas>` cannot host focusable children, so the 3D view is pointer-only. This is a real accessibility gap, not an oversight — the [§9d](#9d-3d-concept-projection) label layer is `pointer-events: none` by design.
 
@@ -432,7 +432,7 @@ Each `<circle>` has `role="button"` and `tabIndex={0}`, with an `onKeyDown` that
 | `−` | `labelPx -= GRAPH_LABEL_STEP` | `labelPx <= 6` |
 | `+` | `labelPx += GRAPH_LABEL_STEP` | `labelPx >= 48` |
 | Readout | The raw `labelPx`, `tabular-nums` | — |
-| **Zoom −** | `zoom /= 1.25`, clamped | `zoom <= 0.25` |
+| **Zoom −** | `zoom /= 1.25`, clamped | `zoom <= 0.05` |
 | **Zoom +** | `zoom *= 1.25`, clamped | `zoom >= 12` |
 | Zoom readout | `{Math.round(zoom * 100)}%` | — |
 | **Graph / Mindmap / 3D** | Single dropdown (`aria-haspopup="menu"`). Driven by the `PROJECTION_OPTIONS` table, so the trigger label and the menu rows cannot drift apart. `position: fixed` so the toolbar scroller cannot clip it | Never |
@@ -474,8 +474,8 @@ Replaces the former Globe wrap. The same compiled graph is stripped to a **spann
 | Placement | Child column starts after the parent's label. Siblings share one X (a second column of one-line titles overlaps on a phone). Leaves pack on Y at `MINDMAP_LEAF_GAP`. A parent sits at the vertical midpoint of its children. The drawing is then centred on the origin |
 | Tree edges | Cubic `mindmapTreePath` — control points stay on each endpoint's Y so the curve leaves a parent going right and arrives at a child from the left |
 | Cross-links | Quadratic `mindmapCrossPath`, `stroke-dasharray: 8 10`, opacity ~0.45. Vertical-ish leftovers bow to the right (away from the root) |
-| Navigation | Identical to Flat: background drag pans. No sphere, no far-side culling |
-| Labels | Sit to the **right** of the node (`textAnchor: start`), **one line**, never wrapped. `mindmapMinScale(labelPx)` floors the camera so a world character is at least as wide as a CSS glyph and a row is at least 44px; the map may overflow (pan) rather than overlap titles |
+| Navigation | Native overflow. The SVG is sized to `layoutBounds × camera.scale` with a full-tree `viewBox`; `[data-graph-mindmap-scroll]` scrolls when the tree is larger than the pane. Background drag does not pan. No sphere, no far-side culling |
+| Labels | Sit to the **right** of the node (`textAnchor: start`), **one line**, never wrapped. `mindmapMinScale(labelPx)` floors the camera so a world character is at least as wide as a CSS glyph and a row is at least 44px; a tree that still does not fit the pane is scrollable rather than overlapping titles |
 
 `layoutMindmap` returns `{ nodes, treeEdgeIds }`. `treeEdgeIds` is a `Set` of `GraphEdge.id`; `GraphView` uses it only for stroke style. Click, hover, Filter, and Reset are the Flat path.
 
@@ -591,7 +591,7 @@ Four mechanisms now compose, all inside the existing label loop:
 
 **Nearest wins, nothing disappears.** No label is ever hidden; the near one paints solid on top while the far one fades toward `0.25`. "Collision" is resolved by paint order and contrast, not by removal — the graph never silently loses wording.
 
-**The ramp is zoom-invariant by construction.** Both bounds are ratios of `poseDistance`, never absolute distances. Zooming tightens the readable band along with the geometry, so the ramp looks the same at 25% and 1200%. Absolute bounds would need a ceiling of their own and would silently disagree with `MAX_CONCEPT_DISTANCE` the moment either was retuned — the same bug class that constant is derived to prevent. `label: the depth ramp is zoom-invariant` asserts the property rather than the values.
+**The ramp is zoom-invariant by construction.** Both bounds are ratios of `poseDistance`, never absolute distances. Zooming tightens the readable band along with the geometry, so the ramp looks the same at 5% and 1200%. Absolute bounds would need a ceiling of their own and would silently disagree with `MAX_CONCEPT_DISTANCE` the moment either was retuned — the same bug class that constant is derived to prevent. `label: the depth ramp is zoom-invariant` asserts the property rather than the values.
 
 **Hover opts out of the fade.** The node under the pointer renders at full size and full opacity. Fading it would hide precisely the thing the user aimed at. The neighbour-lit set keeps the existing `0.25` dim.
 
@@ -640,7 +640,7 @@ interface ConceptPose { yaw: number; pitch: number; distance: number; target: Po
 |---|---|
 | Yaw | Azimuth about the vertical axis. Positive turns the eye right |
 | Pitch | **Elevation**, positive looks *down*. Opposite sign to the sphere's tilt, because a camera above a floor is the natural reading |
-| Distance | Eye-to-target radius. `conceptDistanceFromZoom(zoom) = zoom · 1800`, clamped `[400, 6000]` |
+| Distance | Eye-to-target radius. `conceptDistanceFromZoom(zoom) = zoom · 1800`, clamped to `[MIN_GRAPH_ZOOM, MAX_GRAPH_ZOOM] × 1800` |
 | Target | Layout-space orbit centre; re-centred by the same `fitKey` effect that drives the flat camera's `center`, so a resize or data change still reframes |
 | Default | `{ yaw: -0.6, pitch: 0.7, distance: 1800 }` — front-right, ~40° up. At pitch 0 the floor is edge-on and the tiers line up into a single row |
 | Clamp | `clampConceptPose` reuses `clampPitch` from `sphereProject.ts` |

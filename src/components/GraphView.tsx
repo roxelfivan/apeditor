@@ -38,8 +38,11 @@ import {
   layoutMindmap,
   mindmapCrossPath,
   mindmapLabelWidth,
-  mindmapTreePath,
   mindmapMinScale,
+  mindmapScrollToWorld,
+  mindmapSvgPx,
+  mindmapTreePath,
+  mindmapWorldAtScrollCenter,
 } from '@/utils/graph/layoutMindmap';
 import {
   useGraphCamera,
@@ -98,6 +101,23 @@ function edgeCaption(kind: GraphEdge['kind']): string {
   if (kind === '@') return '@';
   if (kind === 'heading') return 'heading';
   return '[[wikilink]]';
+}
+
+/** Client pixel → SVG world, via the element's current CTM (scroll + zoom). */
+function worldFromSvgPointer(
+  svg: SVGSVGElement | null,
+  clientX: number,
+  clientY: number,
+  fallback: Point
+): Point {
+  if (!svg) return fallback;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return fallback;
+  const pt = svg.createSVGPoint();
+  pt.x = clientX;
+  pt.y = clientY;
+  const p = pt.matrixTransform(ctm.inverse());
+  return { x: p.x, y: p.y };
 }
 
 function wrapLines(text: string, maxChars = 16, maxLines = 3): string[] {
@@ -177,7 +197,8 @@ const PROJECTION_OPTIONS: {
   {
     id: 'mindmap',
     label: 'Mindmap',
-    title: 'Mindmap — heading tree left to right; extra links as dashed curves',
+    title:
+      'Mindmap — heading tree left to right; extra links as dashed curves; scroll when the tree is larger than the pane',
   },
   {
     id: 'concept',
@@ -587,6 +608,9 @@ export function GraphView({
   const nodeDragRef = useRef<NodeDragSession | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const mindmapScrollRef = useRef<HTMLDivElement>(null);
+  const lastMindmapScale = useRef(0);
+  const lastMindmapLayoutKey = useRef('');
   // Floor point captured when a Concept-mode node drag starts. A drag is
   // measured against this anchor rather than against the pointer-down event,
   // because the raycast only reports a floor point once the scene has
@@ -640,6 +664,41 @@ export function GraphView({
     onZoomChange ?? (() => {}),
     isMindmap ? mindmapMinScale(labelPx) : 0
   );
+
+  const mindmapPx = mindmapSvgPx(layoutBounds, cam.camera.scale);
+
+  // Mindmap paints the full tree into an oversized SVG and lets the pane
+  // scroll. Recentre when the layout changes; keep the world point under
+  // the pane centre when only zoom moves.
+  useLayoutEffect(() => {
+    if (!isMindmap) return;
+    const el = mindmapScrollRef.current;
+    if (!el) return;
+    const scale = cam.camera.scale;
+    const layoutKey = `${layoutBounds.minX.toFixed(1)}:${layoutBounds.minY.toFixed(1)}:${layoutBounds.width.toFixed(1)}:${layoutBounds.height.toFixed(1)}`;
+    const layoutChanged = layoutKey !== lastMindmapLayoutKey.current;
+    lastMindmapLayoutKey.current = layoutKey;
+    const viewport = { w: el.clientWidth || 1, h: el.clientHeight || 1 };
+    if (layoutChanged || lastMindmapScale.current <= 0) {
+      el.scrollLeft = Math.max(0, (el.scrollWidth - viewport.w) / 2);
+      el.scrollTop = Math.max(0, (el.scrollHeight - viewport.h) / 2);
+      lastMindmapScale.current = scale;
+      return;
+    }
+    const prevScale = lastMindmapScale.current;
+    if (prevScale === scale) return;
+    const world = mindmapWorldAtScrollCenter(
+      layoutBounds,
+      prevScale,
+      el.scrollLeft,
+      el.scrollTop,
+      viewport
+    );
+    const next = mindmapScrollToWorld(layoutBounds, scale, world, viewport);
+    el.scrollLeft = next.left;
+    el.scrollTop = next.top;
+    lastMindmapScale.current = scale;
+  }, [isMindmap, cam.camera.scale, layoutBounds, mindmapPx.w, mindmapPx.h]);
 
   // Concept mode is not in this pipeline: the three.js scene reads `lensed`
   // directly and does its own projection, because it needs the *unprojected*
@@ -765,9 +824,11 @@ export function GraphView({
     [placed]
   );
 
-  // Background drag pans the camera in both SVG projections.
+  // Background drag pans the camera in Flat. Mindmap uses native overflow
+  // scroll, so a background press must not capture the pointer.
   const onBackgroundPointerDown = (e: ReactPointerEvent<SVGSVGElement>) => {
     if (e.button !== 0) return;
+    if (isMindmap) return;
     const svg = svgRef.current;
     if (!svg) return;
     svg.setPointerCapture(e.pointerId);
@@ -859,8 +920,18 @@ export function GraphView({
       session.moved = true;
       // Screen delta → layout delta. Nudge toward the world point under
       // the cursor so the node follows the pointer at any zoom.
-      const now = cam.worldAtClient(e.clientX, e.clientY);
-      const start = cam.worldAtClient(session.startClientX, session.startClientY);
+      const now = worldFromSvgPointer(
+        svgRef.current,
+        e.clientX,
+        e.clientY,
+        cam.worldAtClient(e.clientX, e.clientY)
+      );
+      const start = worldFromSvgPointer(
+        svgRef.current,
+        session.startClientX,
+        session.startClientY,
+        cam.worldAtClient(session.startClientX, session.startClientY)
+      );
       setOverrides((prev) => ({
         ...prev,
         [session.id]: {
@@ -966,12 +1037,32 @@ export function GraphView({
         </Suspense>
       </div>
     ) : (
+      <div
+        ref={isMindmap ? mindmapScrollRef : undefined}
+        className={`h-full w-full ${isMindmap ? 'overflow-auto' : 'overflow-hidden'}`}
+        data-graph-mindmap-scroll={isMindmap ? true : undefined}
+      >
         <svg
           ref={svgRef}
-          className={`w-full h-full ${
-            draggingId ? 'cursor-grabbing' : 'cursor-default'
-          }`}
-          viewBox={`${cam.viewBox.x} ${cam.viewBox.y} ${cam.viewBox.w} ${cam.viewBox.h}`}
+          className={
+            isMindmap
+              ? draggingId
+                ? 'cursor-grabbing'
+                : 'cursor-default'
+              : `w-full h-full ${draggingId ? 'cursor-grabbing' : 'cursor-default'}`
+          }
+          style={
+            isMindmap
+              ? { width: mindmapPx.w, height: mindmapPx.h, display: 'block' }
+              : undefined
+          }
+          width={isMindmap ? mindmapPx.w : undefined}
+          height={isMindmap ? mindmapPx.h : undefined}
+          viewBox={
+            isMindmap
+              ? `${layoutBounds.minX} ${layoutBounds.minY} ${layoutBounds.width} ${layoutBounds.height}`
+              : `${cam.viewBox.x} ${cam.viewBox.y} ${cam.viewBox.w} ${cam.viewBox.h}`
+          }
           role="img"
           aria-label={
             isMindmap
@@ -1114,6 +1205,7 @@ export function GraphView({
             );
           })}
         </svg>
+      </div>
       )}
     </div>
   );

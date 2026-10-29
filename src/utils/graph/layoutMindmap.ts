@@ -43,7 +43,8 @@ export const MINDMAP_GLYPH_EM = 0.62;
  * units. Fitting twelve long titles into a phone pane makes the world
  * shrink until those CSS labels overlap. This scale keeps one world
  * character at least as wide as one on-screen glyph, and one leaf row
- * at least `MINDMAP_MIN_ROW_PX` tall. The map may overflow; the user pans.
+ * at least `MINDMAP_MIN_ROW_PX` tall. The map may overflow the pane;
+ * GraphView then sizes the SVG to the layout and the pane scrolls.
  */
 export function mindmapMinScale(labelPx: number): number {
   const px = Number.isFinite(labelPx) ? Math.max(6, labelPx) : 16;
@@ -51,6 +52,47 @@ export function mindmapMinScale(labelPx: number): number {
     MINDMAP_MIN_ROW_PX / MINDMAP_LEAF_GAP,
     (px * MINDMAP_GLYPH_EM) / MINDMAP_CHAR_W
   );
+}
+
+/** CSS-pixel size of a mindmap SVG that paints `bounds` at `scale`. */
+export function mindmapSvgPx(
+  bounds: { width: number; height: number },
+  scale: number
+): { w: number; h: number } {
+  const s = Number.isFinite(scale) && scale > 0 ? scale : 1;
+  return {
+    w: Math.max(1, bounds.width * s),
+    h: Math.max(1, bounds.height * s),
+  };
+}
+
+/** World point currently under the centre of a scrolled mindmap pane. */
+export function mindmapWorldAtScrollCenter(
+  bounds: { minX: number; minY: number },
+  scale: number,
+  scrollLeft: number,
+  scrollTop: number,
+  viewport: { w: number; h: number }
+): { x: number; y: number } {
+  const s = Number.isFinite(scale) && scale > 0 ? scale : 1;
+  return {
+    x: bounds.minX + (scrollLeft + viewport.w / 2) / s,
+    y: bounds.minY + (scrollTop + viewport.h / 2) / s,
+  };
+}
+
+/** Scroll offsets that put `world` at the pane centre. */
+export function mindmapScrollToWorld(
+  bounds: { minX: number; minY: number },
+  scale: number,
+  world: { x: number; y: number },
+  viewport: { w: number; h: number }
+): { left: number; top: number } {
+  const s = Number.isFinite(scale) && scale > 0 ? scale : 1;
+  return {
+    left: (world.x - bounds.minX) * s - viewport.w / 2,
+    top: (world.y - bounds.minY) * s - viewport.h / 2,
+  };
 }
 
 export interface MindmapLayout {

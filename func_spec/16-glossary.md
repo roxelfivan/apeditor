@@ -355,7 +355,7 @@ Write-only as of v0.5.3. The `version` field exists so a future importer can det
 | **Atom layout** | Laying the current document out at the origin as a nucleus and placing every other document relative to it |
 | **Nucleus** | The current document's node in the graph. Pinned during relaxation. |
 | **Shell / ring** | A radial depth band in the graph layout. Shell 0 is the nucleus ring |
-| **Camera** | The graph's zoom + viewBox model. Zoom clamps to `[0.5, 4]` |
+| **Camera** | The graph's zoom + viewBox model. Zoom clamps to `[0.05, 12]` |
 | **Stage** | Which match a proposed edit will use: Exact, Best Effort, or blocked |
 | **Rationale** | The AI's Markdown explanation of a change, stored on the round that caused it |
 | **Epoch** | A remount key. `graphEpoch` clears the graph's drag overrides by rebuilding the component |

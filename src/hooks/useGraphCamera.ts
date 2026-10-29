@@ -43,7 +43,7 @@ import {
 export type GraphProjection =
   /** The radial atom layout, undistorted. Pan by dragging the background. */
   | 'flat'
-  /** Horizontal spanning-tree mindmap. Pan by dragging the background. */
+  /** Horizontal spanning-tree mindmap. Native overflow scroll when it overflows. */
   | 'mindmap'
   /** 3D Concept: the layout as a floor, headings extruded upward. */
   | 'concept';
