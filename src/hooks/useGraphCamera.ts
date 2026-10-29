@@ -119,7 +119,13 @@ export function useGraphCamera(
   _projection: GraphProjection,
   bounds: Bounds,
   zoomMultiplier: number,
-  onZoomChange: (next: number) => void
+  onZoomChange: (next: number) => void,
+  /**
+   * Floor for the fit scale. Mindmap uses this so twelve one-line titles
+   * are not crushed into overlapping screen rows when the whole tree is
+   * fitted to a phone pane. Zoom still multiplies on top.
+   */
+  minScale = 0
 ): UseGraphCamera {
   const [viewport, setViewport] = useState<ViewportSize>({ w: 1, h: 1 });
   // Pan is an explicit centre in world units, which is what makes the view
@@ -183,9 +189,10 @@ const setConceptPose = useCallback(
 
   const fit = useMemo(() => fitCameraTo(bounds, viewport), [bounds, viewport]);
   const zoom = clampGraphZoom(zoomMultiplier);
+  const fitScale = Math.max(fit.scale, minScale);
   const camera = useMemo<GraphCamera>(
-    () => ({ cx: center.x, cy: center.y, scale: fit.scale * zoom }),
-    [center, fit.scale, zoom]
+    () => ({ cx: center.x, cy: center.y, scale: fitScale * zoom }),
+    [center, fitScale, zoom]
   );
 
   // Re-centre when the data or the pane changes, but not when the user pans.
@@ -297,7 +304,7 @@ const setConceptPose = useCallback(
       // centre needs recomputing — the fit scale is untouched because only
       // the multiplier moved.
       if (!anchor) return;
-      const nextScale = fit.scale * nextZoom;
+      const nextScale = fitScale * nextZoom;
       const dx = (anchor.x - center.x) * camera.scale;
       const dy = (anchor.y - center.y) * camera.scale;
       setCenter({
@@ -305,7 +312,7 @@ const setConceptPose = useCallback(
         y: anchor.y - dy / nextScale,
       });
     },
-    [zoomMultiplier, onZoomChange, fit.scale, center.x, center.y, camera.scale]
+    [zoomMultiplier, onZoomChange, fitScale, center.x, center.y, camera.scale]
   );
 
   // Concept zoom moves the eye along its own view vector, but the toolbar's

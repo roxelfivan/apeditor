@@ -39,8 +39,7 @@ import {
   mindmapCrossPath,
   mindmapLabelWidth,
   mindmapTreePath,
-  MINDMAP_LABEL_MAX_CHARS,
-  MINDMAP_LABEL_MAX_LINES,
+  MINDMAP_LEAF_GAP,
 } from '@/utils/graph/layoutMindmap';
 import {
   useGraphCamera,
@@ -638,8 +637,9 @@ export function GraphView({
     projection,
     layoutBounds,
     zoom,
-    onZoomChange ?? (() => {})
-   );
+    onZoomChange ?? (() => {}),
+    isMindmap ? 36 / MINDMAP_LEAF_GAP : 0
+  );
 
   // Concept mode is not in this pipeline: the three.js scene reads `lensed`
   // directly and does its own projection, because it needs the *unprojected*
@@ -685,10 +685,7 @@ export function GraphView({
 
   const userFont = labelPx / Math.max(cam.camera.scale, 1e-6);
   const lineGap = userFont * 1.2;
-  const maxChars = isMindmap
-    ? MINDMAP_LABEL_MAX_CHARS
-    : Math.max(10, Math.min(22, Math.round((18 * 16) / labelPx)));
-  const maxLines = isMindmap ? MINDMAP_LABEL_MAX_LINES : 3;
+  const maxChars = Math.max(10, Math.min(22, Math.round((18 * 16) / labelPx)));
 
   const openRange = (documentId: string, start: number, end: number) => {
     if (current?.id !== documentId) setCurrentDocument(documentId);
@@ -1061,7 +1058,9 @@ export function GraphView({
               ? byId.get(`doc:${node.documentId}`) ?? node
               : node;
             const label = labelOffset(node.x, node.y, node.r, hub, userFont);
-            const lines = wrapLines(node.label, maxChars, maxLines);
+            const lines = isMindmap
+              ? [node.label]
+              : wrapLines(node.label, maxChars);
             if (!node.visible) return null;
             const dimmed = active ? 1 : 0.25;
             const labelPos = isMindmap
