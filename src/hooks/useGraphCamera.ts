@@ -41,10 +41,10 @@ import {
  * projection never changes what the Graph can do, only how it is seen.
  */
 export type GraphProjection =
-  /** The layout, undistorted. Pan by dragging the background. */
+  /** The radial atom layout, undistorted. Pan by dragging the background. */
   | 'flat'
-  /** iSphere stereographic wrap. Drag the background to spin the sphere. */
-  | 'sphere'
+  /** Horizontal spanning-tree mindmap. Pan by dragging the background. */
+  | 'mindmap'
   /** 3D Concept: the layout as a floor, headings extruded upward. */
   | 'concept';
 
@@ -116,7 +116,7 @@ export interface UseGraphCamera {
  */
 export function useGraphCamera(
   wrapperRef: RefObject<HTMLDivElement>,
-  projection: GraphProjection,
+  _projection: GraphProjection,
   bounds: Bounds,
   zoomMultiplier: number,
   onZoomChange: (next: number) => void
@@ -270,9 +270,7 @@ const setConceptPose = useCallback(
       return;
     }
     // Gain comes from the viewport, so a drag across the pane always turns
-    // the globe by the same angle regardless of zoom or graph size. The
-    // Concept projection reuses the identical rule, so the mouse feels the
-    // same in all three projections.
+    // the 3D scene by the same angle regardless of zoom or graph size.
     const pixelsPerRadian = Math.max(viewport.w, 320) / Math.PI;
     if (s.kind === 'conceptOrbit') {
       setConceptPoseState(
@@ -327,9 +325,9 @@ const setConceptPose = useCallback(
 
   return {
     camera,
-    // Orientation is meaningless outside sphere mode; reporting the identity
-    // keeps callers from having to branch on projection themselves.
-    orientation: projection === 'sphere' ? orientation : IDENTITY_ORIENTATION,
+    // Sphere orientation is unused by Flat, Mindmap, and Concept (Concept
+    // has its own pose). Reporting identity keeps callers from branching.
+    orientation: IDENTITY_ORIENTATION,
     viewBox: cameraViewBox(camera, viewport),
     viewport,
     worldAtClient,

@@ -1,11 +1,13 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   lazy,
   Suspense,
+  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { useStore, useCurrentDocument } from '@/store/useStore';
@@ -33,13 +35,11 @@ import {
   type Point,
 } from '@/utils/graph/graphCamera';
 import {
-  isFrontFacing,
-  rotateSphere,
-  toScreen,
-  toSphere,
-} from '@/utils/graph/sphereProject';
+  layoutMindmap,
+  mindmapCrossPath,
+  mindmapTreePath,
+} from '@/utils/graph/layoutMindmap';
 import {
-  SPHERE_RADIUS,
   useGraphCamera,
   type GraphProjection,
 } from '@/hooks/useGraphCamera';
@@ -47,7 +47,7 @@ import { useGraphLens } from '@/hooks/useGraphLens';
 
 /**
  * The 3D Concept scene is a separate chunk on purpose — see the header of
- * `Concept3DScene.tsx`. `lazy` means the Graph view's flat and globe
+ * `Concept3DScene.tsx`. `lazy` means the Graph view's flat and mindmap
  * projections never pull three.js into the module graph.
  */
 const Concept3DScene = lazy(() => import('@/components/Concept3DScene'));
@@ -66,7 +66,7 @@ export const MIN_GRAPH_LABEL_PX = 6;
  * neighbours.
  *
  * The 3D scene clamps its own label layer to `[6, 48]` — the same range.
- * A divergence here is invisible in Flat and Globe and silently truncates
+ * A divergence here is invisible in Flat and Mindmap and silently truncates
  * in 3D, so the two are asserted equal by `label: the 3D layer honours
  * the SVG label range` rather than left to drift.
  */
@@ -77,9 +77,9 @@ const DRAG_THRESHOLD_PX = 5;
 
 /** A node after the lens and projection pipeline, in screen-ish coordinates. */
 type ProjectedNode = LaidOutNode & {
-  /** Depth on the sphere, normalised to [0, 1]. 1 = closest to the viewer. */
+  /** Kept for the 3D hover/click path; SVG projections always report 1. */
   depth: number;
-  /** False for nodes on the far hemisphere in sphere mode. */
+  /** False only if a future projection culls the node. SVG always true. */
   visible: boolean;
 };
 
@@ -149,26 +149,18 @@ function labelOffset(
   };
 }
 
-/** Depth ramp for sphere mode: nearest nodes read as foreground. */
-function depthScale(depth: number): number {
-  return 0.55 + 0.45 * depth;
-}
-
 const graphToolClass =
   'h-9 inline-flex items-center justify-center rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-panel text-paper-inkSoft dark:text-cyber-muted hover:border-cyber-clay dark:hover:border-cyber-cyan hover:text-cyber-clay dark:hover:text-cyber-cyan disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-paper-hairline disabled:hover:text-paper-inkSoft dark:disabled:hover:border-cyber-border dark:disabled:hover:text-cyber-muted transition-colors';
 
-const graphSegmentBase =
-  'h-9 px-2.5 inline-flex items-center justify-center text-[13px] transition-colors';
-
 /**
- * The projection segmented control.
+ * The projection dropdown.
  *
  * These are **projections, not view modes**: `viewMode` stays
  * `'write' | 'preview' | 'split' | 'graph'`. Each entry keeps the same
- * graph, the same nodes, and the same click behaviour — only the mapping
- * from layout coordinates to pixels changes. Listing them here rather than
- * hand-writing three near-identical buttons is what keeps the
- * `aria-pressed` / active-class triple from drifting between entries.
+ * graph, the same nodes, and the same click behaviour — only the layout
+ * / camera mapping changes. Listing them here rather than hand-writing
+ * three near-identical items is what keeps the trigger label and the
+ * `aria-checked` rows from drifting apart.
  */
 const PROJECTION_OPTIONS: {
   id: GraphProjection;
@@ -181,9 +173,9 @@ const PROJECTION_OPTIONS: {
     title: 'Flat map — pan by dragging the background',
   },
   {
-    id: 'sphere',
-    label: 'Globe',
-    title: 'Globe — drag the background to spin the sphere',
+    id: 'mindmap',
+    label: 'Mindmap',
+    title: 'Mindmap — heading tree left to right; extra links as dashed curves',
   },
   {
     id: 'concept',
@@ -220,11 +212,16 @@ export function GraphViewControls({
   const [filterOpen, setFilterOpen] = useState(false);
   const filterBtnRef = useRef<HTMLButtonElement>(null);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const [projOpen, setProjOpen] = useState(false);
+  const projBtnRef = useRef<HTMLButtonElement>(null);
+  const projMenuRef = useRef<HTMLDivElement>(null);
+  const [projMenuStyle, setProjMenuStyle] = useState<CSSProperties>({});
 
   const openFilter = () => {
     const rect = filterBtnRef.current?.getBoundingClientRect();
     if (!rect) return;
     setAnchor(rect);
+    setProjOpen(false);
     setFilterOpen(true);
   };
 
@@ -255,15 +252,64 @@ export function GraphViewControls({
   // Escape closes the popover as well as clearing hover, so the panel
   // is dismissable without reaching for the button again.
   useEffect(() => {
-    if (!filterOpen) return;
+    if (!filterOpen && !projOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setFilterOpen(false);
+      if (e.key === 'Escape') {
+        setFilterOpen(false);
+        setProjOpen(false);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [filterOpen]);
+  }, [filterOpen, projOpen]);
+
+  // The toolbar scroller clips `absolute` children, so the projection
+  // menu is `position: fixed` against the viewport — same contract as
+  // Format. Re-measure on scroll/resize so the panel stays under the
+  // trigger while the row slides.
+  useLayoutEffect(() => {
+    if (!projOpen) return;
+    const remeasure = () => {
+      const rect = projBtnRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const width = 168;
+      const left = Math.min(
+        Math.max(8, rect.left),
+        Math.max(8, window.innerWidth - width - 8)
+      );
+      setProjMenuStyle({
+        position: 'fixed',
+        top: rect.bottom + 4,
+        left,
+        minWidth: width,
+        zIndex: 10000,
+      });
+    };
+    remeasure();
+    window.addEventListener('scroll', remeasure, { capture: true, passive: true });
+    window.addEventListener('resize', remeasure);
+    return () => {
+      window.removeEventListener('scroll', remeasure, { capture: true });
+      window.removeEventListener('resize', remeasure);
+    };
+  }, [projOpen]);
+
+  useEffect(() => {
+    if (!projOpen) return;
+    const handler = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest('[data-graph-projection-menu]')) return;
+      if (projBtnRef.current?.contains(target)) return;
+      setProjOpen(false);
+    };
+    window.addEventListener('pointerdown', handler);
+    return () => window.removeEventListener('pointerdown', handler);
+  }, [projOpen]);
 
   const filtered = !isScopeEmpty(scope);
+  const projectionMeta =
+    PROJECTION_OPTIONS.find((o) => o.id === projection) ?? PROJECTION_OPTIONS[0];
   const canMinus = labelPx > MIN_GRAPH_LABEL_PX;
   const canPlus = labelPx < MAX_GRAPH_LABEL_PX;
   const canZoomOut = zoom > MIN_GRAPH_ZOOM + 0.001;
@@ -330,31 +376,73 @@ export function GraphViewControls({
         {Math.round(zoom * 100)}%
       </span>
       <span className="mx-1 h-5 w-px bg-paper-hairline dark:border-cyber-border" aria-hidden />
-      <div
-        role="group"
-        aria-label="Graph projection"
-        className="inline-flex overflow-hidden rounded border border-paper-hairline dark:border-cyber-border"
-      >
-        {PROJECTION_OPTIONS.map((opt, i) => (
-          <button
-            key={opt.id}
-            type="button"
-            aria-pressed={projection === opt.id}
-            title={opt.title}
-            className={`${graphSegmentBase} ${
-              i > 0
-                ? 'border-l border-paper-hairline dark:border-cyber-border'
-                : ''
-            } ${
-              projection === opt.id
-                ? 'bg-cyber-clay text-paper-base dark:bg-ape-fire dark:text-white font-semibold'
-                : 'text-paper-inkSoft dark:text-cyber-muted hover:bg-paper-elevated dark:hover:bg-ape-elevated hover:text-cyber-clay dark:hover:text-cyber-cyan'
+      <div className="relative inline-block shrink-0" data-graph-projection-menu>
+        <button
+          ref={projBtnRef}
+          type="button"
+          className={`${graphToolClass} px-2.5 gap-1.5 ${
+            projOpen
+              ? 'text-cyber-clay dark:text-cyber-cyan border-cyber-clay dark:border-cyber-cyan'
+              : ''
+          }`}
+          aria-haspopup="menu"
+          aria-expanded={projOpen}
+          aria-label="Graph projection"
+          title={projectionMeta.title}
+          onClick={() => {
+            setFilterOpen(false);
+            setProjOpen((open) => !open);
+          }}
+        >
+          <span>{projectionMeta.label}</span>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 10 10"
+            className={`h-2.5 w-2.5 transition-transform ${
+              projOpen ? 'rotate-180' : ''
             }`}
-            onClick={() => onProjection(opt.id)}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            {opt.label}
-          </button>
-        ))}
+            <path d="M2 4 L5 7 L8 4" />
+          </svg>
+        </button>
+        {projOpen && (
+          <div
+            ref={projMenuRef}
+            role="menu"
+            aria-label="Graph projection"
+            style={projMenuStyle}
+            className="rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-panel shadow-lg py-1"
+          >
+            {PROJECTION_OPTIONS.map((opt) => {
+              const selected = projection === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={selected}
+                  title={opt.title}
+                  className={`w-full text-left px-3 py-1.5 text-[13px] transition-colors ${
+                    selected
+                      ? 'bg-cyber-clay text-paper-base dark:bg-ape-fire dark:text-white font-semibold'
+                      : 'text-paper-ink dark:text-cyber-primary hover:bg-paper-elevated dark:hover:bg-ape-elevated hover:text-cyber-clay dark:hover:text-cyber-cyan'
+                  }`}
+                  onClick={() => {
+                    onProjection(opt.id);
+                    setProjOpen(false);
+                  }}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
       <span className="mx-1 h-5 w-px bg-paper-hairline dark:border-cyber-border" aria-hidden />
       <button
@@ -410,7 +498,7 @@ export interface GraphViewProps {
   zoom?: number;
   /** Reports zoom changes so the toolbar can drive the view. */
   onZoomChange?: (next: number) => void;
-  /** Flat map, globe, or 3D Concept. A projection is an inner toggle, not a view mode. */
+  /** Flat map, mindmap, or 3D Concept. A projection is an inner toggle, not a view mode. */
   projection?: GraphProjection;
   /** Documents and sections to include. Empty scope shows everything. */
   scope?: GraphScope;
@@ -458,19 +546,29 @@ export function GraphView({
   );
 
   // The scope filter sits *between* compile and layout, so all three
-  // projections inherit it without knowing it exists. `layoutWorkspaceGraph`
-  // is a pure derivation of `(nodes, edges)`, so a pruned graph simply
-  // lays out smaller — no downstream change to the lens, the sphere, or
-  // the three.js scene.
+  // projections inherit it without knowing it exists. Layout is a pure
+  // derivation of `(nodes, edges)`, so a pruned graph simply lays out
+  // smaller — no downstream change to the lens or the three.js scene.
   const graph = useMemo(
     () => filterWorkspaceGraph(compiled, scope),
     [compiled, scope]
   );
 
-  const laidOut = useMemo(
-    () => layoutWorkspaceGraph(graph.nodes, graph.edges, current?.id ?? null),
-    [graph.nodes, graph.edges, current?.id]
-  );
+  const isMindmap = projection === 'mindmap';
+  const isConcept = projection === 'concept';
+
+  const layoutResult = useMemo(() => {
+    if (isMindmap) {
+      return layoutMindmap(graph.nodes, graph.edges, current?.id ?? null);
+    }
+    return {
+      nodes: layoutWorkspaceGraph(graph.nodes, graph.edges, current?.id ?? null),
+      treeEdgeIds: new Set<string>(),
+    };
+  }, [graph.nodes, graph.edges, current?.id, isMindmap]);
+
+  const laidOut = layoutResult.nodes;
+  const treeEdgeIds = layoutResult.treeEdgeIds;
 
   // Manual node drags are stored in *layout* space, before the lens and the
   // projection. Composing the transform on top means a dragged node keeps
@@ -478,6 +576,11 @@ export function GraphView({
   const [overrides, setOverrides] = useState<Record<string, { x: number; y: number }>>(
     {}
   );
+  // Mindmap and the radial map live in different layout spaces, so a
+  // drag recorded in one would land in the wrong place in the other.
+  useEffect(() => {
+    setOverrides({});
+  }, [projection]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const nodeDragRef = useRef<NodeDragSession | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -497,8 +600,7 @@ export function GraphView({
     [laidOut, overrides]
   );
 
-  // Layout bounds drive both the lens boundary and the camera fit. In globe
-  // mode the bound is fixed to the sphere so rotating does not refit.
+  // Layout bounds drive both the lens boundary and the camera fit.
   const layoutBounds = useMemo<Bounds>(() => {
     const xs = placed.map((n) => n.x);
     const ys = placed.map((n) => n.y);
@@ -514,13 +616,11 @@ export function GraphView({
     };
   }, [placed]);
 
-const isSphere = projection === 'sphere';
-  const isConcept = projection === 'concept';
-  // The fisheye lens is a planar, focus+context device. Both the sphere and
-  // the 3D stack are curved/tilted views where the lens's boundary
-  // assumption breaks down, so it stays off there — same as before.
+  // The fisheye lens is a planar, focus+context device. It stays off
+  // for Mindmap and Concept — Concept is a tilted floor, and Mindmap
+  // already unpacks hierarchy with its own layout.
   const lens = useGraphLens(placed, {
-    enabled: isSphere,
+    enabled: false,
     bounds: layoutBounds,
   });
 
@@ -532,33 +632,14 @@ const isSphere = projection === 'sphere';
     onZoomChange ?? (() => {})
    );
 
-  // Project every node through the lens, then the sphere. `depth` drives the
-  // depth ramp; `visible` culls the far hemisphere, which would otherwise
-  // mirror onto the viewport.
-  //
   // Concept mode is not in this pipeline: the three.js scene reads `lensed`
   // directly and does its own projection, because it needs the *unprojected*
   // layout coordinates to build a 3D world. Returning them unchanged here
   // keeps `byId` and the click handlers identical across all three.
-  const projected = useMemo<ProjectedNode[]>(() => {
-    if (!isSphere) {
-      return lens.lensed.map((n) => ({ ...n, depth: 1, visible: true }));
-    }
-    const out: ProjectedNode[] = [];
-    for (const n of lens.lensed) {
-      const p = rotateSphere(toSphere(n.x, n.y, SPHERE_RADIUS), cam.orientation);
-      const front = isFrontFacing(p);
-      const s = front ? toScreen(p, SPHERE_RADIUS) : { x: n.x, y: n.y };
-      out.push({
-        ...n,
-        x: s.x,
-        y: s.y,
-        depth: Math.max(0, Math.min(1, (p.z / SPHERE_RADIUS + 1) / 2)),
-        visible: front,
-      });
-    }
-    return out;
-  }, [lens.lensed, isSphere, cam.orientation]);
+  const projected = useMemo<ProjectedNode[]>(
+    () => lens.lensed.map((n) => ({ ...n, depth: 1, visible: true })),
+    [lens.lensed]
+  );
 
   const byId = useMemo(
     () => new Map(projected.map((n) => [n.id, n])),
@@ -642,9 +723,8 @@ const isSphere = projection === 'sphere';
   };
 
   // Concept mode's scene hands back a laid-out node rather than a projected
-  // one — it never ran the sphere projection, so there is no `depth` /
-  // `visible` to carry. Route through `byId` so the click behaves exactly as
-  // it does in the SVG: a document selects, a heading opens its range.
+  // one. Route through `byId` so the click behaves exactly as it does in
+  // the SVG: a document selects, a heading opens its range.
   const onConceptNodeClick = (node: LaidOutNode) => {
     const projected = byId.get(node.id);
     onNodeClick(projected ?? { ...node, depth: 1, visible: true });
@@ -676,19 +756,19 @@ const isSphere = projection === 'sphere';
     [placed]
   );
 
-  // Background drag: pan in flat mode, orbit in globe mode.
+  // Background drag pans the camera in both SVG projections.
   const onBackgroundPointerDown = (e: ReactPointerEvent<SVGSVGElement>) => {
     if (e.button !== 0) return;
     const svg = svgRef.current;
     if (!svg) return;
     svg.setPointerCapture(e.pointerId);
-    cam.beginDrag(e, isSphere ? 'orbit' : 'pan', cam.orientation);
+    cam.beginDrag(e, 'pan', cam.orientation);
   };
 
   /* ---- 3D Concept ---- */
   // The scene reports the floor point under the pointer. Concept-mode node
   // dragging reuses the same layout-space override map as the SVG, so a node
-  // dragged in 3D keeps its position when you switch back to Graph or Globe.
+  // dragged in 3D keeps its position when you switch back to Graph or Mindmap.
   const [conceptFloor, setConceptFloor] = useState<{ x: number; y: number } | null>(
     null
   );
@@ -768,8 +848,8 @@ const isSphere = projection === 'sphere';
       );
       if (!session.moved && dist < DRAG_THRESHOLD_PX) return;
       session.moved = true;
-      // Screen delta → layout delta. In globe mode the projection is not
-      // affine, so nudge toward the world point under the cursor instead.
+      // Screen delta → layout delta. Nudge toward the world point under
+      // the cursor so the node follows the pointer at any zoom.
       const now = cam.worldAtClient(e.clientX, e.clientY);
       const start = cam.worldAtClient(session.startClientX, session.startClientY);
       setOverrides((prev) => ({
@@ -880,19 +960,13 @@ const isSphere = projection === 'sphere';
         <svg
           ref={svgRef}
           className={`w-full h-full ${
-            isSphere
-              ? draggingId
-                ? 'cursor-grabbing'
-                : 'cursor-grab'
-              : draggingId
-                ? 'cursor-grabbing'
-                : 'cursor-default'
+            draggingId ? 'cursor-grabbing' : 'cursor-default'
           }`}
           viewBox={`${cam.viewBox.x} ${cam.viewBox.y} ${cam.viewBox.w} ${cam.viewBox.h}`}
           role="img"
           aria-label={
-            isSphere
-              ? 'Workspace knowledge graph, globe projection'
+            isMindmap
+              ? 'Workspace knowledge graph, mindmap projection'
               : 'Workspace knowledge graph'
           }
           onPointerDown={onBackgroundPointerDown}
@@ -905,24 +979,46 @@ const isSphere = projection === 'sphere';
             const midX = (a.x + b.x) / 2;
             const midY = (a.y + b.y) / 2;
             const showCaption = hoverId && active && hot;
+            const isTree = isMindmap && treeEdgeIds.has(edge.id);
+            const isCross = isMindmap && !isTree;
             return (
               <g
                 key={edge.id}
+                data-graph-edge-role={isMindmap ? (isTree ? 'tree' : 'cross') : edge.kind}
                 className={
-                  active
-                    ? 'text-paper-inkSoft dark:text-cyber-muted'
-                    : 'text-paper-inkSoft/25 dark:text-cyber-muted/20'
+                  isTree
+                    ? active
+                      ? 'text-cyber-clay dark:text-cyber-cyan'
+                      : 'text-cyber-clay/30 dark:text-cyber-cyan/25'
+                    : active
+                      ? 'text-paper-inkSoft dark:text-cyber-muted'
+                      : 'text-paper-inkSoft/25 dark:text-cyber-muted/20'
                 }
-                opacity={isSphere ? depthScale(Math.min(a.depth, b.depth)) : 1}
+                opacity={isCross ? (active ? 0.45 : 0.18) : 1}
               >
-                <line
-                  x1={a.x}
-                  y1={a.y}
-                  x2={b.x}
-                  y2={b.y}
-                  stroke="currentColor"
-                  strokeWidth={active ? 2.2 : 1.6}
-                />
+                {isMindmap ? (
+                  <path
+                    d={
+                      isTree
+                        ? mindmapTreePath(a.x, a.y, b.x, b.y)
+                        : mindmapCrossPath(a.x, a.y, b.x, b.y)
+                    }
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={isTree ? (active ? 3 : 2.4) : active ? 2 : 1.6}
+                    strokeDasharray={isTree ? undefined : '8 10'}
+                    strokeLinecap="round"
+                  />
+                ) : (
+                  <line
+                    x1={a.x}
+                    y1={a.y}
+                    x2={b.x}
+                    y2={b.y}
+                    stroke="currentColor"
+                    strokeWidth={active ? 2.2 : 1.6}
+                  />
+                )}
                 {showCaption && (
                   <text
                     x={midX}
@@ -955,9 +1051,14 @@ const isSphere = projection === 'sphere';
             const label = labelOffset(node.x, node.y, node.r, hub, userFont);
             const lines = wrapLines(node.label, maxChars);
             if (!node.visible) return null;
-            // Globe mode dims by depth so the front of the sphere reads as
-            // foreground; flat mode falls back to hover-only dimming.
             const dimmed = active ? 1 : 0.25;
+            const labelPos = isMindmap
+              ? {
+                  labelDx: 0,
+                  labelDy: -(node.r + userFont * 0.85),
+                  labelAnchor: 'middle' as const,
+                }
+              : label;
             return (
               <g
                 key={node.id}
@@ -965,7 +1066,7 @@ const isSphere = projection === 'sphere';
                 className={`${
                   draggingId === node.id ? 'cursor-grabbing' : 'cursor-grab'
                 }`}
-                opacity={isSphere ? depthScale(node.depth) * dimmed : dimmed}
+                opacity={dimmed}
                 onPointerDown={(e) => onNodePointerDown(node, e)}
                 onMouseEnter={() => setHoverId(node.id)}
                 onMouseLeave={() => setHoverId((id) => (id === node.id ? null : id))}
@@ -986,14 +1087,14 @@ const isSphere = projection === 'sphere';
                   }}
                 />
                 <text
-                  x={label.labelDx}
-                  y={label.labelDy}
-                  textAnchor={label.labelAnchor}
+                  x={labelPos.labelDx}
+                  y={labelPos.labelDy}
+                  textAnchor={labelPos.labelAnchor}
                   fontSize={userFont}
                   className="fill-paper-ink dark:fill-cyber-primary"
                 >
                   {lines.map((line, i) => (
-                    <tspan key={i} x={label.labelDx} dy={i === 0 ? 0 : lineGap}>
+                    <tspan key={i} x={labelPos.labelDx} dy={i === 0 ? 0 : lineGap}>
                       {line}
                     </tspan>
                   ))}

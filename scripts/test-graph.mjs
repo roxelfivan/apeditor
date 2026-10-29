@@ -36,12 +36,13 @@ await fs.writeFile(
 import { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview } from '${path.join(ROOT, 'src/utils/graph/parseWikilinks.ts').replace(/\\/g, '/')}';
 import { buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath } from '${path.join(ROOT, 'src/utils/graph/buildWorkspaceGraph.ts').replace(/\\/g, '/')}';
 import { layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, headingDepthByNode } from '${path.join(ROOT, 'src/utils/graph/layoutWorkspaceGraph.ts').replace(/\\/g, '/')}';
+import { layoutMindmap, spanningTree, mindmapTreePath, mindmapCrossPath, MINDMAP_LAYER_X } from '${path.join(ROOT, 'src/utils/graph/layoutMindmap.ts').replace(/\\/g, '/')}';
 import { filterWorkspaceGraph, createScope, createNoneScope, isScopeEmpty, isNoneScope, normalizeScope, resolveDocumentIds, resolveSectionIds } from '${path.join(ROOT, 'src/utils/graph/graphFilter.ts').replace(/\\/g, '/')}';
 import { clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, MIN_GRAPH_ZOOM, MAX_GRAPH_ZOOM } from '${path.join(ROOT, 'src/utils/graph/graphCamera.ts').replace(/\\/g, '/')}';
 import { toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION } from '${path.join(ROOT, 'src/utils/graph/sphereProject.ts').replace(/\\/g, '/')}';
 import { applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes } from '${path.join(ROOT, 'src/utils/graph/fisheyeLens.ts').replace(/\\/g, '/')}';
 import { conceptZForDepth, conceptZStep, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, clampConceptDistance, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, conceptLabelStyle, conceptLabelDepth, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, MIN_CONCEPT_Z_STEP, CONCEPT_Z_COMPRESS_AFTER, CONCEPT_Z_COMPRESS_RATIO, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE, MIN_CONCEPT_LABEL_PX, CONCEPT_LABEL_NEAR_RATIO, CONCEPT_LABEL_FAR_RATIO, CONCEPT_LABEL_MIN_OPACITY, CONCEPT_LABEL_MIN_SCALE } from '${path.join(ROOT, 'src/utils/graph/conceptProject.ts').replace(/\\/g, '/')}';
-export { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, headingDepthByNode, filterWorkspaceGraph, createScope, createNoneScope, isScopeEmpty, isNoneScope, normalizeScope, resolveDocumentIds, resolveSectionIds, clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, MIN_GRAPH_ZOOM, MAX_GRAPH_ZOOM, toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION, applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes, conceptZForDepth, conceptZStep, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, clampConceptDistance, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, conceptLabelStyle, conceptLabelDepth, MIN_CONCEPT_LABEL_PX, CONCEPT_LABEL_NEAR_RATIO, CONCEPT_LABEL_FAR_RATIO, CONCEPT_LABEL_MIN_OPACITY, CONCEPT_LABEL_MIN_SCALE, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, MIN_CONCEPT_Z_STEP, CONCEPT_Z_COMPRESS_AFTER, CONCEPT_Z_COMPRESS_RATIO, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE };
+export { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, layoutMindmap, spanningTree, mindmapTreePath, mindmapCrossPath, MINDMAP_LAYER_X, nodeRadius, countProperEdgeCrossings, headingDepthByNode, filterWorkspaceGraph, createScope, createNoneScope, isScopeEmpty, isNoneScope, normalizeScope, resolveDocumentIds, resolveSectionIds, clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, MIN_GRAPH_ZOOM, MAX_GRAPH_ZOOM, toSphere, toScreen, rotateSphere, isFrontFacing, dragToOrientation, angularDistance, IDENTITY_ORIENTATION, applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes, conceptZForDepth, conceptZStep, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, clampConceptDistance, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, conceptLabelStyle, conceptLabelDepth, MIN_CONCEPT_LABEL_PX, CONCEPT_LABEL_NEAR_RATIO, CONCEPT_LABEL_FAR_RATIO, CONCEPT_LABEL_MIN_OPACITY, CONCEPT_LABEL_MIN_SCALE, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, MIN_CONCEPT_Z_STEP, CONCEPT_Z_COMPRESS_AFTER, CONCEPT_Z_COMPRESS_RATIO, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE };
 `
 );
 
@@ -70,6 +71,11 @@ const {
   termNodeId,
   splitHeadingPath,
   layoutWorkspaceGraph,
+  layoutMindmap,
+  spanningTree,
+  mindmapTreePath,
+  mindmapCrossPath,
+  MINDMAP_LAYER_X,
   nodeRadius,
   countProperEdgeCrossings,
   filterWorkspaceGraph,
@@ -1706,6 +1712,82 @@ test('label: a degenerate pose still yields a usable ramp', () => {
       assert.ok(depth.scale >= CONCEPT_LABEL_MIN_SCALE - 1e-9);
     }
   }
+});
+
+test('mindmap: heading tree grows left to right from the open document', () => {
+  const welcome = doc(
+    'welcome',
+    'Welcome',
+    '# Branch 1\n\na\n\n## Child 1A\n\nb\n\n## Child 1B\n\nc\n\n# Branch 2\n\nd\n\n## Child 2A\n\ne\n'
+  );
+  const g = buildWorkspaceGraph([welcome], {});
+  const { nodes, treeEdgeIds } = layoutMindmap(g.nodes, g.edges, 'welcome');
+  const byLabel = (label) => nodes.find((n) => n.label === label);
+  const root = nodes.find((n) => n.kind === 'document');
+  const b1 = byLabel('Branch 1');
+  const b2 = byLabel('Branch 2');
+  const c1a = byLabel('Child 1A');
+  const c1b = byLabel('Child 1B');
+  const c2a = byLabel('Child 2A');
+  assert.ok(root && b1 && b2 && c1a && c1b && c2a);
+  assert.equal(root.x, 0, 'root sits on the left');
+  assert.equal(b1.x, MINDMAP_LAYER_X);
+  assert.equal(c1a.x, MINDMAP_LAYER_X * 2);
+  assert.equal(c1b.x, c1a.x);
+  assert.equal(c2a.x, c1a.x);
+  assert.ok(c1a.y < c1b.y, 'siblings pack top to bottom');
+  assert.ok(b1.y < b2.y, 'top-level branches pack top to bottom');
+  assert.equal(treeEdgeIds.size, g.edges.filter((e) => e.kind === 'heading').length);
+});
+
+test('mindmap: leftover wikilinks are cross-links, not tree bones', () => {
+  const welcome = doc(
+    'welcome',
+    'Welcome',
+    '# Branch 1\n\nSee [[Welcome#Child 2A]].\n\n## Child 1B\n\nx\n\n# Branch 2\n\n## Child 2A\n\ny\n'
+  );
+  const g = buildWorkspaceGraph([welcome], {});
+  const { treeEdgeIds } = layoutMindmap(g.nodes, g.edges, 'welcome');
+  const wiki = g.edges.filter((e) => e.kind === 'wikilink');
+  assert.ok(wiki.length >= 1, 'fixture should produce a wikilink');
+  for (const e of wiki) {
+    assert.ok(
+      !treeEdgeIds.has(e.id),
+      `wikilink ${e.id} should be a dashed cross-link`
+    );
+  }
+  const headings = g.edges.filter((e) => e.kind === 'heading');
+  for (const e of headings) {
+    assert.ok(treeEdgeIds.has(e.id), `heading ${e.id} should be a tree bone`);
+  }
+});
+
+test('mindmap: spanning tree visits every node', () => {
+  const welcome = doc('welcome', 'Welcome', '# One\n\nSee [[Ideas]].\n');
+  const ideas = doc('ideas', 'Ideas', '# Alpha\n\nnote\n');
+  const g = buildWorkspaceGraph([welcome, ideas], {});
+  const tree = spanningTree(g.nodes, g.edges, documentNodeId('welcome'));
+  assert.equal(tree.parentOf.size, g.nodes.length);
+  assert.equal(tree.roots[0], documentNodeId('welcome'));
+});
+
+test('mindmap: tree path is a rightward cubic; cross path is a quadratic', () => {
+  const tree = mindmapTreePath(0, 0, 320, 40);
+  assert.match(tree, /^M /);
+  assert.match(tree, / C /);
+  const cross = mindmapCrossPath(320, 0, 320, 140);
+  assert.match(cross, /^M /);
+  assert.match(cross, / Q /);
+});
+
+test('mindmap: the toolbar names the projection Mindmap, not Globe', () => {
+  const src = readFileSync(path.join(ROOT, 'src/components/GraphView.tsx'), 'utf8');
+  assert.match(src, /label: 'Mindmap'/);
+  assert.match(src, /id: 'mindmap'/);
+  assert.equal(src.includes("label: 'Globe'"), false);
+  assert.equal(src.includes("id: 'sphere'"), false);
+  assert.match(src, /aria-haspopup="menu"/);
+  assert.match(src, /data-graph-projection-menu/);
 });
 
 console.log(`${passed} passed`);

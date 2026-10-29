@@ -110,10 +110,11 @@ you type; the **Format** menu also adjusts the text size.
 Both show your workspace as documents, headings, and links — built
 entirely in your browser. Link pages with \`[[Page]]\`, point at a
 section with \`[[Page#Heading]]\`, and pull in another document by
-typing \`@\` followed by its name. Three projections share one graph:
+typing \`@\` followed by its name. The Graph toolbar dropdown switches
+how the same graph is seen:
 
 - **Graph** — a flat map. Drag the background to pan.
-- **Globe** — the same nodes wrapped on a sphere. Drag to spin it.
+- **Mindmap** — the same nodes as a left-to-right tree. Extra links stay as dashed curves.
 - **3D** — headings rise into stacked tiers you can orbit.
 
 Use **Filter** to narrow the graph to particular documents and
