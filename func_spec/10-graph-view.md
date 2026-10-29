@@ -471,11 +471,11 @@ Replaces the former Globe wrap. The same compiled graph is stripped to a **spann
 |---|---|
 | Root | The open document node, else `docs[0]`, else the first node |
 | Tree growth | BFS. Heading children of a node are claimed first, then `wikilink`, then `@`. Disconnected components become extra roots, stacked in Y |
-| Placement | Depth on X (`MINDMAP_LAYER_X = 320`). Leaves packed on Y (`MINDMAP_LEAF_GAP = 140`). A parent sits at the vertical midpoint of its children. The drawing is then centred on the origin |
+| Placement | Child column starts after the parent's label: `parent.x + max(MINDMAP_LAYER_X, labelWidth + MINDMAP_CONNECTOR)`. Leaves pack on Y by title height (`max(MINDMAP_LEAF_GAP, lines · MINDMAP_LINE_H)`). A parent sits at the vertical midpoint of its children. The drawing is then centred on the origin |
 | Tree edges | Cubic `mindmapTreePath` — control points stay on each endpoint's Y so the curve leaves a parent going right and arrives at a child from the left |
 | Cross-links | Quadratic `mindmapCrossPath`, `stroke-dasharray: 8 10`, opacity ~0.45. Vertical-ish leftovers bow to the right (away from the root) |
 | Navigation | Identical to Flat: background drag pans. No sphere, no far-side culling |
-| Labels | Sit above the node (`textAnchor: middle`) so they do not ride the outgoing cubic |
+| Labels | Sit to the **right** of the node (`textAnchor: start`) so wording uses width. Wrap at `MINDMAP_LABEL_MAX_CHARS = 44`, at most two lines |
 
 `layoutMindmap` returns `{ nodes, treeEdgeIds }`. `treeEdgeIds` is a `Set` of `GraphEdge.id`; `GraphView` uses it only for stroke style. Click, hover, Filter, and Reset are the Flat path.
 
