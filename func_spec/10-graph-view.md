@@ -1,6 +1,6 @@
 # Graph view
 
-> A local knowledge graph of the workspace, compiled entirely in the browser from documents, headings, `[[wikilinks]]`, and `@` mentions. No LLM call, no new dependency, no store-schema change. Added in v0.5.4. Pan / orbit navigation added in v0.5.7. The 3D Concept projection added in v0.5.8. Spreading the Concept stack and OrbitControls-driven free navigation in v0.5.8. The document / section scope filter added in v0.5.9, together with zoom widened to 0.05×–12× (which also fixes a silent Concept distance clamp), labels widened to 6–48px across all three projections, and heading tiers made depth-compressed so deep `Comment > A > B > …` paths stay legible. In v0.6.0 the Concept labels were made legible while rotating — typographic hierarchy by node kind, a camera-distance ramp, near-over-far paint order, and a halo — the dark-mode sphere colours were lifted off the background, and the editor toolbar became a single non-wrapping row. The Globe projection was later replaced by a horizontal **Mindmap** (spanning tree plus dashed cross-links), and Graph / Mindmap / 3D collapsed into one toolbar dropdown.
+> A local knowledge graph of the workspace, compiled entirely in the browser from documents, headings, `[[wikilinks]]`, and `@` mentions. No LLM call, no new dependency, no store-schema change. Added in v0.5.4. Pan / orbit navigation added in v0.5.7. The 3D Concept projection added in v0.5.8. Spreading the Concept stack and OrbitControls-driven free navigation in v0.5.8. The document / section scope filter added in v0.5.9, together with zoom widened to 0.05×–12× (which also fixes a silent Concept distance clamp), labels widened to 6–48px across all three projections, and heading tiers made depth-compressed so deep `Comment > A > B > …` paths stay legible. In v0.6.0 the Concept labels were made legible while rotating — typographic hierarchy by node kind, a camera-distance ramp, near-over-far paint order, and a halo — the dark-mode sphere colours were lifted off the background, and the editor toolbar became a single non-wrapping row. The Globe projection was replaced by a horizontal **Mindmap** (spanning tree plus dashed cross-links), and the toolbar projection menu became **Flat / Mindmap / 3D**. In **v0.6.6** Mindmap titles **wrap** (CJK-aware), sit **above** the green connectors, grow with toolbar **−** / **+** without scaling the whole tree, and support **drag-to-scroll**; Globe stereographic math was removed from `sphereProject.ts`.
 
 ---
 
@@ -412,10 +412,12 @@ Dragging empty SVG space starts a **navigation** session (`useGraphCamera`), dis
 | Projection | `kind` | Effect |
 |---|---|---|
 | `flat` | `pan` | `panCamera` — content follows the pointer at any zoom |
-| `mindmap` | (none) | Native overflow on `[data-graph-mindmap-scroll]`. Background drag does not pan. Zoom keeps the world point under the pane centre |
+| `mindmap` | (scroll) | The scroll container follows the pointer. `mindmapPanRef` records the scroll offset at press time and `onMindmapPanMove` applies the delta, so the content tracks the cursor the way a native drag-scroll does |
 | `concept` | `conceptOrbit` | `dragToConceptPose` — the eye orbits its target |
 
 All three start at `DRAG_THRESHOLD_PX = 3`. The node drag threshold stays at `5`; they are separate sessions with separate refs, so a node drag never rotates the scene.
+
+> The Mindmap's drag is the pointer equivalent of its native overflow scroll — wheel, trackpad, and scrollbars still work. It exists because the tree is usually larger than the pane, and walking around a large map with a scrollbar alone is clumsy.
 
 ### Keyboard
 
@@ -435,7 +437,7 @@ Each `<circle>` has `role="button"` and `tabIndex={0}`, with an `onKeyDown` that
 | **Zoom −** | `zoom /= 1.25`, clamped | `zoom <= 0.05` |
 | **Zoom +** | `zoom *= 1.25`, clamped | `zoom >= 12` |
 | Zoom readout | `{Math.round(zoom * 100)}%` | — |
-| **Graph / Mindmap / 3D** | Single dropdown (`aria-haspopup="menu"`). Driven by the `PROJECTION_OPTIONS` table, so the trigger label and the menu rows cannot drift apart. `position: fixed` so the toolbar scroller cannot clip it | Never |
+| **Flat / Mindmap / 3D** | Single dropdown (`aria-haspopup="menu"`). Driven by the `PROJECTION_OPTIONS` table, so the trigger label and the menu rows cannot drift apart. `position: fixed` so the toolbar scroller cannot clip it | Never |
 | **Filter** | Toggles the scope popover. `aria-expanded` tracks it; an `on` badge appears when the scope is non-empty | Never |
 | **Reset** | `labelPx → 16`, `zoom → 1`, `projection → 'flat'`, `scope → empty`, `graphEpoch++` | Never |
 
@@ -466,20 +468,48 @@ Both are now `flex-nowrap`, and the toolbar row scrolls horizontally instead:
 [`utils/graph/layoutMindmap.ts`](../src/utils/graph/layoutMindmap.ts)
 
 Replaces the former Globe wrap. The same compiled graph is stripped to a **spanning tree** (the hierarchical bones) and drawn left-to-right. Loops and secondary relationships stay in `graph.edges` and are painted as **dashed, low-opacity cross-links**.
-
 | Piece | Behaviour |
 |---|---|
 | Root | The open document node, else `docs[0]`, else the first node |
 | Tree growth | BFS. Heading children of a node are claimed first, then `wikilink`, then `@`. Disconnected components become extra roots, stacked in Y |
-| Placement | Child column starts after the parent's label. Siblings share one X (a second column of one-line titles overlaps on a phone). Leaves pack on Y at `MINDMAP_LEAF_GAP`. A parent sits at the vertical midpoint of its children. The drawing is then centred on the origin |
+| Placement | One column per tree **depth**. A column starts after the **widest title in the column before it**, plus `MINDMAP_CONNECTOR`. Siblings share one X. Leaves pack on Y at `MINDMAP_LEAF_GAP`, plus a line's height per extra wrapped line. A parent sits at the vertical midpoint of its children. The drawing is then centred on the origin |
 | Tree edges | Cubic `mindmapTreePath` — control points stay on each endpoint's Y so the curve leaves a parent going right and arrives at a child from the left |
 | Cross-links | Quadratic `mindmapCrossPath`, `stroke-dasharray: 8 10`, opacity ~0.45. Vertical-ish leftovers bow to the right (away from the root) |
-| Navigation | Native overflow. The SVG is sized to `layoutBounds × camera.scale` with a full-tree `viewBox`; `[data-graph-mindmap-scroll]` scrolls when the tree is larger than the pane. Background drag does not pan. No sphere, no far-side culling |
-| Labels | Sit to the **right** of the node (`textAnchor: start`), **one line**, never wrapped. `mindmapMinScale(labelPx)` floors the camera so a world character is at least as wide as a CSS glyph and a row is at least 44px; a tree that still does not fit the pane is scrollable rather than overlapping titles |
+| Navigation | Native overflow **plus drag-to-scroll**. The SVG is sized to `layoutBounds × camera.scale` with a full-tree `viewBox`; `[data-graph-mindmap-scroll]` scrolls when the tree is larger than the pane, and a background drag scrolls it under the cursor. No sphere, no far-side culling |
+| Labels | Sit to the **right** of the node (`textAnchor: start`) and **above** the green connector. Titles **wrap** at `MINDMAP_LABEL_MAX_COLS` columns. A title that wraps is drawn at `MINDMAP_LONG_LABEL_SCALE` — only that title shrinks |
+
+### The title model — width in columns, not characters
+
+A title is measured in **columns**, where a column is one Latin glyph and a CJK glyph counts as two.
+
+> Counting characters instead made every Chinese title **half** its true width, which is what let the next column land on top of it. `mindmapTextCols` is the single measurement, used by the wrap, the width, and the tests alike.
+
+| Constant | Value | Role |
+|---|---:|---|
+| `MINDMAP_LABEL_MAX_COLS` | `40` | Longest line a title may occupy |
+| `MINDMAP_LABEL_MAX_LINES` | `4` | Lines before the rest is dropped behind an ellipsis |
+| `MINDMAP_LONG_LABEL_SCALE` | `0.85` | Font scale for a title that had to wrap — **that title only** |
+| `MINDMAP_EM_W` | `36` | World units per em at the reference label size (`16` px) |
+| `MINDMAP_REF_LABEL_PX` | `16` | Toolbar size that maps 1:1 onto `MINDMAP_EM_W` |
+| `MINDMAP_CHAR_W` | `36 × 0.6` | Layout units per column at the reference em |
+| `MINDMAP_LABEL_LINE_CLEAR` | `0.2` | Clearance (ems) between title ink and the connector at y = 0 |
+| `MINDMAP_CONNECTOR` | `160` | Buffer between the end of a title and the next column |
+
+### Font size vs camera scale (v0.6.6)
+
+The Mindmap's camera scale is **pinned** to `mindmapScale() = MINDMAP_REF_LABEL_PX / MINDMAP_EM_W`. It does not fit the tree to the pane, and it does **not** track toolbar **−** / **+**.
+
+> Toolbar **−** / **+** change `mindmapWorldFont(labelPx)` and re-run `layoutMindmap(..., labelPx)`. Text grows relative to nodes and connectors. **Zoom −** / **Zoom +** still multiply the pinned scale. Layout and drawing share the same world font, so reserved column width stays the drawn width.
+
+### Why a column starts after the *widest* title
+
+The column offset is measured from the widest title in the previous column, not from one node's title.
+
+> A sibling with a long title used to run into the next column, because the column was only as wide as whichever parent happened to be laid out first. Measuring the column, not the parent, is what makes the rule hold for every node in it.
 
 `layoutMindmap` returns `{ nodes, treeEdgeIds }`. `treeEdgeIds` is a `Set` of `GraphEdge.id`; `GraphView` uses it only for stroke style. Click, hover, Filter, and Reset are the Flat path.
 
-`sphereProject.ts` remains in the tree as the rotation helper Concept reuses (`dragToOrientation`); it is no longer a Graph projection.
+`sphereProject.ts` keeps only the yaw/pitch helpers Concept reuses (`dragToOrientation`, `clampPitch`). The Globe stereographic map (`toSphere` / `toScreen` / `rotateSphere`) was removed with that projection.
 
 ## 9c. Fisheye lens
 
@@ -511,7 +541,7 @@ x' = c + (b − c)·β'
 
 The third projection. Where Mindmap **re-lays** the graph as a tree, Concept keeps the radial layout planar and **extrudes** it: `layout.x → world.x`, `layout.y → world.z`, and heading tiers rise along `world.y`. The atom becomes a floor plan with a stack over it.
 
-> `viewMode` is still `'write' | 'preview' | 'split' | 'graph'`. Concept is the third entry in the same projection dropdown as Graph and Mindmap, for the reason [§1](#1-what-it-is) gives: same nodes, same clicks, different camera. It is **not** a fifth pane.
+> `viewMode` is still `'write' | 'preview' | 'split' | 'graph'`. Concept is the third entry in the same projection dropdown as Flat and Mindmap, for the reason [§1](#1-what-it-is) gives: same nodes, same clicks, different camera. It is **not** a fifth pane.
 
 ### Pipeline divergence
 

@@ -1,3 +1,20 @@
+## v0.6.6 — Mindmap labels that stay readable
+
+Patch on top of [v0.6.5](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.5). Mindmap titles wrap instead of overlapping, sit above the green connectors, and grow with toolbar **−** / **+** without scaling the whole tree. The Flat / Mindmap / 3D dropdown replaces the old Graph / Globe naming; Globe stereographic math is removed.
+
+### Highlights
+
+- **Wrap + column packing.** Titles wrap at ~40 columns (CJK = 2); only the wrapping title shrinks. Each column starts after the widest title before it.
+- **Labels above the line.** Wording clears the green connector instead of sitting on it.
+- **− / + = text size; Zoom = map scale.** Mindmap camera scale is pinned; font size drives layout and drawing.
+- **Drag-to-scroll** on empty Mindmap space; radial projection renamed **Flat**.
+- **Globe cleanup.** Stereographic projection and unused orbit camera state removed; Concept still reuses yaw/pitch helpers.
+
+### Notes
+
+- See [`.release-notes-v0.6.6.md`](.release-notes-v0.6.6.md) for the full surface list.
+- `package.json` version bumped to `0.6.6`.
+
 ## v0.6.5 — Debug token counter, single-send comment batches
 
 Patch on top of [v0.6.4](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.4). A Debug Mode token counter sits next to both send buttons so you can see how big the next request is — and whether the Local Model has room for a full reply — before sending. Comment batches and rejection sends no longer transmit the message body twice.

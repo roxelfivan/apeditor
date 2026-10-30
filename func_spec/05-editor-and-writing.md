@@ -105,7 +105,7 @@ In full `graph` mode the text panes are replaced entirely; Format, Comment, and 
 
 `graphEpoch` is a remount key. `GraphViewControls`'s **Reset** bumps it, which is how the drag override map is cleared.
 
-The Graph view has its own inner projection dropdown — `Graph` / `Mindmap` / `3D` — rendered by `GraphViewControls`. Those are **projections, not view modes**: `viewMode` keeps exactly four values. See [Graph view](10-graph-view.md#9b-mindmap-projection).
+The Graph view has its own inner projection dropdown — `Flat` / `Mindmap` / `3D` — rendered by `GraphViewControls`. Those are **projections, not view modes**: `viewMode` keeps exactly four values. See [Graph view](10-graph-view.md#9b-mindmap-projection).
 
 ### Preview with proposed-edit highlights and wikilinks
 

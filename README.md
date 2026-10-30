@@ -14,10 +14,22 @@
 > functional specification). See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.6.5](https://img.shields.io/badge/version-0.6.5-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.5)
+[![v0.6.6](https://img.shields.io/badge/version-0.6.6-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.6)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
+
+---
+
+## What's new in v0.6.6
+
+> Mindmap titles **wrap without overlapping**, sit **above the green connectors**, and resize with toolbar **−** / **+** without scaling the whole tree. Patch on top of [v0.6.5](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.5).
+
+1. **Readable Mindmap labels.** Long titles wrap; CJK width is counted correctly; each column starts after the widest title before it. Wording clears the green line.
+2. **− / + vs Zoom.** On Mindmap, **−** / **+** change text size; **Zoom −** / **Zoom +** scale the map. Drag empty space to scroll the tree.
+3. **Flat / Mindmap / 3D.** The radial projection is labeled **Flat**. Globe stereographic math is removed.
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.6 entry and prior changelogs.
 
 ---
 
@@ -80,7 +92,7 @@ Legible 3D labels and dark-mode spheres; one-row scrolling toolbar; Welcome docu
 
 ### v0.5.0 – v0.5.9
 
-Graph (map, Globe, 3D, Filter, wider zoom), JSON backup export/import, Preview wikilinks, in-app Functional Specification, proposed-edit Apply waterfall, selection-only chat, secret redaction, session-only API key, store refactor.
+Graph (Flat / Mindmap / 3D, Filter, wider zoom), JSON backup export/import, Preview wikilinks, in-app Functional Specification, proposed-edit Apply waterfall, selection-only chat, secret redaction, session-only API key, store refactor.
 
 ### v0.4.0 – v0.4.9
 
@@ -571,7 +583,7 @@ A longer, task-oriented walkthrough of every screen lives under
 `⌘/Ctrl + /`) to open the same pages as a themed Help site — Light /
 Dark matches the editor. Start at the [table of contents](docs/README.md):
 
-- [What's new](docs/whats-new.md) — current release (Chat attachments in v0.6.3)
+- [What's new](docs/whats-new.md) — current release (Mindmap labels in v0.6.6)
 - [Getting started](docs/getting-started.md) — first launch, connect AI, first document
 - [Your workspace](docs/workspace.md) — layout, theme, panels, Help
 - [Documents](docs/documents.md) — create, rename, switch, delete
@@ -705,6 +717,7 @@ per-release notes also ship on the GitHub release pages.
 
 | Version | Highlights |
 | --- | --- |
+| [v0.6.6](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.6) | **Mindmap labels** wrap without overlapping, sit above connectors; **−** / **+** resize text; Flat rename; Globe math removed. |
 | [v0.6.5](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.5) | **Debug token counter** next to Chat **Send** and comment **Send to AI**, with the Local Model budget. Comment batches sent once, not twice. |
 | [v0.6.4](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.4) | **Local Model default**, Chat **+** attachments, Debug-gated System/Rationale/Temperature, **selection only** removed. Replaces Google AI Mode. |
 | [v0.6.3](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.3) | **Chat + attachments.** Same images/PDFs as Import; one format-then-answer prompt; composer bar. |

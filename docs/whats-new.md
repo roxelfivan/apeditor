@@ -2,6 +2,19 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## v0.6.6 — Mindmap labels that stay readable
+
+**Mindmap titles wrap cleanly, sit above the green lines, and resize with − / +.**
+
+- **No more overlapping titles.** Long headings wrap onto a few lines; only that title is drawn a little smaller. Each column starts after the widest title before it, including Chinese text (counted wider than Latin).
+- **Wording above the green line.** Node titles sit just above the connector so they no longer run through the stroke.
+- **− / + change text size.** On Mindmap, the size buttons next to the Graph view control grow or shrink the labels relative to the nodes. **Zoom −** / **Zoom +** still scale the whole map.
+- **Drag to walk the tree.** Drag empty Mindmap space to scroll. The projection menu is **Flat / Mindmap / 3D** (Flat is the radial overview; Globe is gone).
+
+No migration.
+
+---
+
 ## v0.6.5 — Debug token counter
 
 **See how big the next request is before you send it — and whether the Local Model has room for a full reply.**
@@ -66,8 +79,12 @@ No new settings, no migration.
 
 ## Earlier releases
 
+- **v0.6.4** — Local Model default, Chat attachments, Debug-gated Settings.
+- **v0.6.3** — Chat **+** photo/PDF attachments.
+- **v0.6.2** — Phone overlay shell, Chat archives, Graph Filter stacking.
+- **v0.6.1** — Format menu visible; Split = Write/Preview \| Graph.
 - **v0.6.0** — Legible 3D labels and dark-mode spheres; one-row toolbar; Welcome covers Graph.
-- **v0.5.0 – v0.5.9** — Graph (map, Globe, 3D, Filter), JSON backup export/import, Preview wikilinks, Functional Specification, Apply waterfall, selection-only chat, secret redaction, session-only API key.
+- **v0.5.0 – v0.5.9** — Graph (map / Globe / 3D / Filter; Globe later replaced by Mindmap), JSON backup export/import, Preview wikilinks, Functional Specification, Apply waterfall, selection-only chat, secret redaction, session-only API key.
 - **v0.4.0 – v0.4.9** — Comment + Send to AI, rounds / rationales, Google AI Mode, `@` mentions with heading sections, Format dropdown.
 - **v0.3.0 – v0.3.4** — Design system, Import → Markdown / OCR, Apply All, Predict, B/I/U.
 - **v0.2.x** — Early UI overhauls.

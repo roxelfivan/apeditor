@@ -37,12 +37,14 @@ import {
 import {
   layoutMindmap,
   mindmapCrossPath,
+  mindmapLabelPlan,
   mindmapLabelWidth,
-  mindmapMinScale,
+  mindmapScale,
   mindmapScrollToWorld,
   mindmapSvgPx,
   mindmapTreePath,
   mindmapWorldAtScrollCenter,
+  mindmapWorldFont,
 } from '@/utils/graph/layoutMindmap';
 import {
   useGraphCamera,
@@ -191,14 +193,16 @@ const PROJECTION_OPTIONS: {
 }[] = [
   {
     id: 'flat',
-    label: 'Graph',
-    title: 'Flat map — pan by dragging the background',
+    // "Flat", not "Graph". This dropdown lives *inside* the Graph view,
+    // so a row called "Graph" read as if it selected the view itself.
+    label: 'Flat',
+    title: 'Flat map — the radial overview; pan by dragging the background',
   },
   {
     id: 'mindmap',
     label: 'Mindmap',
     title:
-      'Mindmap — heading tree left to right; extra links as dashed curves; scroll when the tree is larger than the pane',
+      'Mindmap — heading tree left to right; extra links as dashed curves; drag or scroll when the tree is larger than the pane',
   },
   {
     id: 'concept',
@@ -539,6 +543,16 @@ type NodeDragSession = {
   moved: boolean;
 };
 
+/** A background drag in the Mindmap, which scrolls the pane. */
+type MindmapPanSession = {
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  startScrollLeft: number;
+  startScrollTop: number;
+  moved: boolean;
+};
+
 const DEFAULT_SCOPE = createScope();
 
 export function GraphView({
@@ -582,13 +596,18 @@ export function GraphView({
 
   const layoutResult = useMemo(() => {
     if (isMindmap) {
-      return layoutMindmap(graph.nodes, graph.edges, current?.id ?? null);
+      return layoutMindmap(
+        graph.nodes,
+        graph.edges,
+        current?.id ?? null,
+        labelPx
+      );
     }
     return {
       nodes: layoutWorkspaceGraph(graph.nodes, graph.edges, current?.id ?? null),
       treeEdgeIds: new Set<string>(),
     };
-  }, [graph.nodes, graph.edges, current?.id, isMindmap]);
+  }, [graph.nodes, graph.edges, current?.id, isMindmap, labelPx]);
 
   const laidOut = layoutResult.nodes;
   const treeEdgeIds = layoutResult.treeEdgeIds;
@@ -606,6 +625,10 @@ export function GraphView({
   }, [projection]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const nodeDragRef = useRef<NodeDragSession | null>(null);
+  // The Mindmap's background drag. The tree is usually larger than the
+  // pane, so dragging the background is how the user walks around it.
+  const mindmapPanRef = useRef<MindmapPanSession | null>(null);
+  const [mindmapPanning, setMindmapPanning] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const mindmapScrollRef = useRef<HTMLDivElement>(null);
@@ -656,13 +679,19 @@ export function GraphView({
     bounds: layoutBounds,
   });
 
+  // Mindmap camera scale is pinned to the reference label size. The
+  // toolbar `−` / `+` change world font size instead, so text grows
+  // relative to nodes and connectors rather than scaling the whole tree.
+  const mindmapCamScale = mindmapScale();
   const cam = useGraphCamera(
     wrapRef,
     projection,
     layoutBounds,
     zoom,
     onZoomChange ?? (() => {}),
-    isMindmap ? mindmapMinScale(labelPx) : 0
+    isMindmap ? mindmapCamScale : 0,
+    isMindmap ? mindmapCamScale : Infinity,
+    isMindmap ? mindmapCamScale : null
   );
 
   const mindmapPx = mindmapSvgPx(layoutBounds, cam.camera.scale);
@@ -745,6 +774,9 @@ export function GraphView({
   const userFont = labelPx / Math.max(cam.camera.scale, 1e-6);
   const lineGap = userFont * 1.2;
   const maxChars = Math.max(10, Math.min(22, Math.round((18 * 16) / labelPx)));
+  // Mindmap world font tracks the toolbar `−` / `+` size. Layout uses the
+  // same value, so reserved column width matches what the browser draws.
+  const mindmapEm = mindmapWorldFont(labelPx);
 
   const openRange = (documentId: string, start: number, end: number) => {
     if (current?.id !== documentId) setCurrentDocument(documentId);
@@ -824,15 +856,58 @@ export function GraphView({
     [placed]
   );
 
-  // Background drag pans the camera in Flat. Mindmap uses native overflow
-  // scroll, so a background press must not capture the pointer.
+  // Background drag pans the camera in Flat. The Mindmap drags the
+  // scroll container instead — the tree is wider than the pane, so
+  // dragging the background is how the user walks around it.
   const onBackgroundPointerDown = (e: ReactPointerEvent<SVGSVGElement>) => {
     if (e.button !== 0) return;
-    if (isMindmap) return;
     const svg = svgRef.current;
     if (!svg) return;
+    if (isMindmap) {
+      const scroller = mindmapScrollRef.current;
+      if (!scroller) return;
+      // Capture the pointer so the drag keeps tracking even when the
+      // cursor leaves the SVG — the tree is usually larger than the pane.
+      svg.setPointerCapture(e.pointerId);
+      mindmapPanRef.current = {
+        pointerId: e.pointerId,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        startScrollLeft: scroller.scrollLeft,
+        startScrollTop: scroller.scrollTop,
+        moved: false,
+      };
+      setMindmapPanning(true);
+      return;
+    }
     svg.setPointerCapture(e.pointerId);
-    cam.beginDrag(e, 'pan', cam.orientation);
+    cam.beginDrag(e, 'pan');
+  };
+
+  /**
+   * Drag the Mindmap's scroll container.
+   *
+   * The pane scrolls natively (wheel, trackpad, scrollbars), so this is
+   * the pointer equivalent of that: the content follows the cursor, in
+   * the same direction a native drag-scroll would move it.
+   */
+  const onMindmapPanMove = (e: ReactPointerEvent<SVGSVGElement>) => {
+    const session = mindmapPanRef.current;
+    if (!session || e.pointerId !== session.pointerId) return;
+    const dx = e.clientX - session.startClientX;
+    const dy = e.clientY - session.startClientY;
+    if (!session.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+    session.moved = true;
+    const scroller = mindmapScrollRef.current;
+    if (!scroller) return;
+    scroller.scrollLeft = session.startScrollLeft - dx;
+    scroller.scrollTop = session.startScrollTop - dy;
+  };
+
+  const endMindmapPan = (pointerId: number) => {
+    if (mindmapPanRef.current?.pointerId !== pointerId) return;
+    mindmapPanRef.current = null;
+    setMindmapPanning(false);
   };
 
   /* ---- 3D Concept ---- */
@@ -869,7 +944,7 @@ export function GraphView({
       setDraggingId(node.id);
       return;
     }
-    cam.beginDrag(e, 'conceptOrbit', cam.orientation);
+    cam.beginDrag(e, 'conceptOrbit');
   };
 
   const onConceptPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -941,6 +1016,12 @@ export function GraphView({
       }));
       return;
     }
+    // The Mindmap's background drag scrolls the pane rather than the
+    // camera, so it is handled before the camera sees the event.
+    if (mindmapPanRef.current?.pointerId === e.pointerId) {
+      onMindmapPanMove(e);
+      return;
+    }
     cam.moveDrag(e);
   };
 
@@ -952,6 +1033,11 @@ export function GraphView({
     }
     if (session && e.pointerId === session.pointerId) {
       endNodeDrag(session, byId.get(session.id));
+      return;
+    }
+    // A Mindmap pan has no click to fire — it only ever scrolled.
+    if (mindmapPanRef.current?.pointerId === e.pointerId) {
+      endMindmapPan(e.pointerId);
       return;
     }
     cam.endDrag();
@@ -1046,9 +1132,9 @@ export function GraphView({
           ref={svgRef}
           className={
             isMindmap
-              ? draggingId
+              ? draggingId || mindmapPanning
                 ? 'cursor-grabbing'
-                : 'cursor-default'
+                : 'cursor-grab'
               : `w-full h-full ${draggingId ? 'cursor-grabbing' : 'cursor-default'}`
           }
           style={
@@ -1149,15 +1235,24 @@ export function GraphView({
               ? byId.get(`doc:${node.documentId}`) ?? node
               : node;
             const label = labelOffset(node.x, node.y, node.r, hub, userFont);
-            const lines = isMindmap
-              ? [node.label]
-              : wrapLines(node.label, maxChars);
+            // The Mindmap wraps a title into lines and shrinks the one
+            // title that had to wrap. The Flat map keeps its own wrapper
+            // (`wrapLines`) because its labels are placed radially, not
+            // in columns.
+            const plan = isMindmap
+              ? mindmapLabelPlan(node.label, mindmapEm)
+              : null;
+            const lines = plan ? plan.lines : wrapLines(node.label, maxChars);
             if (!node.visible) return null;
             const dimmed = active ? 1 : 0.25;
+            const nodeFont = isMindmap ? (plan?.font ?? mindmapEm) : userFont;
             const labelPos = isMindmap
               ? {
-                  labelDx: node.r + Math.max(18, userFont * 0.45),
-                  labelDy: userFont * 0.35,
+                  labelDx: node.r + Math.max(18, nodeFont * 0.45),
+                  // The first baseline. The shared plan centres a wrapped
+                  // title on its node, so this is not the same as the
+                  // one-line offset.
+                  labelDy: plan?.baselines[0] ?? nodeFont * 0.35,
                   labelAnchor: 'start' as const,
                 }
               : label;
@@ -1192,11 +1287,25 @@ export function GraphView({
                   x={labelPos.labelDx}
                   y={labelPos.labelDy}
                   textAnchor={labelPos.labelAnchor}
-                  fontSize={userFont}
+                  fontSize={nodeFont}
                   className="fill-paper-ink dark:fill-cyber-primary"
                 >
                   {lines.map((line, i) => (
-                    <tspan key={i} x={labelPos.labelDx} dy={i === 0 ? 0 : lineGap}>
+                    // The Mindmap's baselines come from the shared plan,
+                    // so the layout reserved exactly these boxes.
+                    <tspan
+                      key={i}
+                      x={labelPos.labelDx}
+                      dy={
+                        isMindmap && plan
+                          ? i === 0
+                            ? 0
+                            : plan.baselines[i] - plan.baselines[i - 1]
+                          : i === 0
+                            ? 0
+                            : lineGap
+                      }
+                    >
                       {line}
                     </tspan>
                   ))}

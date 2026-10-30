@@ -27,11 +27,6 @@ import {
   dragToConceptPose,
   type ConceptPose,
 } from '@/utils/graph/conceptProject';
-import {
-  dragToOrientation,
-  IDENTITY_ORIENTATION,
-  type SphereOrientation,
-} from '@/utils/graph/sphereProject';
 
 /**
  * How the Graph view turns layout coordinates into screen pixels.
@@ -48,11 +43,7 @@ export type GraphProjection =
   /** 3D Concept: the layout as a floor, headings extruded upward. */
   | 'concept';
 
-/** Layout units the sphere wraps. A multi-document workspace at its natural
- *  radial extent lands roughly on a hemisphere at the identity orientation. */
-export const SPHERE_RADIUS = 2600;
-
-export type GraphDragKind = 'pan' | 'orbit' | 'conceptOrbit';
+export type GraphDragKind = 'pan' | 'conceptOrbit';
 
 /** Pointer travel before a background drag counts as navigation. */
 const DRAG_THRESHOLD_PX = 3;
@@ -63,7 +54,6 @@ interface DragSession {
   startClientX: number;
   startClientY: number;
   startCamera: GraphCamera;
-  startOrientation: SphereOrientation;
   /** Baseline for a `conceptOrbit` drag; rotations are deltas from here. */
   startConceptPose: ConceptPose;
   moved: boolean;
@@ -71,16 +61,19 @@ interface DragSession {
 
 export interface UseGraphCamera {
   camera: GraphCamera;
-  orientation: SphereOrientation;
   viewBox: { x: number; y: number; w: number; h: number };
   viewport: ViewportSize;
+  /**
+   * Scale of the fitted view, before the zoom multiplier.
+   *
+   * Mindmap sizes its labels against this rather than `camera.scale`: a
+   * label that is a fixed *world* size stays the same size relative to
+   * the tree at any zoom, so zooming can never make the text overlap.
+   */
+  fitScale: number;
   /** Client (mouse) point → world coordinate, accounting for element origin. */
   worldAtClient: (clientX: number, clientY: number) => Point;
-  beginDrag: (
-    e: ReactPointerEvent,
-    kind: GraphDragKind,
-    orientation?: SphereOrientation
-  ) => void;
+  beginDrag: (e: ReactPointerEvent, kind: GraphDragKind) => void;
   moveDrag: (e: ReactPointerEvent) => void;
   endDrag: () => void;
   zoomBy: (direction: 1 | -1, anchor?: Point) => void;
@@ -98,7 +91,7 @@ export interface UseGraphCamera {
 }
 
 /**
- * Owns the Graph viewport: fit, pan, orbit, zoom, and viewport measurement.
+ * Owns the Graph viewport: fit, pan, Concept orbit, zoom, and viewport measurement.
  *
  * Extracted from `GraphView` so the component does not absorb another four
  * pieces of camera bookkeeping per navigation feature.
@@ -121,11 +114,27 @@ export function useGraphCamera(
   zoomMultiplier: number,
   onZoomChange: (next: number) => void,
   /**
-   * Floor for the fit scale. Mindmap uses this so twelve one-line titles
-   * are not crushed into overlapping screen rows when the whole tree is
-   * fitted to a phone pane. Zoom still multiplies on top.
+   * Floor for the fit scale. Mindmap uses this so a tree of long titles is
+   * not crushed into overlapping screen rows when the whole tree is fitted
+   * to a phone pane. Zoom still multiplies on top.
    */
-  minScale = 0
+  minScale = 0,
+  /**
+   * Ceiling for the fit scale. The Mindmap also needs one: its titles are
+   * drawn at a fixed *world* size, so a small tree fitted to a wide pane
+   * would otherwise be blown up to an absurd size.
+   */
+  maxScale = Infinity,
+  /**
+   * Pins the scale outright, ignoring the fit.
+   *
+   * The Mindmap uses this. Its titles are drawn at a fixed *world* size,
+   * so the scale has to follow the label rather than the pane — otherwise
+   * the width the layout reserved for a title would not be the width the
+   * browser drew, and the titles would cross again. The pane scrolls and
+   * drags around the tree instead of the tree being fitted to the pane.
+   */
+  pinnedScale: number | null = null
 ): UseGraphCamera {
   const [viewport, setViewport] = useState<ViewportSize>({ w: 1, h: 1 });
   // Pan is an explicit centre in world units, which is what makes the view
@@ -134,9 +143,6 @@ export function useGraphCamera(
     x: bounds.minX + bounds.width / 2,
     y: bounds.minY + bounds.height / 2,
   });
-  const [orientation, setOrientation] = useState<SphereOrientation>(
-    IDENTITY_ORIENTATION
-  );
   // Concept mode orbits a point rather than centring a rectangle, so its
   // "camera" is a pose. It starts at the layout's centre and is re-centred
   // by the same fitKey effect that drives `center`.
@@ -147,25 +153,25 @@ export function useGraphCamera(
       y: bounds.minY + bounds.height / 2,
     },
   });
-  // The pose hold a distance, and the toolbar holds a zoom multiplier. One
+  // The pose holds a distance, and the toolbar holds a zoom multiplier. One
   // writer — usually the toolbar — drives the other through an effect.
-// OrbitControls calls `setConceptPose` directly on wheel-dolly, so we
-// write through `onZoomChange` *outside* the state updater, never from
-// inside one (otherwise React warns "Cannot update while rendering").
-const lastConceptDistanceApplied = useRef(0);
-const setConceptPose = useCallback(
-  (next: ConceptPose) => {
-    const clamped = clampConceptPose(next);
-    setConceptPoseState(clamped);
-    const nextDistance = clamped.distance;
-    if (lastConceptDistanceApplied.current !== nextDistance) {
-      lastConceptDistanceApplied.current = nextDistance;
-      const nextZoom = nextDistance / DEFAULT_CONCEPT_DISTANCE;
-      if (nextZoom !== zoomMultiplier) onZoomChange(nextZoom);
-    }
-  },
-  [zoomMultiplier, onZoomChange]
-);
+  // OrbitControls calls `setConceptPose` directly on wheel-dolly, so we
+  // write through `onZoomChange` *outside* the state updater, never from
+  // inside one (otherwise React warns "Cannot update while rendering").
+  const lastConceptDistanceApplied = useRef(0);
+  const setConceptPose = useCallback(
+    (next: ConceptPose) => {
+      const clamped = clampConceptPose(next);
+      setConceptPoseState(clamped);
+      const nextDistance = clamped.distance;
+      if (lastConceptDistanceApplied.current !== nextDistance) {
+        lastConceptDistanceApplied.current = nextDistance;
+        const nextZoom = nextDistance / DEFAULT_CONCEPT_DISTANCE;
+        if (nextZoom !== zoomMultiplier) onZoomChange(nextZoom);
+      }
+    },
+    [zoomMultiplier, onZoomChange]
+  );
   const session = useRef<DragSession | null>(null);
   const dragging = session.current !== null;
 
@@ -189,7 +195,10 @@ const setConceptPose = useCallback(
 
   const fit = useMemo(() => fitCameraTo(bounds, viewport), [bounds, viewport]);
   const zoom = clampGraphZoom(zoomMultiplier);
-  const fitScale = Math.max(fit.scale, minScale);
+  const fitScale =
+    pinnedScale != null && Number.isFinite(pinnedScale) && pinnedScale > 0
+      ? pinnedScale
+      : Math.min(Math.max(fit.scale, minScale), maxScale);
   const camera = useMemo<GraphCamera>(
     () => ({ cx: center.x, cy: center.y, scale: fitScale * zoom }),
     [center, fitScale, zoom]
@@ -244,23 +253,18 @@ const setConceptPose = useCallback(
   );
 
   const beginDrag = useCallback(
-    (
-      e: ReactPointerEvent,
-      kind: GraphDragKind,
-      orient?: SphereOrientation
-    ) => {
+    (e: ReactPointerEvent, kind: GraphDragKind) => {
       session.current = {
         pointerId: e.pointerId,
         kind,
         startClientX: e.clientX,
         startClientY: e.clientY,
         startCamera: camera,
-        startOrientation: orient ?? orientation,
         startConceptPose: conceptPose,
         moved: false,
       };
     },
-    [camera, orientation, conceptPose]
+    [camera, conceptPose]
   );
 
   const moveDrag = useCallback((e: ReactPointerEvent) => {
@@ -279,13 +283,9 @@ const setConceptPose = useCallback(
     // Gain comes from the viewport, so a drag across the pane always turns
     // the 3D scene by the same angle regardless of zoom or graph size.
     const pixelsPerRadian = Math.max(viewport.w, 320) / Math.PI;
-    if (s.kind === 'conceptOrbit') {
-      setConceptPoseState(
-        dragToConceptPose(s.startConceptPose, dx, dy, pixelsPerRadian)
-      );
-      return;
-    }
-    setOrientation(dragToOrientation(s.startOrientation, dx, dy, pixelsPerRadian));
+    setConceptPoseState(
+      dragToConceptPose(s.startConceptPose, dx, dy, pixelsPerRadian)
+    );
   }, [viewport.w]);
 
   const endDrag = useCallback(() => {
@@ -332,9 +332,7 @@ const setConceptPose = useCallback(
 
   return {
     camera,
-    // Sphere orientation is unused by Flat, Mindmap, and Concept (Concept
-    // has its own pose). Reporting identity keeps callers from branching.
-    orientation: IDENTITY_ORIENTATION,
+    fitScale,
     viewBox: cameraViewBox(camera, viewport),
     viewport,
     worldAtClient,

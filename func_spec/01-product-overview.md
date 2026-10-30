@@ -154,12 +154,14 @@ Full changelogs are in [`RELEASE_NOTES.md`](../RELEASE_NOTES.md). The shape of t
 
 | Version | What changed |
 |---|---|
+| v0.6.6 | **Mindmap labels stay readable.** Titles wrap (CJK-aware), sit above connectors; **−** / **+** resize text without scaling the tree; drag-to-scroll; Flat rename; Globe stereographic math removed. |
+| v0.6.5 | **Debug token counter, single-send comment batches.** Debug Mode pill next to Chat **Send** and comment **Send to AI**; Local Model budget tones; comment batches no longer sent twice. |
 | v0.6.4 | **Local Model default, Chat attachments, Debug-gated prompts.** Google AI Mode removed; `local-gemma` is first-run default (Cache API + load/save `.litertlm`). Chat **+** attaches photos/PDFs. **selection only** removed. System message / Rationale / Temperature only when Debug Mode is on. |
 | v0.6.3 | **Chat composer attachments.** **+** picks the same images/PDFs as Import; OCR stays in-browser; Send is one format-then-answer prompt. Composer is one field with **+** and **Send** on a shared bar. Optional `ChatMessage.attachments` in backups. |
 | v0.6.2 | **Phone overlay shell, Chat archives, Graph Filter stacking.** Narrow overlay panels; Chat History / Archive; Filter above 3D labels; Send-to-AI works with Chat collapsed. |
 | v0.6.1 | **Format menu, Split = Write/Preview \| Graph, Graph click scrolls Write.** Format dropdown is `position: fixed`. Split left pane Write/Preview; Graph click `scrollIntoView`. |
 | v0.6.0 | **Legible 3D, single-row toolbar, Welcome covers Graph.** Label hierarchy, distance fade, dark-mode spheres, non-wrapping toolbar. |
-| v0.5.0 – v0.5.9 | Graph (map, Globe, 3D, Filter, wider zoom), JSON backup export/import, Preview wikilinks, Functional Specification, Apply waterfall, selection-only chat, secret redaction, session-only API key, store refactor. |
+| v0.5.0 – v0.5.9 | Graph (map / Globe / 3D / Filter; Globe later replaced by Mindmap), JSON backup export/import, Preview wikilinks, Functional Specification, Apply waterfall, selection-only chat, secret redaction, session-only API key, store refactor. |
 | v0.4.0 – v0.4.9 | Comment + Send to AI, rounds / rationales, Google AI Mode, `@` mentions with heading sections, Format dropdown, Predict off by default. |
 | v0.3.0 – v0.3.4 | Design system, Import → Markdown / OCR under CSP, Apply All, inline Predict, B/I/U, security hardening. |
 | v0.2.x | Early UI overhauls and bug fixes. |
