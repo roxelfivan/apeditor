@@ -1,3 +1,19 @@
+## v0.6.7 — Chat composer follows the divider
+
+Patch on top of [v0.6.6](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.6). Dragging the strip between the conversation and the input moves **include selection** and grows the chat box with the divider — no empty gap under the handle.
+
+### Highlights
+
+- **Divider = top of the composer.** Drag up to grow the input; drag down to shrink it. Messages fill the leftover space above.
+- **Include selection sticks to the handle.** The checkbox and the input’s upper edge follow the divider.
+- **Typing area expands.** When a height is set, the textarea flexes to fill the composer block.
+- **Persistence.** Same key `apeditor:chat-messages-height`, now meaning composer height (`0` = natural). Values outside 140–800 reset to natural.
+
+### Notes
+
+- See [`.release-notes-v0.6.7.md`](.release-notes-v0.6.7.md) for the full surface list.
+- `package.json` version bumped to `0.6.7`.
+
 ## v0.6.6 — Mindmap labels that stay readable
 
 Patch on top of [v0.6.5](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.5). Mindmap titles wrap instead of overlapping, sit above the green connectors, and grow with toolbar **−** / **+** without scaling the whole tree. The Flat / Mindmap / 3D dropdown replaces the old Graph / Globe naming; Globe stereographic math is removed.

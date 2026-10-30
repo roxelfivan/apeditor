@@ -314,7 +314,7 @@ Write-only as of v0.5.3. The `version` field exists so a future importer can det
 |---|---|
 | `apeditor` | `{ state: <partialized StoreState>, version: 0 }` — 20 keys, see [State & persistence §4.2](04-state-and-persistence.md#42-partialize) |
 | `apeditor:onboarded` | `"1"` |
-| `apeditor:chat-messages-height` | number; `0` means "use the 60% default" |
+| `apeditor:chat-messages-height` | number (composer height px); `0` means natural compact size; valid `140`–`800` |
 | `apeditor:suggestion-height` | number, `80`–`600` |
 | `apeditor:settings-modal-size` | `{ w, h }` — `{ width, height }` also accepted on read |
 | `apeditor:settings-system-msg-size` | `{ w: 0, h }` — only `h` is read |

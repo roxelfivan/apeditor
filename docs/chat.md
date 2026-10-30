@@ -11,7 +11,7 @@ Chat is the right-hand panel. Use it for free-form questions, selection-based re
 - **Clear** — deletes this document’s **live** conversation without archiving (disabled when empty)
 - **×** — hides the panel (show it again from the right-edge chevron)
 
-You can drag the left edge of the panel to resize its width, and drag the thin divider between the messages area and the input area to give the messages more or less room. Both splits persist across reloads.
+You can drag the left edge of the panel to resize its width, and drag the thin divider between the messages area and the input area to grow or shrink the composer (**include selection** and the typing box move with the handle; the messages list fills the leftover space above). Both splits persist across reloads.
 
 If you have never sent a message, Chat shows: *Ask anything, or highlight text in the editor and send a prompt from the library.*
 

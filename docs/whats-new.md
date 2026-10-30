@@ -2,6 +2,18 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## v0.6.7 — Chat composer follows the divider
+
+**Drag the Chat divider and the input area moves with it.**
+
+- **Include selection sticks to the handle.** Drag the thin strip between the conversation and the input up or down — the checkbox and the chat box’s top edge follow. No empty gap under the divider.
+- **Typing area grows upward.** Dragging up gives you a taller input; the messages list keeps the leftover space above.
+- **Still remembered.** The split persists across reloads (same preference key; unset means the compact default height).
+
+No migration.
+
+---
+
 ## v0.6.6 — Mindmap labels that stay readable
 
 **Mindmap titles wrap cleanly, sit above the green lines, and resize with − / +.**
@@ -79,6 +91,7 @@ No new settings, no migration.
 
 ## Earlier releases
 
+- **v0.6.5** — Debug token counter; comment batches sent once.
 - **v0.6.4** — Local Model default, Chat attachments, Debug-gated Settings.
 - **v0.6.3** — Chat **+** photo/PDF attachments.
 - **v0.6.2** — Phone overlay shell, Chat archives, Graph Filter stacking.

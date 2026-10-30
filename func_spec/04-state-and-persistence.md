@@ -165,7 +165,7 @@ Exactly these 21 keys are written:
 | `apeditor` | `localStorage` | The main store blob |
 | `apeditor:onboarded` | `localStorage` | Suppresses the first-run Settings auto-pop |
 | `apeditor:session-api-key` | `sessionStorage` | The API key when "forget on tab close" is on |
-| `apeditor:chat-messages-height` | `localStorage` | Chat panel's vertical divider; `0` means "use the default" |
+| `apeditor:chat-messages-height` | `localStorage` | Chat composer height (px); `0` means natural compact size; valid range `140`–`800` |
 | `apeditor:suggestion-height` | `localStorage` | Predict panel height, clamped to `80`–`600` |
 | `apeditor:settings-modal-size` | `localStorage` | Settings modal `{w,h}` |
 | `apeditor:settings-system-msg-size` | `localStorage` | System message textarea `{w:0,h}` (only `h` is read) |

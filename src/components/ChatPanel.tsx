@@ -614,22 +614,16 @@ export function ChatPanel() {
     },
   });
 
-  // Vertical split between the messages (output) area and the input
-  // area. Persisted in localStorage so the user's preferred split
-  // survives reloads. Defaults to 60% of the panel height, clamped
-  // to a sensible range on render. Dragging the divider updates
-  // this height; the input area below fills the remaining space.
-  const [messagesHeight, setMessagesHeight] = useState<number>(() => {
+  // Vertical split: the divider is the top edge of the composer.
+  // Dragging UP grows the composer (include selection + input follow
+  // the divider); messages above take the leftover space via flex-1.
+  // 0 ⇒ natural compact height. Reuses the existing localStorage key.
+  const [composerHeight, setComposerHeight] = useState<number>(() => {
     try {
       const raw = localStorage.getItem(CHAT_MESSAGES_HEIGHT_KEY);
-      if (!raw) return 0; // 0 ⇒ "use default (60% of panel)"
+      if (!raw) return 0;
       const n = parseInt(raw, 10);
-      if (!Number.isFinite(n)) return 0;
-      // Clamp to a sane range: 120 ≤ n ≤ 1200. Stale values that fall
-      // outside this range are treated as 0 (use default) rather than
-      // collapsed, so a tiny/oversized stored value cannot trap the
-      // user with a 0-px or screen-filling messages area.
-      if (n < 120 || n > 1200) return 0;
+      if (!Number.isFinite(n) || n < 140 || n > 800) return 0;
       return n;
     } catch {
       return 0;
@@ -637,45 +631,50 @@ export function ChatPanel() {
   });
   useEffect(() => {
     try {
-      localStorage.setItem(
-        CHAT_MESSAGES_HEIGHT_KEY,
-        String(messagesHeight)
-      );
+      localStorage.setItem(CHAT_MESSAGES_HEIGHT_KEY, String(composerHeight));
     } catch {
       /* ignore quota errors */
     }
-  }, [messagesHeight]);
-  // Clamp the messages height against the live panel height so the
-  // divider cannot drag the input area off-screen. The min keeps the
-  // input area (composer field + Send) usable; the max keeps the
-  // messages area from pushing the input off the bottom.
-  const clampMessagesHeight = (px: number): number => {
-    const panel = containerRef.current;
-    const max = panel ? Math.max(160, panel.clientHeight - 180) : 1000;
-    return Math.min(max, Math.max(120, px));
+  }, [composerHeight]);
+  const composerRef = useRef<HTMLDivElement>(null);
+  const maxComposerHeight = (): number => {
+    const composer = composerRef.current;
+    const aside = composer?.parentElement;
+    if (!aside) return 600;
+    let fixed = 0;
+    for (const child of Array.from(aside.children)) {
+      // Skip composer (we're sizing it) and the flex messages scroller
+      // (it yields space as the composer grows).
+      if (child === composer || child === scrollerRef.current) continue;
+      const position = window.getComputedStyle(child).position;
+      if (position === 'fixed' || position === 'absolute') continue;
+      fixed += child.getBoundingClientRect().height;
+    }
+    // Leave at least ~120px for the messages scroller above.
+    return Math.max(160, aside.getBoundingClientRect().height - fixed - 120);
   };
-  const messagesHeightAnchor = useRef<number>(messagesHeight);
-  const messagesHeightStart = useRef<number>(messagesHeight);
-  const { start: beginMessagesResize } = useDragResize({
+  const clampComposerHeight = (px: number): number =>
+    Math.min(maxComposerHeight(), Math.max(140, px));
+  const currentComposerHeight = (): number => {
+    if (composerHeight > 0) return composerHeight;
+    return composerRef.current?.getBoundingClientRect().height ?? 140;
+  };
+  const composerHeightStart = useRef<number>(composerHeight);
+  const { start: beginComposerResize } = useDragResize({
     mode: 'axis',
     axis: 'vertical',
     onDelta: ({ dy }) => {
-      // dy is cumulative from drag start; dragging DOWN grows the
-      // messages area (so we ADD dy to the start height). The anchor
-      // is converted to an absolute height and clamped on the fly.
-      messagesHeightAnchor.current =
-        messagesHeightStart.current + dy;
-      setMessagesHeight(
-        clampMessagesHeight(messagesHeightAnchor.current)
+      // Divider is the composer's top edge: drag UP (dy < 0) grows it.
+      setComposerHeight(
+        clampComposerHeight(composerHeightStart.current - dy)
       );
     },
   });
-  const onMessagesHandleDown = (
+  const onComposerHandleDown = (
     e: React.PointerEvent<HTMLDivElement>
   ) => {
-    messagesHeightStart.current = messagesHeight;
-    messagesHeightAnchor.current = messagesHeight;
-    beginMessagesResize('top', e);
+    composerHeightStart.current = currentComposerHeight();
+    beginComposerResize('top', e);
   };
 
   if (!chatOpen || chatCollapsed) {
@@ -1199,30 +1198,14 @@ export function ChatPanel() {
         </button>
       </div>
 
-      {/* Messages (output) area. The height is drag-resizable via the
-          divider below. When `messagesHeight` is 0 (default / no
-          stored value) we fall back to `flex-1` so the input area
-          pins to the bottom and the messages area fills the rest of
-          the panel — the same behaviour as before this feature
-          existed. Once the user drags once, the explicit pixel height
-          takes over and the input area below becomes whatever space
-          remains. */}
+      {/* Messages area fills leftover space above the composer. */}
       <div
         ref={scrollerRef}
         hidden={messagesCollapsed}
         className={
           messagesCollapsed
             ? 'hidden'
-            : messagesHeight > 0
-              ? 'overflow-y-auto p-3 space-y-3 bg-paper-base dark:bg-ape-base min-h-0 shrink-0'
-              : 'flex-1 overflow-y-auto p-3 space-y-3 bg-paper-base dark:bg-ape-base min-h-0'
-        }
-        style={
-          messagesCollapsed
-            ? undefined
-            : messagesHeight > 0
-              ? { height: `${messagesHeight}px` }
-              : undefined
+            : 'flex-1 overflow-y-auto p-3 space-y-3 bg-paper-base dark:bg-ape-base min-h-0'
         }
       >
         {!messages.length && (
@@ -1296,32 +1279,37 @@ export function ChatPanel() {
         </div>
       )}
 
-      {/* Draggable divider between the messages (output) area and the
-          input area. Mirrors the editor's suggestion-panel handle so
-          the two dividers look and feel consistent. The 8px-tall
-          strip is the hit target; a 4px-wide centred pill is the
-          visual affordance. Pointer-drag updates `messagesHeight`
-          above; the messages div re-renders with the new height
-          and the input panel below fills the remaining space. */}
-      <div
-        role="separator"
-        aria-orientation="horizontal"
-        aria-label="Resize chat messages area"
-        aria-valuenow={messagesHeight}
-        aria-valuemin={120}
-        aria-valuemax={1200}
-        onPointerDown={onMessagesHandleDown}
-        className="relative shrink-0 h-2 cursor-ns-resize group flex items-center justify-center border-t border-paper-hairline dark:border-cyber-border bg-paper-panel dark:bg-ape-panel hover:bg-paper-elevated dark:hover:bg-ape-elevated transition-colors"
-        data-chat-messages-handle
-      >
-        <span
-          aria-hidden
-          className="block w-12 h-1 rounded-full bg-paper-hairline dark:bg-cyber-border group-hover:bg-cyber-clay/60 dark:group-hover:bg-cyber-cyan/60 transition-colors"
-        />
-      </div>
+      {/* Divider = top edge of the composer. Drag up grows the input. */}
+      {!messagesCollapsed && (
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Resize chat input area"
+          aria-valuenow={composerHeight}
+          aria-valuemin={140}
+          aria-valuemax={800}
+          onPointerDown={onComposerHandleDown}
+          className="relative shrink-0 h-2 cursor-ns-resize group flex items-center justify-center border-t border-paper-hairline dark:border-cyber-border bg-paper-panel dark:bg-ape-panel hover:bg-paper-elevated dark:hover:bg-ape-elevated transition-colors"
+          data-chat-messages-handle
+        >
+          <span
+            aria-hidden
+            className="block w-12 h-1 rounded-full bg-paper-hairline dark:bg-cyber-border group-hover:bg-cyber-clay/60 dark:group-hover:bg-cyber-cyan/60 transition-colors"
+          />
+        </div>
+      )}
 
-      <div className="border-t border-paper-hairline dark:border-cyber-border p-3 space-y-2 bg-paper-panel dark:bg-ape-panel">
-        <div className="flex items-center gap-2 text-xs text-paper-inkSoft dark:text-cyber-muted flex-wrap">
+      {/* Composer: height tracks the divider; input grows into leftover space. */}
+      <div
+        ref={composerRef}
+        className={
+          composerHeight > 0
+            ? 'shrink-0 border-t border-paper-hairline dark:border-cyber-border p-3 space-y-2 bg-paper-panel dark:bg-ape-panel flex flex-col min-h-0'
+            : 'shrink-0 border-t border-paper-hairline dark:border-cyber-border p-3 space-y-2 bg-paper-panel dark:bg-ape-panel'
+        }
+        style={composerHeight > 0 ? { height: `${composerHeight}px` } : undefined}
+      >
+        <div className="flex items-center gap-2 text-xs text-paper-inkSoft dark:text-cyber-muted flex-wrap shrink-0">
           <label className="flex items-center gap-1 cursor-pointer select-none">
             <input
               type="checkbox"
@@ -1349,9 +1337,15 @@ export function ChatPanel() {
           className="hidden"
           onChange={(e) => void onAttachFiles(e)}
         />
-        <div className="rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-base focus-within:border-cyber-clay dark:focus-within:border-cyber-cyan flex flex-col min-w-0">
+        <div
+          className={
+            composerHeight > 0
+              ? 'rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-base focus-within:border-cyber-clay dark:focus-within:border-cyber-cyan flex flex-col min-w-0 flex-1 min-h-0'
+              : 'rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-base focus-within:border-cyber-clay dark:focus-within:border-cyber-cyan flex flex-col min-w-0'
+          }
+        >
           {pendingAttachments.length > 0 && (
-            <div className="px-2 pt-2">
+            <div className="px-2 pt-2 shrink-0">
               <ChatAttachmentChips
                 items={pendingAttachments}
                 onRemove={removePendingAttachment}
@@ -1371,10 +1365,16 @@ export function ChatPanel() {
                 ? 'Ask Local Gemma, or ⌘/Ctrl+Enter to send… type @ to reference a document'
                 : 'Ask, or ⌘/Ctrl+Enter to send… type @ to reference a document'
             }
-            containerClassName="min-w-0"
-            className="w-full h-24 px-2.5 py-2 text-sm resize-none font-sans bg-transparent border-0 outline-none shadow-none focus:outline-none focus:ring-0 text-paper-ink dark:text-paper-base placeholder:text-paper-inkSoft dark:placeholder:text-cyber-muted"
+            containerClassName={
+              composerHeight > 0 ? 'flex-1 min-h-0 min-w-0' : 'min-w-0'
+            }
+            className={
+              composerHeight > 0
+                ? 'w-full flex-1 min-h-[3rem] h-auto px-2.5 py-2 text-sm resize-none font-sans bg-transparent border-0 outline-none shadow-none focus:outline-none focus:ring-0 text-paper-ink dark:text-paper-base placeholder:text-paper-inkSoft dark:placeholder:text-cyber-muted'
+                : 'w-full h-24 px-2.5 py-2 text-sm resize-none font-sans bg-transparent border-0 outline-none shadow-none focus:outline-none focus:ring-0 text-paper-ink dark:text-paper-base placeholder:text-paper-inkSoft dark:placeholder:text-cyber-muted'
+            }
           />
-          <div className="flex items-center justify-between gap-2 px-2 py-1.5 border-t border-paper-hairline dark:border-cyber-border">
+          <div className="flex items-center justify-between gap-2 px-2 py-1.5 border-t border-paper-hairline dark:border-cyber-border shrink-0">
             <button
               type="button"
               className="inline-flex h-8 w-8 items-center justify-center rounded text-lg leading-none font-medium text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan hover:bg-paper-elevated dark:hover:bg-ape-elevated transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

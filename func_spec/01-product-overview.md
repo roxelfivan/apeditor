@@ -154,6 +154,7 @@ Full changelogs are in [`RELEASE_NOTES.md`](../RELEASE_NOTES.md). The shape of t
 
 | Version | What changed |
 |---|---|
+| v0.6.7 | **Chat composer follows the divider.** Vertical split resizes composer height (drag up grows input; include selection sticks to the handle); messages fill leftover space; same `apeditor:chat-messages-height` key, now composer height. |
 | v0.6.6 | **Mindmap labels stay readable.** Titles wrap (CJK-aware), sit above connectors; **−** / **+** resize text without scaling the tree; drag-to-scroll; Flat rename; Globe stereographic math removed. |
 | v0.6.5 | **Debug token counter, single-send comment batches.** Debug Mode pill next to Chat **Send** and comment **Send to AI**; Local Model budget tones; comment batches no longer sent twice. |
 | v0.6.4 | **Local Model default, Chat attachments, Debug-gated prompts.** Google AI Mode removed; `local-gemma` is first-run default (Cache API + load/save `.litertlm`). Chat **+** attaches photos/PDFs. **selection only** removed. System message / Rationale / Temperature only when Debug Mode is on. |

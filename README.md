@@ -14,10 +14,22 @@
 > functional specification). See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.6.6](https://img.shields.io/badge/version-0.6.6-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.6)
+[![v0.6.7](https://img.shields.io/badge/version-0.6.7-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.7)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
+
+---
+
+## What's new in v0.6.7
+
+> Drag the Chat divider and **include selection** plus the input box move with it — the typing area grows upward. Patch on top of [v0.6.6](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.6).
+
+1. **Composer follows the divider.** Drag up to grow the input; drag down to shrink it. No empty gap under the handle.
+2. **Include selection sticks to the handle.** The checkbox sits right under the strip; the textarea expands into the space below.
+3. **Split still persists.** Same `localStorage` key; it now stores composer height (`0` = natural compact size).
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.7 entry and prior changelogs.
 
 ---
 
