@@ -42,6 +42,16 @@ Global shortcuts are ignored while you are typing in a text field, so they do no
 | `Ctrl+Enter` / `⌘Enter` | Save in the composer or popover |
 | `Esc` | Cancel the composer, or close the popover |
 
+## Proposed edit cards
+
+Active while a proposed-edit card's reject panel is open (click **Reject** on the card).
+
+| Shortcut | Action |
+| --- | --- |
+| `Ctrl+Enter` / `⌘Enter` | Stage the rejection with feedback |
+| `Enter` | New line in the comment |
+| `Esc` | Close the reject panel without rejecting |
+
 ## `@`-document picker
 
 Active while the doc / section picker is open (triggered by typing

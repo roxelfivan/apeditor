@@ -262,7 +262,7 @@ Then, by hand:
 |---|---|
 | OCR import with and without an API key | Two code paths, two gate messages |
 | Local Model download → Ready → Chat reply (prose + optional fences) | The whole on-device loop |
-| Debug Mode on → token counter next to **Send** and **Send to AI** | The prompt-size estimate and its budget warning |
+| Local Model mode → token counter next to **Send** and **Send to AI** | The prompt-size estimate and its budget warning |
 | Send to AI → Apply → open the comment badge → read the rationale | The headline feature |
 | Apply with a deliberately mangled quote | Best Effort and the Highlight Apply fallback |
 | Comment → Send to AI → Edit the comment → Send again | Round 2 creation |

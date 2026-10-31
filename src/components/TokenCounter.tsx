@@ -1,5 +1,5 @@
 /**
- * Debug Mode token counter pill.
+ * Local Model token counter pill.
  *
  * Shows the estimated size of the NEXT outgoing request, measured
  * against the budget it has to fit into. Rendered next to both send
@@ -11,7 +11,8 @@
  * request with the same `buildRequestMessages` the real send uses —
  * so this is the real payload size, not the length of the typed text.
  *
- * The pill only appears when Debug Mode is on; the callers gate it.
+ * The pill only appears when the Local Model is the active provider;
+ * the callers gate it (not Debug Mode).
  */
 
 import { formatTokenCount } from '@/utils/tokenEstimate';

@@ -21,7 +21,7 @@ This guide is for people using the app. It covers every screen and everyday task
 
 ## Start here
 
-1. [What's new](whats-new.md) — current release (Chat composer follows the divider in v0.6.7)
+1. [What's new](whats-new.md) — current release (toolbar polish, compact Mindmap, Preview default in v0.6.8)
 2. [Getting started](getting-started.md) — first launch, connect AI, first document
 3. [Your workspace](workspace.md) — layout, theme, panels, Help
 4. [Documents](documents.md) — create, rename, switch, delete

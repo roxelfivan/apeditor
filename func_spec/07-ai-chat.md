@@ -329,13 +329,13 @@ Reading the snapshot after the append puts `userMsg` in the array twice. The mod
 
 Regression test: `npm run test:send-comments-dup` parses `ChatPanel.tsx` and asserts the ordering.
 
-## 6a. Debug Mode token counter
+## 6a. Local Model token counter
 
-A rough estimate of what the **next** request will cost, shown only when `debugMode` is on.
+A rough estimate of what the **next** request will cost, shown only when the **Local Model** is the active provider (`!requiresApiKey(api.provider)`). The counter is a local-budget affordance, not a debug readout, so it is **decoupled from `debugMode`** — a keyed provider has no comparable budget to warn about and shows no counter at all.
 
 | Surface | Shows |
 |---|---|
-| Chat composer (next to **Send**) | estimated tokens for the next chat send, plus `sent ~N` for the last completed send |
+| Chat composer (left of **Send**) | estimated tokens for the next chat send, plus `sent ~N` for the last completed send |
 | Comment tray (next to **Send to AI**) | estimated tokens for the next comment batch |
 
 ### How the number is produced
@@ -362,9 +362,9 @@ For the Local Model the prompt and the reply share one KV cache, so a full-lengt
 
 ### Performance
 
-Both previews are debounced (250 ms) and skipped entirely when `debugMode` is off, because the Local Model path inlines the whole document on every pack and `doc` gets a new identity on every editor keystroke.
+Both previews are debounced (250 ms) and skipped entirely when the Local Model is **not** the active provider, because the Local Model path inlines the whole document on every pack and `doc` gets a new identity on every editor keystroke.
 
-The chat preview re-packs when the input, mentions, attachments, selection, chat history, or API settings change. The comment-tray preview re-packs when the document, the comments, the chat history, or the API settings change.
+The chat preview re-packs when the input, mentions, attachments, selection, chat history, or API settings change — it does **not** re-pack on document keystrokes. The comment-tray preview re-packs when the document, the comments, the chat history, or the API settings change, and it only runs for documents that actually have comments.
 
 Tests: `npm run test:token-estimate`, `npm run test:token-counter-render`.
 
@@ -375,7 +375,7 @@ When `!requiresApiKey(api.provider)` the send path streams via LiteRT-LM instead
 1. Ensure the model is loaded (`ensureLocalGemmaReady` — Cache API, or prior disk load).
 2. `buildRequestMessages(..., proposedEditPolicy: 'on-demand')`.
 3. `splitMessagesForLocalGemma` — system preface + a single user turn (LiteRT history contract).
-4. `createConversation` sets `sessionConfig.maxOutputTokens: LOCAL_MAX_OUTPUT_TOKENS` (1024) so decode shares the `LOCAL_MAX_NUM_TOKENS` (8192) KV cache with the prompt. Both are exported constants so the Debug Mode token counter measures against the same numbers the runtime enforces.
+4. `createConversation` sets `sessionConfig.maxOutputTokens: LOCAL_MAX_OUTPUT_TOKENS` (1024) so decode shares the `LOCAL_MAX_NUM_TOKENS` (8192) KV cache with the prompt. Both are exported constants so the Local Model token counter measures against the same numbers the runtime enforces.
 5. `streamLocalGemma` yields text chunks; `ChatPanel` mirrors the keyed assistant accumulator / AbortController lifecycle.
 6. Fences in the reply still go through `parseProposedEdits` (on-demand: usually prose unless the user asked for edits or used Comment **Send to AI**).
 

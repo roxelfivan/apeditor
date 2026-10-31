@@ -37,6 +37,8 @@ JSON backup export/import includes archived chats. Older backup files without th
 
 While a reply is streaming, **Send** becomes **Stop**. The assistant may show **thinking…** until text arrives.
 
+On the Local Model, a **token counter** sits immediately to the left of **Send** — see [Token counter](#token-counter-local-model).
+
 Before each send, ApEditor stores a revision labeled **Before AI send**.
 
 If the request fails, a red error appears (or **Unknown error**). Check your key, endpoint, and network, then try again. See [Troubleshooting](troubleshooting.md).
@@ -72,6 +74,10 @@ Saved prompts can fill the Chat input, including the current selection. See [Pro
 ## Staged rejection comments
 
 If you **Reject with feedback** on a proposed-edit card, Chat shows how many rejection comments are staged. Use **Send n rejection comments** to send them together, or **Clear staged** to drop them. Details: [Proposed edits](proposed-edits.md).
+
+## Token counter (Local Model)
+
+When the **Local Model** is the active provider, a token pill sits left of **Send** in the composer: the estimated size of the message you are about to send, plus `sent ~N` for the previous send. It is a rough estimate and turns amber or red as the prompt approaches the on-device budget. Keyed providers (Minimax, OpenAI) have no local budget, so no counter is shown.
 
 ## Reference other documents with `@`
 

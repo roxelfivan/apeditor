@@ -125,6 +125,23 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
   // becoming read-only, and so the parent can include them in the
   // rejection prompt.
   const [mentions, setMentions] = useState<MentionToken[]>([]);
+  // Whether the reject panel is open. The comment box is hidden until
+  // the user asks to reject, because most proposed edits are applied
+  // (or rejected outright) and the always-on textarea was pure noise
+  // on every card. The panel owns BOTH reject paths (plain reject and
+  // reject-with-feedback), so opening it never loses the one-click
+  // dismiss.
+  const [rejectOpen, setRejectOpen] = useState(false);
+  // Whether the "Potential mismatch detected" banner is expanded.
+  // Collapsed by default: the warning still shows (one line) but the
+  // two-sentence explanation only appears when the user asks for it.
+  const [mismatchOpen, setMismatchOpen] = useState(false);
+  // A card the parent has staged must show its (read-only) reject
+  // panel even if the card remounts — otherwise the staged comment
+  // would be invisible and the user could not review what is queued.
+  useEffect(() => {
+    if (staged) setRejectOpen(true);
+  }, [staged]);
   // Ref to the card's root element, used to read its actual rendered size
   // when a drag starts (so a card that auto-sizes to its parent resizes
   // smoothly from its real on-screen dimensions rather than from the
@@ -610,22 +627,55 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
 
       <div className="pe-diff flex-1 min-h-0">
         {!anchorInfo.found && !showBestEffortPanel && (
+          // Collapsed by default: the warning still shows, but as a
+          // single line. The two-sentence explanation (and the
+          // Highlight Apply hint) only appears when the user expands
+          // it — most cards that hit this state are simply applied or
+          // dismissed, and the full text dominated the card.
           <div
-            className="mb-2 py-1.5 px-2 rounded border border-cyber-warn/50 bg-cyber-warn/10 text-[11px] leading-snug text-cyber-warn"
-            role="status"
+            className="mb-2 rounded border border-cyber-warn/50 bg-cyber-warn/10 text-[11px] leading-snug text-cyber-warn"
           >
-            <div className="font-semibold mb-0.5 text-cyber-warn">
-              Potential mismatch detected
-            </div>
-            <div className="text-paper-inkSoft dark:text-cyber-muted">
-              The AI&rsquo;s original quote doesn&rsquo;t appear in the
-              current document &mdash; it may have been edited since this
-              reply was generated, or the AI quoted a different wording.
-              <br />
-              Select text in the editor and use{' '}
-              <span className="font-semibold text-cyber-warn">Highlight Apply</span>{' '}
-              to replace your selection.
-            </div>
+            <button
+              type="button"
+              onClick={() => setMismatchOpen((v) => !v)}
+              aria-expanded={mismatchOpen}
+              aria-controls={`pe-mismatch-${messageId}-${edit.id}`}
+              className="w-full flex items-center gap-1.5 px-2 py-1.5 text-left hover:bg-cyber-warn/10 transition-colors"
+              title={
+                mismatchOpen
+                  ? 'Hide the details'
+                  : 'Show why this change cannot be matched'
+              }
+            >
+              <span aria-hidden className="shrink-0 font-mono">
+                {mismatchOpen ? '▾' : '▸'}
+              </span>
+              {/* The label is the live region: the warning appears when
+                  the anchor is lost, and a focusable element inside a
+                  live region is an accessibility smell. */}
+              <span role="status" className="font-semibold shrink-0">
+                Potential mismatch detected
+              </span>
+              {!mismatchOpen && (
+                <span className="truncate text-paper-inkSoft dark:text-cyber-muted">
+                  &mdash; the AI&rsquo;s quote is not in the current document
+                </span>
+              )}
+            </button>
+            {mismatchOpen && (
+              <div
+                id={`pe-mismatch-${messageId}-${edit.id}`}
+                className="px-2 pb-1.5 text-paper-inkSoft dark:text-cyber-muted"
+              >
+                The AI&rsquo;s original quote doesn&rsquo;t appear in the
+                current document &mdash; it may have been edited since this
+                reply was generated, or the AI quoted a different wording.
+                <br />
+                Select text in the editor and use{' '}
+                <span className="font-semibold text-cyber-warn">Highlight Apply</span>{' '}
+                to replace your selection.
+              </div>
+            )}
           </div>
         )}
         {/* Best-effort info panel: pre-apply match preview, or post-apply
@@ -700,14 +750,25 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
       </div>
 
       <div className="pe-actions shrink-0">
+        {/* Reject is a disclosure, not an action: it opens the reject
+            panel (comment box + the two reject buttons). The plain
+            one-click dismiss lives inside that panel, so nothing is
+            lost — but the card no longer carries an always-on
+            textarea it does not need. */}
         <button
           type="button"
           className="btn-ghost-sm"
-          onClick={handleReject}
+          onClick={() => setRejectOpen((v) => !v)}
           disabled={appliedOrBusy}
-          title="Dismiss this proposed change"
+          aria-expanded={rejectOpen}
+          aria-controls={`pe-reject-panel-${messageId}-${edit.id}`}
+          title={
+            rejectOpen
+              ? 'Close the rejection panel without rejecting'
+              : 'Reject this change — optionally add a reason for the AI'
+          }
         >
-          Reject
+          {rejectOpen ? 'Cancel' : 'Reject'}
         </button>
         <button
           type="button"
@@ -744,62 +805,95 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
         )}
       </div>
 
-      {/* Comment box for "Reject with feedback". The user types a reason
-          here and clicks the button below; the card then waits for the
-          parent to commit the batched rejections before it disappears.
+      {/* Reject panel — only mounted while the `Reject` disclosure is
+          open. It holds BOTH reject paths: the plain `Reject` (dismiss
+          the card, no chat message) and `Reject with feedback` (stage
+          a reason for the AI). The user types the reason here and
+          clicks the button below; the card then waits for the parent to
+          commit the batched rejections before it disappears.
           When the card is staged we keep the typed text visible but flip
           the textarea to read-only so the user can review what they sent
           without being able to edit a comment that has already been
           queued for the next chat turn. */}
-      <div className="pe-comment shrink-0">
-        <label
-          htmlFor={`pe-comment-${messageId}-${edit.id}`}
-          className="block text-[10px] uppercase tracking-wide text-cyber-clay dark:text-cyber-cyan mb-1"
+      {rejectOpen && !appliedOrBusy && (
+        <div
+          id={`pe-reject-panel-${messageId}-${edit.id}`}
+          className="pe-comment shrink-0"
         >
-          Comment (optional)
-        </label>
-        <MentionInput
-          value={comment}
-          onChange={(v) => {
-            setComment(v.text);
-            setMentions(v.mentions);
-          }}
-          ariaLabel={`Rejection comment for ${edit.id}`}
-          placeholder="Why reject? (sent to the AI as revision feedback) — type @ to reference a document"
-          className="ape-field pe-comment__textarea"
-          disabled={status.kind === 'applied' || status.kind === 'best-effort-applied' || !!staged}
-          containerClassName={`pe-comment__input ${
-            staged
-              ? 'pe-comment__input--staged'
-              : ''
-          }`}
-        />
-        <div className="mt-1.5 flex items-center justify-between gap-2">
-          <span className="text-[10px] text-paper-inkSoft dark:text-cyber-muted">
-            {staged
-              ? 'Staged. Click "Send rejection comments" in the message footer to send.'
-              : 'Tip — leave empty to use plain Reject.'}
-          </span>
-          <button
-            type="button"
-            className="btn-cyan-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={handleRejectWithFeedback}
-            disabled={
-              status.kind === 'applied' ||
-              status.kind === 'best-effort-applied' ||
-              staged ||
-              (!comment.trim() && mentions.length === 0)
-            }
-            title={
-              staged
-                ? 'Already staged'
-                : 'Stage this rejection with the typed comment and any @-references'
-            }
+          <label
+            htmlFor={`pe-comment-${messageId}-${edit.id}`}
+            className="block text-[10px] uppercase tracking-wide text-cyber-clay dark:text-cyber-cyan mb-1"
           >
-            Reject with feedback
-          </button>
+            Comment (optional)
+          </label>
+          <MentionInput
+            value={comment}
+            onChange={(v) => {
+              setComment(v.text);
+              setMentions(v.mentions);
+            }}
+            ariaLabel={`Rejection comment for ${edit.id}`}
+            placeholder="Why reject? (sent to the AI as revision feedback) — type @ to reference a document"
+            className="ape-field pe-comment__textarea"
+            disabled={!!staged}
+            containerClassName={`pe-comment__input ${
+              staged
+                ? 'pe-comment__input--staged'
+                : ''
+            }`}
+            autoFocus
+            submitOnEnter={false}
+            onSubmit={() => {
+              // Same rule as the button: nothing to send → no-op
+              // (never a silent plain reject from the keyboard).
+              if (!comment.trim() && mentions.length === 0) return;
+              handleRejectWithFeedback();
+            }}
+            onKeyDown={(e) => {
+              // Escape closes the panel without rejecting; the typed
+              // text is kept in `comment`, so reopening resumes it.
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                setRejectOpen(false);
+              }
+            }}
+          />
+          <div className="mt-1.5 flex items-center justify-between gap-2">
+            <span className="text-[10px] text-paper-inkSoft dark:text-cyber-muted">
+              {staged
+                ? 'Staged. Click "Send rejection comments" in the message footer to send.'
+                : 'Tip — leave empty to use plain Reject.'}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="btn-ghost-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleReject}
+                disabled={staged}
+                title="Dismiss this proposed change without sending anything to the AI"
+              >
+                Reject
+              </button>
+              <button
+                type="button"
+                className="btn-cyan-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleRejectWithFeedback}
+                disabled={
+                  staged ||
+                  (!comment.trim() && mentions.length === 0)
+                }
+                title={
+                  staged
+                    ? 'Already staged'
+                    : 'Stage this rejection with the typed comment and any @-references'
+                }
+              >
+                Reject with feedback
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {(status.kind === 'applied' || status.kind === 'best-effort-applied') && (
         <div className="pe-status applied">Applied to document.</div>

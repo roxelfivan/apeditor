@@ -573,7 +573,7 @@ export default function Concept3DScene({
           // duplication, and `label: the 3D layer honours the SVG label
           // range` is what keeps them honest. Per-kind scaling happens
           // *after* this clamp, never folded into it.
-          const fontPx = Math.max(6, Math.min(48, s.labelPx));
+          const fontPx = Math.max(6, Math.min(96, s.labelPx));
           const maxChars = Math.max(10, Math.min(22, Math.round((18 * 16) / s.labelPx)));
 
           // Create before projecting. A label appended *after* the

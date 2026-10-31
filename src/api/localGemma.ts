@@ -31,7 +31,7 @@ export const LOCAL_GEMMA_SIZE_LABEL = '~2 GB';
 
 /**
  * Total token budget of the on-device engine: the prompt AND the
- * reply share this KV cache. Exported so the Debug Mode token
+ * reply share this KV cache. Exported so the Local Model token
  * counter measures the prompt against the same number the runtime
  * enforces — the two cannot drift.
  */

@@ -59,6 +59,14 @@ interface Props {
   onSubmit?: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
   disabled?: boolean;
   onKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
+  /**
+   * Whether a bare Enter (no modifier) triggers `onSubmit`.
+   *
+   * Defaults to `true` — the chat composer submits on Enter. A
+   * multi-line composer (the proposed-edit rejection comment) passes
+   * `false` so Enter inserts a newline and only ⌘/Ctrl+Enter submits.
+   */
+  submitOnEnter?: boolean;
   /** Focus the textarea on mount and place the caret at the end. */
   autoFocus?: boolean;
 }
@@ -220,6 +228,7 @@ export function MentionInput({
   onSubmit,
   disabled,
   onKeyDown,
+  submitOnEnter = true,
   autoFocus,
 }: Props) {
   const taRef = useRef<HTMLTextAreaElement | null>(null);
@@ -758,11 +767,11 @@ export function MentionInput({
           }
         }}
         onKeyDown={(e) => {
-          if (
-            onSubmit &&
-            e.key === 'Enter' &&
-            (e.metaKey || e.ctrlKey || !e.shiftKey)
-          ) {
+          // `submitOnEnter` decides whether a bare Enter submits or
+          // inserts a newline; ⌘/Ctrl+Enter always submits.
+          const submits =
+            e.metaKey || e.ctrlKey || (submitOnEnter && !e.shiftKey);
+          if (onSubmit && e.key === 'Enter' && submits) {
             e.preventDefault();
             onSubmit(e);
             return;

@@ -152,7 +152,7 @@ export async function streamChatCompletion(
  * Build the exact request that a send would produce, plus an estimate
  * of how many tokens it costs.
  *
- * This is the Debug Mode "what would this send?" counter. It is a
+ * This is the Local Model "what would this send?" counter. It is a
  * thin wrapper over `buildRequestMessages` rather than a parallel
  * implementation, so the number always reflects the real payload —
  * the document outline / full body, the referenced-doc blocks, the

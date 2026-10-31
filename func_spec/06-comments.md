@@ -222,7 +222,7 @@ Renders `null` when there are no comments.
 
 - **Header row** — `"N comments"`, or `"N of M comments ready (K outdated)"` when some are stale. Optional bulk **Dismiss outdated**.
 - **Send to AI** — `disabled` while `sending` or when `sendableCount === 0`; the label becomes `Sending…` while `mvp:chat-streaming` is true.
-- **Token counter** — Debug Mode only. When `tokenEstimate` is supplied (it is `undefined` unless `debugMode` is on), a `TokenCounter` pill shows the estimated tokens for the next batch, measured against the Local Model's budget. See [AI chat & prompts](07-ai-chat.md#6a-debug-mode-token-counter).
+- **Token counter** — Local Model only. When `tokenEstimate` is supplied (it is `undefined` unless the Local Model is the active provider), a `TokenCounter` pill shows the estimated tokens for the next batch, measured against the Local Model's budget. See [AI chat & prompts](07-ai-chat.md#6a-local-model-token-counter).
 - **Stale list** — a collapsible `▸ / ▾` toggle with `aria-controls="cm-stale-list"`, a nested `Dismiss all` span with Enter/Space handling, then one `<li>` per outdated comment showing its index, a quoted snippet truncated to 60 characters, and **Re-link** / **Dismiss** buttons.
 
 `hasPerRowControls` is true whenever `onDismissOne`, `onReanchor`, and the `outdatedComments` array are all supplied.

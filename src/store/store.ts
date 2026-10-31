@@ -79,7 +79,7 @@ export const useStore = create<StoreState>()(
       chatArchives: {},
       revisions: {},
       prompts: seedPrompts,
-      viewMode: 'split',
+      viewMode: 'preview',
       editorFontSize: 14,
       uiFontSize: 14,
       chatOpen: true,

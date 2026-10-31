@@ -68,7 +68,7 @@ All three are `Record<documentId, …>`. They are deleted with the document.
 
 | Field | Type | Default | P | Range |
 |---|---|---|:-:|---|
-| `viewMode` | `'write' \| 'preview' \| 'split' \| 'graph'` | `'split'` | ✅ | — |
+| `viewMode` | `'write' \| 'preview' \| 'split' \| 'graph'` | `'preview'` | ✅ | — |
 | `editorFontSize` | `number` | `14` | ✅ | `10`–`24`, step 1 |
 | `uiFontSize` | `number` | `14` | ✅ | `12`–`20`, step 1 |
 
@@ -92,7 +92,7 @@ All three are `Record<documentId, …>`. They are deleted with the document.
 | `includeSelection` | `boolean` | `true` | ✅ | Attaches the highlight on top of the outline |
 | `sendSelectionOnly` | `boolean` | `false` | ✅ | Setting it force-sets `includeSelection = true` |
 | `persistApiKey` | `boolean` | `true` | ✅ | `false` moves the key to `sessionStorage` |
-| `debugMode` | `boolean` | `false` | ✅ | Shows the Predict status pill and counters, the editor toolbar diagnostics, and the token counters next to **Send** / **Send to AI** |
+| `debugMode` | `boolean` | `false` | ✅ | Shows the Predict status pill and counters and the editor toolbar diagnostics. The token counters next to **Send** / **Send to AI** follow the **provider** instead — they appear in Local Model mode. |
 
 ### 3.7 Settings
 

@@ -206,8 +206,27 @@ type CardStatus =
 |---|---|
 | **Apply** | If `anchorInfo.found` → `applyEdit` and status `applied`. Else if `bestEffortAnchor && !duplicationReason` → `prepareBestEffortReplace`, status `best-effort-applied`, and record the confidence. If `applyEdit` returns `{ ok: false }` (a race), the status resets to `idle`. |
 | **Highlight Apply** | Only rendered when the editor has a selection. Refuses when `liveDocId !== docId`. Calls `applyEditAtCaret`, records the applied edit with an exact `newAnchor`, dispatches `mvp:select-range`, and sets status `applied`. |
-| **Reject** | `setStatus({ kind: 'rejected' })`. No chat message, no store write. |
+| **Reject** | A **disclosure**, not an action. Clicking it opens the reject panel (`rejectOpen` state) and the button label becomes **Cancel**. It never rejects by itself. The plain dismiss lives inside the panel. |
+| **Reject** (inside the panel) | `setStatus({ kind: 'rejected' })`. No chat message, no store write. |
 | **Reject with feedback** | If the textarea is empty and there are no mentions, it degrades to a plain Reject. Otherwise calls `onStageReject` and the card enters a `staged` outline. |
+
+### The reject panel
+
+Most proposed edits are applied or dismissed without a reason, so the comment box is **not** part of the default card. The card's local `rejectOpen` state controls it:
+
+| State | Shown |
+|---|---|
+| `rejectOpen === false` | The action row only: **Reject** (disclosure), **Apply**, the match label, and **Highlight Apply** when a selection exists. |
+| `rejectOpen === true` | The `.pe-comment` panel: the **Comment (optional)** label, the `MentionInput`, the tip line, **Reject**, and **Reject with feedback**. |
+
+Details:
+
+- The panel is mounted only while `rejectOpen && !appliedOrBusy` — an applied card shows the status pill, not a reject box.
+- The panel owns **both** reject paths, so the one-click dismiss survives the disclosure.
+- The textarea is auto-focused when the panel mounts; `Escape` closes the panel (the typed text is kept in the card's `comment` state); `⌘/Ctrl+Enter` stages the rejection with feedback. `MentionInput` takes `submitOnEnter={false}` here so a bare `Enter` inserts a newline.
+- `staged` cards force the panel open (an effect on the `staged` prop) so a remount cannot hide a queued comment.
+- The `Reject with feedback` button is disabled while the comment is empty **and** no `@`-reference is attached; the keyboard shortcut follows the same rule (it never turns an empty box into a silent plain reject).
+
 
 Every apply path funnels through `performReplace(anchor)`:
 
@@ -240,23 +259,36 @@ A `useEffect` writes the matched span to the store via `setProposedEditHighlight
 
 | State | Shown |
 |---|---|
-| `!anchorInfo.found && !showBestEffortPanel` | A "Potential mismatch detected" warning |
+| `!anchorInfo.found && !showBestEffortPanel` | A "Potential mismatch detected" warning, **collapsed to one line** |
 | `!anchorInfo.found && edit.original` | A `<details>` "Show what the AI was looking for", truncated to 800 characters |
 | `best-effort-applied` | A "Best effort match …" panel with the post-apply snapshot |
 | `applied \|\| best-effort-applied` | A "Applied to document." status pill |
 
+### The mismatch warning
+
+The mismatch banner is a two-line panel by default, which dominated cards whose quote simply no longer matched. It is now a **disclosure** driven by the card's `mismatchOpen` state (default `false`):
+
+- **Collapsed** (default): one line — a caret glyph, the bold **Potential mismatch detected** label, and a truncated hint (*— the AI's quote is not in the current document*). The banner is a `<button>` with `aria-expanded` / `aria-controls`.
+- **Expanded**: the original copy follows the one-line summary — *The AI's original quote doesn't appear in the current document…* plus the *Select text in the editor and use **Highlight Apply** to replace your selection.* hint.
+
+The warning itself is never hidden — only its explanation is.
+
 ## 6. Reject with feedback
 
-Rejecting is only half the loop. Reject-with-feedback stages a reason for a follow-up turn:
+Rejecting is only half the loop. The flow starts with the **Reject** disclosure on the card (see [§5](#the-reject-panel)):
 
-1. `onStageReject({ editId, comment, mentions })` — ChatPanel holds it in `stagedRejections[messageId]`; the card enters `staged`.
-2. The chat bubble footer shows **Send N rejection comments** and **Clear staged**.
-3. `commitStagedRejections(messageId)`:
+1. The user clicks **Reject** → the reject panel opens with the **Comment (optional)** box.
+2. The user types a reason (optionally with `@`-references) and clicks **Reject with feedback**.
+3. `onStageReject({ editId, comment, mentions })` — ChatPanel holds it in `stagedRejections[messageId]`; the card enters `staged` and its panel becomes read-only.
+4. The chat bubble footer shows **Send N rejection comments** and **Clear staged**.
+5. `commitStagedRejections(messageId)`:
    - `formatRejectionBatch(items)`.
    - `appendMessage` the batch.
    - Mark each `editId` as `committed` so the cards hide without a flicker.
    - Clear the bucket.
    - `runAssistantReplyAfterCommit(mergedMentions)` for a follow-up reply. The user message is already in the store, so it is not passed in again — re-adding it would send the rejection body twice.
+
+Leaving the comment empty and pressing **Reject** (inside the panel) dismisses the card without sending anything to the AI.
 
 `formatRejectionBatch` uses a different header for one item versus several:
 

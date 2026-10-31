@@ -27,7 +27,7 @@ The highlighted sentence changed too much to find. Edit or delete the comment fr
 
 ## Predict is greyed out
 
-Turn on Minimax or OpenAI and save a key. Predict is off by default; click **Predict** to start. It does not run under Local Gemma in v1.
+Turn on Minimax or OpenAI and save a key. Predict is off by default; click the sparkle icon to start. It does not run under Local Gemma in v1.
 
 ## Import will not format Markdown
 
@@ -62,7 +62,7 @@ If you still have a **revision** in the same profile, open [Revision history](re
 
 The reply stops mid-sentence because the prompt used up the model's memory. The on-device model has a total budget of **8,192 tokens** for the prompt *and* the reply, and reserves **1,024** of them for the reply. That leaves about **7,168 tokens** for what you send.
 
-Turn on **Debug Mode** in Settings and look at the token counter next to **Send** (Chat) or **Send to AI** (comments):
+Look at the token counter next to **Send** (Chat) or **Send to AI** (comments). It appears automatically when the Local Model is the active provider:
 
 - **Green / grey** — the prompt fits, a full reply should come through.
 - **Amber** — close to the limit. The reply may be trimmed.
@@ -74,7 +74,7 @@ To shrink the prompt:
 - Shorten the document, or work on a section rather than the whole file.
 - Remove `@`-references you do not need — each one adds its own text.
 
-The counter is a rough estimate (about 4 characters per token), so treat it as a guide rather than an exact number. On Minimax and OpenAI there is no local memory limit, so the counter shows the size without a budget check.
+The counter is a rough estimate (about 4 characters per token), so treat it as a guide rather than an exact number. On Minimax and OpenAI there is no local memory limit, so no counter is shown there.
 
 ## Undo typed the wrong thing
 
@@ -82,7 +82,7 @@ The counter is a rough estimate (about 4 characters per token), so treat it as a
 
 ## Debug numbers on the toolbar
 
-**Debug Mode** is on in Settings. Turn it off and **Save** if you do not need completion counters or the token counters next to **Send** / **Send to AI**.
+**Debug Mode** is on in Settings. Turn it off and **Save** if you do not need completion counters. The token counter next to **Send** / **Send to AI** is separate — it follows the provider, not Debug Mode.
 
 ## `@` picker shows No matching documents
 

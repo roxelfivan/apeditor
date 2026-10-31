@@ -14,10 +14,22 @@
 > functional specification). See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.6.7](https://img.shields.io/badge/version-0.6.7-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.7)
+[![v0.6.8](https://img.shields.io/badge/version-0.6.8-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.8)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
+
+---
+
+## What's new in v0.6.8
+
+> Quieter toolbars, a more compact Mindmap, and first-run **Preview**. Patch on top of [v0.6.7](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.7).
+
+1. **Predict icon-only; Preview Size ±.** Sparkle without the label; caption font buttons in Preview.
+2. **Compact Mindmap.** Children pack against their parent; enlarged labels stay on-canvas (up to 96px); magnifier zoom.
+3. **Default view is Preview.** Fresh installs open in Preview. Propose-edit Reject / mismatch UI and Local Model token counters are tidied.
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.8 entry and prior changelogs.
 
 ---
 
@@ -37,7 +49,7 @@ See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.7 entry and prior change
 
 > Mindmap titles **wrap without overlapping**, sit **above the green connectors**, and resize with toolbar **−** / **+** without scaling the whole tree. Patch on top of [v0.6.5](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.5).
 
-1. **Readable Mindmap labels.** Long titles wrap; CJK width is counted correctly; each column starts after the widest title before it. Wording clears the green line.
+1. **Readable Mindmap labels.** Long titles wrap; CJK width is counted correctly; each child packs just past its own parent title. Wording clears the green line.
 2. **− / + vs Zoom.** On Mindmap, **−** / **+** change text size; **Zoom −** / **Zoom +** scale the map. Drag empty space to scroll the tree.
 3. **Flat / Mindmap / 3D.** The radial projection is labeled **Flat**. Globe stereographic math is removed.
 
@@ -385,7 +397,8 @@ the editor parses into a track-changes style card:
   comment's current round. A muted label shows which path ran.
 - **Highlight Apply** — only when the editor has a selection;
   replaces that span with the proposed text (manual override).
-- **Reject** — discard the change.
+- **Reject** — opens the card's reject panel; the panel's plain
+  **Reject** discards the change without sending anything to the AI.
 - **Reject with feedback** — stage a reason for a follow-up chat
   turn; on **Send** the staged reasons are folded into a single
   prompt so the model can address them all together.

@@ -12,7 +12,7 @@ Each card has a short **summary** (or **Proposed edit** if none was given) and a
 
 While the card is open, the editor highlights the span Apply would replace (exact quote, or a best-effort match).
 
-If the model quoted text that is not in the current document, you may see **Potential mismatch detected**. Apply then uses Best Effort when a safe approximate span is found; otherwise select text and use **Highlight Apply**.
+If the model quoted text that is not in the current document, you may see **Potential mismatch detected** — one line. Click it to read the details. Apply then uses Best Effort when a safe approximate span is found; otherwise select text and use **Highlight Apply**.
 
 ## Apply
 
@@ -52,18 +52,25 @@ You will see **Applied all n change(s).** or **Applied x of y changes (z skipped
 
 ## Reject
 
-**Reject** discards that card without changing the document.
+**Reject** opens a small panel on the card. The panel holds both ways to reject:
+
+- **Reject** — discards that card without changing the document and without sending anything to the AI.
+- **Reject with feedback** — sends your reason back to the model.
+
+Close the panel with **Cancel** (or `Esc`) if you change your mind; the button in the card's action row goes back to **Reject**.
 
 ## Reject with feedback
 
 Use this when you want the model to try again with your reason:
 
-1. Optionally fill **Comment (optional)** — *Why reject? (sent to the AI as revision feedback) — type @ to reference a document*
+1. Click **Reject** on the card — the panel opens with the **Comment (optional)** box focused.
+2. Optionally fill it — *Why reject? (sent to the AI as revision feedback) — type @ to reference a document*
    - Type `@` to attach another document or heading sections. See [Reference other documents](reference-other-documents.md).
    - You can stage feedback with `@` chips even if the comment box is empty.
-2. Click **Reject with feedback**
+   - `⌘/Ctrl+Enter` stages the feedback; `Enter` starts a new line.
+3. Click **Reject with feedback**
 
-The reason is **staged**, not sent yet. While staged, the comment is read-only but the attached chips (including any `@`-references) stay visible so you can review what you're about to send. The tip reads: *Staged. Click "Send rejection comments" in the message footer to send.* If you leave the box empty, you can still use plain **Reject**.
+The reason is **staged**, not sent yet. While staged, the comment is read-only but the attached chips (including any `@`-references) stay visible so you can review what you're about to send. The tip reads: *Staged. Click "Send rejection comments" in the message footer to send.* If you leave the box empty, use the plain **Reject** button in the panel.
 
 In the message footer, **Send n rejection comments** sends every staged reason (with merged `@`-references) in one Chat turn. **Clear staged** drops them.
 

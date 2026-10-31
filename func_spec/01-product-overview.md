@@ -73,7 +73,7 @@ ApEditor is built for a single, narrow audience:
 | **include selection** context mode | [`ChatPanel.tsx`](../src/components/ChatPanel.tsx) |
 | Outbound secret redaction | [`utils/secrets.ts`](../src/utils/secrets.ts) |
 | Customizable System Message + Rationale Rules (Debug Mode) | [`api/chat.ts`](../src/api/chat.ts), [`SettingsModal.tsx`](../src/components/SettingsModal.tsx) |
-| Prompt token counter for Chat + Comment sends (Debug Mode) | [`utils/tokenEstimate.ts`](../src/utils/tokenEstimate.ts), [`TokenCounter.tsx`](../src/components/TokenCounter.tsx) |
+| Prompt token counter for Chat + Comment sends (Local Model mode) | [`utils/tokenEstimate.ts`](../src/utils/tokenEstimate.ts), [`TokenCounter.tsx`](../src/components/TokenCounter.tsx) |
 | Proposed-edit cards with Apply / Reject / Highlight Apply | [`ProposedEditCard.tsx`](../src/components/ProposedEditCard.tsx), [`utils/proposedEdit.ts`](../src/utils/proposedEdit.ts) |
 | Per-edit rationale stored on the comment round | `recordAppliedEdit` in [`store/actions.ts`](../src/store/actions.ts) |
 | Reject-with-feedback batching | `formatRejectionBatch` in [`utils/proposedEdit.ts`](../src/utils/proposedEdit.ts) |
@@ -154,6 +154,7 @@ Full changelogs are in [`RELEASE_NOTES.md`](../RELEASE_NOTES.md). The shape of t
 
 | Version | What changed |
 |---|---|
+| v0.6.8 | **Toolbar polish, compact Mindmap, Preview default.** Predict icon-only; Preview Size ±; Mindmap parent-relative packing + label pad to 96px; magnifier zoom; default `viewMode` Preview; propose-edit Reject/mismatch tidy; Local Model token counters. |
 | v0.6.7 | **Chat composer follows the divider.** Vertical split resizes composer height (drag up grows input; include selection sticks to the handle); messages fill leftover space; same `apeditor:chat-messages-height` key, now composer height. |
 | v0.6.6 | **Mindmap labels stay readable.** Titles wrap (CJK-aware), sit above connectors; **−** / **+** resize text without scaling the tree; drag-to-scroll; Flat rename; Globe stereographic math removed. |
 | v0.6.5 | **Debug token counter, single-send comment batches.** Debug Mode pill next to Chat **Send** and comment **Send to AI**; Local Model budget tones; comment batches no longer sent twice. |

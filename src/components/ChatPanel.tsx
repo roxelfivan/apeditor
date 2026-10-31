@@ -101,8 +101,8 @@ export function ChatPanel() {
   const api = useStore((s) => s.api);
   const includeSelection = useStore((s) => s.includeSelection);
   const setIncludeSelection = useStore((s) => s.setIncludeSelection);
-  // Debug Mode gates the token counter next to the Send button.
-  const debugMode = useStore((s) => s.debugMode);
+  // The token counter next to Send is gated on the Local Model, not on
+  // Debug Mode — `isKeyless` below is the single source of truth.
 
   const [input, setInput] = useState('');
   // Document mentions attached to the current chat input. Populated by
@@ -172,22 +172,22 @@ export function ChatPanel() {
   );
 
   // ---------------------------------------------------------------------------
-  // Debug Mode: estimated size of the NEXT chat send.
+  // Local Model: estimated size of the NEXT chat send.
   //
   // Mirrors `handleSend`'s packing exactly (same history, same synthetic
   // user turn, same mention list, same proposed-edit policy) so the number
   // reflects the real payload rather than the length of the typed text.
   //
   // Packing is not free — the Local Model path inlines the whole document —
-  // so the recompute is debounced and skipped entirely when Debug Mode is
-  // off. `buildRequestPreview` delegates to the same `buildRequestMessages`
-  // the real send uses, so the two cannot drift.
+  // so the recompute is debounced and skipped entirely when the Local Model
+  // is not the active provider. `buildRequestPreview` delegates to the same
+  // `buildRequestMessages` the real send uses, so the two cannot drift.
   // ---------------------------------------------------------------------------
   const [previewTokens, setPreviewTokens] = useState(0);
-  // Debug Mode: the prompt size of the most recent completed send.
-  // Useful for confirming whether the Local Model actually had room for
-  // a full reply (a reply that stops mid-sentence usually means the
-  // prompt ate the decode budget).
+  // The prompt size of the most recent completed send. Useful for
+  // confirming whether the Local Model actually had room for a full
+  // reply (a reply that stops mid-sentence usually means the prompt
+  // ate the decode budget).
   const [lastSentTokens, setLastSentTokens] = useState(0);
   const previewInput = useMemo(() => {
     // Cheap snapshot of everything the packed payload depends on. Used as
@@ -210,7 +210,7 @@ export function ChatPanel() {
   }, [input, mentions, pendingAttachments, selection, includeSelection]);
 
   useEffect(() => {
-    if (!debugMode) {
+    if (!isKeyless) {
       setPreviewTokens(0);
       return;
     }
@@ -253,7 +253,7 @@ export function ChatPanel() {
     }, 250);
     return () => window.clearTimeout(timer);
   }, [
-    debugMode,
+    isKeyless,
     messages,
     api.systemMessage,
     api.rationaleRulesOverride,
@@ -541,7 +541,7 @@ export function ChatPanel() {
             } from this send.`
           );
         }
-        // Debug Mode: remember the prompt size that actually went out.
+        // Remember the prompt size that actually went out.
         setLastSentTokens(estimateMessageTokens(packed.messages));
         await streamAssistantReply(packed.messages, api, {
           signal: abortRef.current.signal,
@@ -772,7 +772,7 @@ export function ChatPanel() {
           } from this send.`
         );
       }
-      // Debug Mode: remember the prompt size that actually went out.
+      // Remember the prompt size that actually went out.
       setLastSentTokens(estimateMessageTokens(packed.messages));
       await streamAssistantReply(packed.messages, api, {
         signal: abortRef.current.signal,
@@ -1081,7 +1081,7 @@ export function ChatPanel() {
           } from this send.`
         );
       }
-      // Debug Mode: remember the prompt size that actually went out.
+      // Remember the prompt size that actually went out.
       setLastSentTokens(estimateMessageTokens(packed.messages));
       await streamAssistantReply(packed.messages, api, {
         signal: abortRef.current.signal,
@@ -1374,7 +1374,7 @@ export function ChatPanel() {
                 : 'w-full h-24 px-2.5 py-2 text-sm resize-none font-sans bg-transparent border-0 outline-none shadow-none focus:outline-none focus:ring-0 text-paper-ink dark:text-paper-base placeholder:text-paper-inkSoft dark:placeholder:text-cyber-muted'
             }
           />
-          <div className="flex items-center justify-between gap-2 px-2 py-1.5 border-t border-paper-hairline dark:border-cyber-border shrink-0">
+          <div className="flex items-center gap-2 px-2 py-1.5 border-t border-paper-hairline dark:border-cyber-border shrink-0">
             <button
               type="button"
               className="inline-flex h-8 w-8 items-center justify-center rounded text-lg leading-none font-medium text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan hover:bg-paper-elevated dark:hover:bg-ape-elevated transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1397,55 +1397,63 @@ export function ChatPanel() {
                 <span aria-hidden>+</span>
               )}
             </button>
-            {streaming ? (
-              <button
-                className="text-sm px-3 py-1.5 rounded bg-cyber-danger text-white font-semibold hover:bg-cyber-danger/80 transition-colors"
-                onClick={handleStop}
-              >
-                Stop
-              </button>
-            ) : (
-              <button
-                className="btn-fire-sm"
-                onClick={handleSend}
-                disabled={
-                  !currentDocumentId ||
-                  ocrBusy ||
-                  (!input.trim() &&
-                    !pendingAttachments.some(
-                      (a) => !a.reading && a.extractedText.trim()
-                    ))
-                }
-                title={
-                  isKeyless
-                    ? 'Runs Gemma locally in this browser (WebGPU)'
-                    : undefined
-                }
-              >
-                Send
-              </button>
-            )}
-            {/* Debug Mode: estimated tokens for the next send, measured
-                against the Local Model's budget so the user can tell
-                whether a full reply will fit. */}
-            {debugMode && (
-              <>
-                <TokenCounter
-                  tokens={previewTokens}
-                  budget={isKeyless ? LOCAL_MAX_NUM_TOKENS : undefined}
-                  reserve={isKeyless ? LOCAL_MAX_OUTPUT_TOKENS : undefined}
-                  label="this chat send"
-                />
-                {lastSentTokens > 0 && (
-                  <span
-                    className="text-[11px] font-mono text-paper-inkSoft dark:text-cyber-muted whitespace-nowrap select-none"
-                    title={`The previous send used about ${lastSentTokens} tokens of prompt.`}
-                  >
-                    sent ~{lastSentTokens.toLocaleString('en-US')}
-                  </span>
-                )}
-              </>
-            )}
+            {/* Right-hand group: Send sits immediately left of the token
+                counter so the two read as one unit (the counter
+                explains what Send is about to spend). When the counter
+                is hidden — keyed providers — Send becomes the
+                right-most item. */}
+            <div className="flex-1" />
+            <div className="flex items-center gap-2 shrink-0">
+              {streaming ? (
+                <button
+                  className="text-sm px-3 py-1.5 rounded bg-cyber-danger text-white font-semibold hover:bg-cyber-danger/80 transition-colors"
+                  onClick={handleStop}
+                >
+                  Stop
+                </button>
+              ) : (
+                <button
+                  className="btn-fire-sm"
+                  onClick={handleSend}
+                  disabled={
+                    !currentDocumentId ||
+                    ocrBusy ||
+                    (!input.trim() &&
+                      !pendingAttachments.some(
+                        (a) => !a.reading && a.extractedText.trim()
+                      ))
+                  }
+                  title={
+                    isKeyless
+                      ? 'Runs Gemma locally in this browser (WebGPU)'
+                      : undefined
+                  }
+                >
+                  Send
+                </button>
+              )}
+              {/* Local Model only: estimated tokens for the next send,
+                  measured against the on-device budget so the user can
+                  tell whether a full reply will fit. */}
+              {isKeyless && (
+                <>
+                  <TokenCounter
+                    tokens={previewTokens}
+                    budget={LOCAL_MAX_NUM_TOKENS}
+                    reserve={LOCAL_MAX_OUTPUT_TOKENS}
+                    label="this chat send"
+                  />
+                  {lastSentTokens > 0 && (
+                    <span
+                      className="text-[11px] font-mono text-paper-inkSoft dark:text-cyber-muted whitespace-nowrap select-none"
+                      title={`The previous send used about ${lastSentTokens} tokens of prompt.`}
+                    >
+                      sent ~{lastSentTokens.toLocaleString('en-US')}
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>

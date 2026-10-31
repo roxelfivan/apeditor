@@ -16,7 +16,7 @@ import {
 } from '@/utils/graph/layoutWorkspaceGraph';
 
 /** Floor for the horizontal gap between a parent and its child column. */
-export const MINDMAP_LAYER_X = 360;
+export const MINDMAP_LAYER_X = 220;
 /**
  * Vertical gap between successive leaves, in layout units.
  *
@@ -58,7 +58,7 @@ export const MINDMAP_REF_LABEL_PX = 16;
 /** CSS-px width of a glyph as a fraction of an em (typical sans). */
 export const MINDMAP_GLYPH_EM = 0.6;
 /** Extra gap between the end of a parent label and the child column. */
-export const MINDMAP_CONNECTOR = 160;
+export const MINDMAP_CONNECTOR = 72;
 /** Gap between a node and the start of its title. */
 export const MINDMAP_LABEL_PAD = 24;
 /** Line height as a multiple of the font size. */
@@ -553,39 +553,49 @@ export function treeDepths(tree: MindmapSpanningTree): Map<string, number> {
 }
 
 /**
- * Nodes grouped by the column they sit in.
+ * Nodes grouped by the X they sit on.
  *
- * The key is the node's X, which is the column's X by construction.
+ * Siblings share one X by construction. Different branches at the same
+ * depth may sit on different X values (parent-relative packing), so the
+ * de-overlap pass keys on X rather than tree depth.
  */
-function colGroups(
-  pos: Map<string, { x: number; y: number }>,
-  depth: Map<string, number>
+function xGroups(
+  pos: Map<string, { x: number; y: number }>
 ): Map<number, string[]> {
   const groups = new Map<number, string[]>();
-  for (const id of pos.keys()) {
-    const d = depth.get(id) ?? 0;
-    const list = groups.get(d) ?? [];
+  for (const [id, p] of pos) {
+    const key = Math.round(p.x);
+    const list = groups.get(key) ?? [];
     list.push(id);
-    groups.set(d, list);
+    groups.set(key, list);
   }
-  // The map is keyed by depth but the caller wants to iterate columns in
-  // X order; the X of a column is monotonic in depth, so sorting by depth
-  // is the same thing.
   return new Map(
     [...groups.entries()].sort((a, b) => a[0] - b[0]).map(([k, v]) => [k, v])
   );
 }
 
 /**
- * Place every node on a left-to-right tidy tree: each child column
- * starts after the widest title in the column before it, leaves pack on
- * Y by title height, parents sit at the vertical midpoint of their
- * children.
+ * Horizontal step from a parent to its children: clear that parent's
+ * title, then add `MINDMAP_CONNECTOR`. Floored at `MINDMAP_LAYER_X` so
+ * a very short title still leaves a readable elbow.
+ */
+export function mindmapChildStep(
+  label: string,
+  r: number,
+  em: number = MINDMAP_EM_W
+): number {
+  return Math.max(MINDMAP_LAYER_X, mindmapLabelWidth(label, r, em) + MINDMAP_CONNECTOR);
+}
+
+/**
+ * Place every node on a left-to-right tidy tree: each child sits just
+ * past *its own* parent's title, leaves pack on Y by title height,
+ * parents sit at the vertical midpoint of their children.
  *
- * The X of a column is measured from the *widest* title in the previous
- * column, not from one node's title. A sibling with a long title used
- * to run into the next column, because the column was only as wide as
- * the parent that happened to be laid out first.
+ * Branches are packed independently. A long sibling no longer stretches
+ * every other branch at the same depth — that was the empty run after
+ * short titles like "1. Connect an AI Assistant" when "10. Import…"
+ * shared the column.
  */
 export function layoutMindmap(
   nodes: GraphNode[],
@@ -609,42 +619,16 @@ export function layoutMindmap(
     return nodeRadius(n.kind, isHub);
   };
 
-  // One column per tree depth. The depth comes from `parentOf` rather
-  // than a walk, so a node whose parent is missing still lands in a
-  // column instead of dropping out of the layout.
-  const depth = treeDepths(tree);
-
-  // How far the widest title in each column reaches. The next column
-  // starts after it, plus a buffer, so no title can cross a column.
-  const colExtent = new Map<number, number>();
-  for (const n of nodes) {
-    const d = depth.get(n.id) ?? 0;
-    const reach = mindmapLabelWidth(n.label, radiusOf(n.id), em);
-    colExtent.set(d, Math.max(colExtent.get(d) ?? 0, reach));
-  }
-
-  let maxDepth = 0;
-  for (const d of depth.values()) maxDepth = Math.max(maxDepth, d);
-  for (const d of colExtent.keys()) maxDepth = Math.max(maxDepth, d);
-
-  const colX = new Map<number, number>();
-  let cursorX = 0;
-  for (let d = 0; d <= maxDepth; d++) {
-    colX.set(d, cursorX);
-    const reach = colExtent.get(d) ?? 0;
-    cursorX += Math.max(MINDMAP_LAYER_X, reach + MINDMAP_CONNECTOR);
-  }
-
-  const place = (id: string) => {
+  const place = (id: string, x: number) => {
     const node = byId.get(id);
     const kids = tree.childrenOf.get(id) ?? [];
-    const x = colX.get(depth.get(id) ?? 0) ?? 0;
     if (kids.length === 0) {
       pos.set(id, { x, y: nextLeafY });
       nextLeafY += mindmapLeafStride(node?.label ?? '', em);
       return;
     }
-    for (const kid of kids) place(kid);
+    const step = mindmapChildStep(node?.label ?? '', radiusOf(id), em);
+    for (const kid of kids) place(kid, x + step);
     const ys = kids.map((k) => pos.get(k)!.y);
     pos.set(id, {
       x,
@@ -653,16 +637,16 @@ export function layoutMindmap(
   };
 
   for (const root of tree.roots) {
-    place(root);
+    place(root, 0);
     nextLeafY += MINDMAP_LEAF_GAP * 0.35;
   }
 
-  // A title's ink has to clear the next title in the same column. Leaves
-  // are packed with a stride that already accounts for their own height,
-  // but a *parent* sits at the midpoint of its children, so a parent with
-  // a tall title can still reach the row below it. One pass per column
-  // pushes any colliding title down until it clears.
-  for (const [, group] of colGroups(pos, depth)) {
+  // A title's ink has to clear the next title on the same X. Leaves are
+  // packed with a stride that already accounts for their own height, but
+  // a *parent* sits at the midpoint of its children, so a parent with a
+  // tall title can still reach the row below it. One pass per X pushes
+  // any colliding title down until it clears.
+  for (const [, group] of xGroups(pos)) {
     const sorted = [...group].sort((a, b) => pos.get(a)!.y - pos.get(b)!.y);
     for (let i = 0; i < sorted.length - 1; i++) {
       const a = sorted[i];

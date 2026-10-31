@@ -33,8 +33,8 @@ interface Props {
   /**
    * Estimated tokens for the next **Send to AI** batch. Supplied by
    * `Editor.tsx` from the same `buildRequestPreview` the real send
-   * uses. When omitted (or when Debug Mode is off) no counter is
-   * rendered.
+   * uses. When omitted (keyed providers / Local Model off) no
+   * counter is rendered.
    */
   tokenEstimate?: number;
   /**
@@ -122,7 +122,7 @@ export function CommentTray({
         >
           {sending ? 'Sending…' : 'Send to AI'}
         </button>
-        {/* Debug Mode: estimated tokens for this batch. */}
+        {/* Local Model: estimated tokens for this batch. */}
         {tokenEstimate !== undefined && (
           <TokenCounter
             tokens={tokenEstimate}

@@ -82,17 +82,18 @@ const showWriteTools = showWrite;
 | Left-pane Write \| Preview tabs | — | — | ✅ | ✅ | — |
 | `GraphViewControls` | — | — | ✅ | ✅ | ✅ |
 | **Format** dropdown (B/I/U + Size ±) | ✅ | — | ✅ | — | — |
+| **Size +** / **Size −** (preview caption) | — | ✅ | — | ✅ | — |
 | **Comment** | ✅ | — | ✅ | — | — |
-| Predict | ✅ | — | ✅ | — | — |
+| Predict (sparkle icon) | ✅ | — | ✅ | — | — |
 | Debug status pill / counters | ✅\* | — | ✅\* | — | — |
 | Comment tray **Send to AI** token counter | ✅† | — | ✅† | — | — |
 | File actions | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Save revision | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 \* only when `debugMode` is on.
-† the comment tray only renders in Write panes, and the counter only renders when `debugMode` is on. See [AI chat & prompts](07-ai-chat.md#6a-debug-mode-token-counter).
+† the comment tray only renders in Write panes, and the counter only renders when the Local Model is the active provider. See [AI chat & prompts](07-ai-chat.md#6a-local-model-token-counter).
 
-In full `graph` mode the text panes are replaced entirely; Format, Comment, and Predict hide because they need the textarea. In Split they appear only when the left pane is Write. File actions and Save stay.
+In full `graph` mode the text panes are replaced entirely; Format, Comment, and Predict hide because they need the textarea. In Split they appear only when the left pane is Write. Preview (and Split-with-Preview) shows standalone **Size +** / **Size −** so the caption font can still be adjusted without Format. File actions and Save stay.
 
 ### Pane rendering
 
@@ -157,7 +158,9 @@ Keyboard: `⌘/Ctrl + B / I / U` in the textarea `onKeyDown`, gated on `!altKey 
 
 ### 3.2 Font size
 
-The **Format** dropdown contains five `role="menuitem"` buttons — Bold, Italic, Underline, a separator, then **Size +** and **Size −** — plus an `aria-label="Format"` trigger showing `Format ▾`.
+The **Format** dropdown (Write only) contains five `role="menuitem"` buttons — Bold, Italic, Underline, a separator, then **Size +** and **Size −** — plus an `aria-label="Format"` trigger showing `Format ▾`.
+
+Preview (and Split-with-Preview) has no Format menu, so the same **Size +** / **Size −** actions are rendered as standalone toolbar buttons when `showPreview` is true. Both surfaces call `bumpEditorFontSize`.
 
 | | |
 |---|---|
@@ -165,11 +168,11 @@ The **Format** dropdown contains five `role="menuitem"` buttons — Bold, Italic
 | Authoritative clamp | `bumpEditorFontSize` in `store.ts`: `clamp(current + delta, 10, 24)` |
 | UI disabled state | `Size +` disabled at `>= 24`; `Size −` disabled at `<= 10`. The label uses the Unicode minus `−`, not a hyphen. |
 | Applies to | the `data-cm-wrapper`, the `<textarea>`, the preview pane, and the Predict panel body — **not** the toolbar chrome or `uiFontSize` |
-| Positioning (v0.6.1) | The menu panel is `position: fixed`, not `absolute` inside the trigger wrapper. The toolbar scroller (`overflow-x: auto`) forces a computed `overflow-y: auto`, which clips overflowing children — an absolute menu mounts but is invisible. A `useLayoutEffect` anchors `left` / `top` to the trigger button and clamps both edges to the viewport; it re-runs on `resize` and capture-phase `scroll`. Same contract as `FileActionsButton` and the Graph Filter. |
+| Positioning (v0.6.1) | The Format menu panel is `position: fixed`, not `absolute` inside the trigger wrapper. The toolbar scroller (`overflow-x: auto`) forces a computed `overflow-y: auto`, which clips overflowing children — an absolute menu mounts but is invisible. A `useLayoutEffect` anchors `left` / `top` to the trigger button and clamps both edges to the viewport; it re-runs on `resize` and capture-phase `scroll`. Same contract as `FileActionsButton` and the Graph Filter. |
 
-> The two clamps must stay in sync. Changing the range means changing both the store clamp and the two `disabled` expressions in `Editor.tsx`.
+> The two clamps must stay in sync. Changing the range means changing both the store clamp and every `disabled` expression in `Editor.tsx` (Format menu items and Preview toolbar buttons).
 
-Every menu item uses `onMouseDown={e => e.preventDefault()}` so the textarea does not lose its selection, then closes the menu. An outside `pointerdown` listener closes it unless the target is inside `[data-format-menu]`.
+Every Format menu item uses `onMouseDown={e => e.preventDefault()}` so the textarea does not lose its selection, then closes the menu. An outside `pointerdown` listener closes it unless the target is inside `[data-format-menu]`.
 
 ### 3.3 The two font sizes
 
@@ -195,6 +198,8 @@ Full flow is in [Runtime flows §2](03-runtime-flows.md#2-typing-predict-accept)
 `inlineOn` starts **`false`**. Predict never fires until the user opts in.
 
 ### Toggling
+
+The toolbar control is a **sparkle icon-only** button (`w-9 h-9`); the word "Predict" is not shown. `aria-label` / `title` still name the feature.
 
 - **OFF → ON**: set the flag first, then `queueMicrotask(() => { if (inlineOnRef.current && apiConfigured) inline.triggerNow() })`. The microtask is required so the hook has already re-rendered with `enabled === true`.
 - **ON → OFF**: call `inline.onBlur()` **first** (aborts the in-flight request and drops the ghost), then clear the flag.

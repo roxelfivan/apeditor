@@ -140,7 +140,7 @@ Keyed providers use this HTTP path. Local Model (`local-gemma`) streams via [`lo
 | [`mentions/MentionInput.tsx`](../src/components/mentions/MentionInput.tsx) | 1,042 | `@`-aware textarea: caption injection, ZWSP anchors, chip overlay, serialize/hydrate. |
 | [`mentions/SectionPicker.tsx`](../src/components/mentions/SectionPicker.tsx) | 218 | Second-stage picker: heading-grouped checkboxes with cascade. |
 | [`CommentTray.tsx`](../src/components/CommentTray.tsx) | 204 | **Send to AI** bar + the stale-comment Re-link / Dismiss list. |
-| [`TokenCounter.tsx`](../src/components/TokenCounter.tsx) | — | Debug Mode pill: estimated prompt tokens, with an over-budget warning against the Local Model's limit. |
+| [`TokenCounter.tsx`](../src/components/TokenCounter.tsx) | — | Local Model pill: estimated prompt tokens, with an over-budget warning against the Local Model's limit. |
 | [`Sidebar.tsx`](../src/components/Sidebar.tsx) | 193 | Document list, inline rename, delete, width resize, narrow drawer. |
 | [`HelpDocs.tsx`](../src/components/HelpDocs.tsx) | 185 | In-app viewer for `docs/*.md`. |
 | [`mentions/DocPicker.tsx`](../src/components/mentions/DocPicker.tsx) | 135 | First-stage picker: filtered document list. |

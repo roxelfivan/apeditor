@@ -2,6 +2,18 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## v0.6.8 — Toolbar polish, compact Mindmap, Preview default
+
+**Quieter controls, tighter Mindmap, and first-run Preview.**
+
+- **Predict is the sparkle only.** Preview shows **Size +** / **Size −** for the caption font. Fresh installs open in **Preview**.
+- **Mindmap packing.** Each child sits just past its own parent title; long siblings no longer stretch short branches. Labels can go up to 96px without clipping off the edge. Zoom uses magnifier icons.
+- **Propose-edit + Local Model tokens.** Reject opens a disclosure; the mismatch banner is one line until expanded. Token counters appear for Local Model (Send sits left of the Chat counter).
+
+No migration.
+
+---
+
 ## v0.6.7 — Chat composer follows the divider
 
 **Drag the Chat divider and the input area moves with it.**
@@ -18,9 +30,9 @@ No migration.
 
 **Mindmap titles wrap cleanly, sit above the green lines, and resize with − / +.**
 
-- **No more overlapping titles.** Long headings wrap onto a few lines; only that title is drawn a little smaller. Each column starts after the widest title before it, including Chinese text (counted wider than Latin).
+- **No more overlapping titles.** Long headings wrap onto a few lines; only that title is drawn a little smaller. Each child packs just past its own parent title (CJK counted wider than Latin), so a long sibling does not stretch short branches.
 - **Wording above the green line.** Node titles sit just above the connector so they no longer run through the stroke.
-- **− / + change text size.** On Mindmap, the size buttons next to the Graph view control grow or shrink the labels relative to the nodes. **Zoom −** / **Zoom +** still scale the whole map.
+- **− / + change text size.** On Mindmap, the size buttons next to the Graph view control grow or shrink the labels relative to the nodes. Magnifier buttons still scale the whole map.
 - **Drag to walk the tree.** Drag empty Mindmap space to scroll. The projection menu is **Flat / Mindmap / 3D** (Flat is the radial overview; Globe is gone).
 
 No migration.

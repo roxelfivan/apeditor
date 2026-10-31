@@ -1,4 +1,4 @@
-// Cheap, dependency-free token estimation for the Debug Mode counters.
+// Cheap, dependency-free token estimation for the Local Model counters.
 //
 // WHY A HEURISTIC, NOT A TOKENIZER
 // -------------------------------

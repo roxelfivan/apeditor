@@ -37,10 +37,12 @@ Local Gemma does not use these fields for requests. Download **gemma-4-E2B-it-we
 
 When **off** (default), Settings hides **System message**, **Rationale rules**, and **Temperature**. Turn **Debug Mode** on to edit those advanced prompt controls, and to show inline-completion status (`thinking` / `ready · tab` / `idle`) and request/accept counters on the editor toolbar. Click the counters to reset them. Most people can leave this off.
 
-Debug Mode also shows a **token counter** next to both send buttons:
+The **token counter** next to both send buttons is not part of Debug Mode — it follows the provider:
 
-- **Chat** — next to **Send**, the estimated size of the message you are about to send, plus `sent ~N` for the previous send.
+- **Chat** — left of **Send**, the estimated size of the message you are about to send, plus `sent ~N` for the previous send.
 - **Comments** — next to **Send to AI**, the estimated size of the comment batch.
+
+It appears when the **Local Model** is the active provider, because the on-device memory limit is what it warns about. Keyed providers (Minimax, OpenAI) have no local budget, so no counter is shown there.
 
 The number is a rough estimate (about 4 characters per token), not an exact count. On the Local Model the pill turns amber when the prompt is close to the budget and red when it does not fit — a red pill means the reply will be cut short. See [Troubleshooting](troubleshooting.md#local-model-reply-is-cut-short).
 

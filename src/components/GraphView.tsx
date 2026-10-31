@@ -68,16 +68,17 @@ export const DEFAULT_GRAPH_LABEL_PX = 16;
  */
 export const MIN_GRAPH_LABEL_PX = 6;
 /**
- * Ceiling. 48px is wide enough for a two-word heading to stay on one line
- * at a comfortable read, past which the label starts covering its
- * neighbours.
+ * Ceiling. Raised past the old 48px so a long heading can still be
+ * read when the user wants oversized labels; past this the label
+ * starts covering its neighbours on a dense atom.
  *
- * The 3D scene clamps its own label layer to `[6, 48]` — the same range.
- * A divergence here is invisible in Flat and Mindmap and silently truncates
- * in 3D, so the two are asserted equal by `label: the 3D layer honours
- * the SVG label range` rather than left to drift.
+ * The 3D scene clamps its own label layer to `[6, MAX]` — the same
+ * range. A divergence here is invisible in Flat and Mindmap and
+ * silently truncates in 3D, so the two are asserted equal by
+ * `label: the 3D layer honours the SVG label range` rather than left
+ * to drift.
  */
-export const MAX_GRAPH_LABEL_PX = 48;
+export const MAX_GRAPH_LABEL_PX = 96;
 export const GRAPH_LABEL_STEP = 2;
 
 const DRAG_THRESHOLD_PX = 5;
@@ -381,23 +382,51 @@ export function GraphViewControls({
       <span className="mx-1 h-5 w-px bg-paper-hairline dark:border-cyber-border" aria-hidden />
       <button
         type="button"
-        className={`${graphToolClass} px-2.5`}
+        className={`${graphToolClass} w-9`}
         aria-label="Zoom Graph out"
         title="Zoom Graph out"
         disabled={!canZoomOut}
         onClick={() => onZoom(clampGraphZoom(zoom / 1.25))}
       >
-        Zoom −
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 12 12"
+          className="h-3.5 w-3.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          {/* Magnifier with a minus — zoom out. */}
+          <circle cx="5" cy="5" r="3.25" />
+          <path d="M7.4 7.4 L10.5 10.5" />
+          <path d="M3.5 5 H6.5" />
+        </svg>
       </button>
       <button
         type="button"
-        className={`${graphToolClass} px-2.5`}
+        className={`${graphToolClass} w-9`}
         aria-label="Zoom Graph in"
         title="Zoom Graph in"
         disabled={!canZoomIn}
         onClick={() => onZoom(clampGraphZoom(zoom * 1.25))}
       >
-        Zoom +
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 12 12"
+          className="h-3.5 w-3.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          {/* Magnifier with a plus — zoom in. */}
+          <circle cx="5" cy="5" r="3.25" />
+          <path d="M7.4 7.4 L10.5 10.5" />
+          <path d="M5 3.5 V6.5 M3.5 5 H6.5" />
+        </svg>
       </button>
       <span className="min-w-[2.75rem] text-center text-[13px] font-mono text-paper-inkSoft dark:text-cyber-muted tabular-nums">
         {Math.round(zoom * 100)}%
@@ -650,18 +679,35 @@ export function GraphView({
   );
 
   // Layout bounds drive both the lens boundary and the camera fit.
+  // Mindmap titles grow with toolbar `−` / `+`, so the SVG pad has to
+  // use the *current* world font — padding at the reference em left
+  // rightmost titles clipped when the user enlarged labels past 16px.
   const layoutBounds = useMemo<Bounds>(() => {
     const xs = placed.map((n) => n.x);
     const ys = placed.map((n) => n.y);
+    const em = isMindmap ? mindmapWorldFont(labelPx) : undefined;
     const minX = (xs.length ? Math.min(...xs) : -100) - 400;
     const labelReach = isMindmap
       ? Math.max(
           400,
-          ...placed.map((n) => mindmapLabelWidth(n.label, n.r) + 80)
+          ...placed.map(
+            (n) =>
+              mindmapLabelWidth(n.label, n.r, em) + Math.max(80, (em ?? 36) * 1.5)
+          )
         )
       : 400;
     const maxX = (xs.length ? Math.max(...xs) : 100) + labelReach;
-    const minY = (ys.length ? Math.min(...ys) : -100) - 400;
+    // Titles sit above the connector; a large font can reach hundreds of
+    // world units above the topmost node, past a fixed 400 pad.
+    const labelAbove = isMindmap
+      ? Math.max(
+          400,
+          ...placed.map(
+            (n) => Math.max(0, -mindmapLabelPlan(n.label, em).top) + 40
+          )
+        )
+      : 400;
+    const minY = (ys.length ? Math.min(...ys) : -100) - labelAbove;
     const maxY = (ys.length ? Math.max(...ys) : 100) + 400;
     return {
       minX,
@@ -669,7 +715,7 @@ export function GraphView({
       width: Math.max(maxX - minX, 240),
       height: Math.max(maxY - minY, 240),
     };
-  }, [placed, isMindmap]);
+  }, [placed, isMindmap, labelPx]);
 
   // The fisheye lens is a planar, focus+context device. It stays off
   // for Mindmap and Concept — Concept is a tilted floor, and Mindmap

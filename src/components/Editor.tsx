@@ -225,7 +225,7 @@ export function Editor() {
   // Chat history for the current document. We subscribe to the whole
   // `chats` map (a stable reference that only changes when a chat
   // actually changes) and derive the per-document list in a memo, so
-  // the Debug Mode token counter refreshes when a reply lands without
+  // the Local Model token counter refreshes when a reply lands without
   // the subscription returning a fresh `[]` on every store change.
   const chats = useStore((s) => s.chats);
   const currentChatMessages = useMemo(
@@ -1083,7 +1083,7 @@ export function Editor() {
   );
 
   // ---------------------------------------------------------------------------
-  // Debug Mode: estimated tokens for the next **Send to AI** batch.
+  // Local Model: estimated tokens for the next **Send to AI** batch.
   //
   // Mirrors the batch the chat panel will actually build: the same
   // `formatCommentBatch` body, the same merged mention list, the same
@@ -1098,8 +1098,12 @@ export function Editor() {
   // wasteful on a long draft.
   // ---------------------------------------------------------------------------
   const [commentBatchTokens, setCommentBatchTokens] = useState(0);
+  // The token counter is a Local Model affordance (the on-device KV
+  // cache is the hard limit it warns about), so it follows the
+  // provider — not Debug Mode.
+  const isLocalModel = !requiresApiKey(api.provider);
   useEffect(() => {
-    if (!debugMode) {
+    if (!isLocalModel) {
       setCommentBatchTokens(0);
       return;
     }
@@ -1162,7 +1166,7 @@ export function Editor() {
     }, 250);
     return () => window.clearTimeout(timer);
   }, [
-    debugMode,
+    isLocalModel,
     doc,
     currentComments,
     currentChatMessages,
@@ -1816,10 +1820,9 @@ export function Editor() {
                 : 'Click to start inline predictions'
           }
           className={[
-            // Same type scale as the Comment control (text-[15px], no
-            // mono / uppercase) so Predict sits in the same visual
-            // family as the rest of the editor toolbar.
-            'inline-flex items-center gap-1.5 h-9 px-3 rounded border text-[15px] leading-none transition-colors select-none',
+            // Icon-only, same footprint as Comment. Colour is the state
+            // indicator (green = on, pale = off).
+            'w-9 h-9 inline-flex items-center justify-center rounded border transition-colors select-none',
             !apiConfigured
               ? 'border-paper-hairline dark:border-cyber-border bg-paper-surface/40 dark:bg-ape-panel/40 text-paper-inkSoft/40 dark:text-cyber-muted/40 cursor-not-allowed'
               : inlineOn
@@ -1847,9 +1850,36 @@ export function Editor() {
             <path d="M6 1 L6.6 4.4 L10 5 L6.6 5.6 L6 9 L5.4 5.6 L2 5 L5.4 4.4 Z" />
             <path d="M10 8.5 L10.25 9.75 L11.5 10 L10.25 10.25 L10 11.5 L9.75 10.25 L8.5 10 L9.75 9.75 Z" />
           </svg>
-          Predict
         </button>
         </>
+        )}
+        {/* Preview (and Split-with-Preview) has no Format menu, so expose
+            Size + / Size − here so the user can still grow or shrink
+            the rendered caption. Same `editorFontSize` the Write pane
+            uses — one setting for both surfaces. */}
+        {showPreview && (
+          <>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center h-9 px-2.5 rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-panel text-[15px] leading-none text-paper-inkSoft dark:text-cyber-muted hover:border-cyber-clay dark:hover:border-cyber-cyan hover:text-cyber-clay dark:hover:text-cyber-cyan disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-paper-hairline disabled:hover:text-paper-inkSoft dark:disabled:hover:border-cyber-border dark:disabled:hover:text-cyber-muted transition-colors"
+              onClick={() => bumpEditorFontSize(1)}
+              disabled={editorFontSize >= 24}
+              aria-label="Size +"
+              title="Increase preview font size"
+            >
+              Size +
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center h-9 px-2.5 rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-panel text-[15px] leading-none text-paper-inkSoft dark:text-cyber-muted hover:border-cyber-clay dark:hover:border-cyber-cyan hover:text-cyber-clay dark:hover:text-cyber-cyan disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-paper-hairline disabled:hover:text-paper-inkSoft dark:disabled:hover:border-cyber-border dark:disabled:hover:text-cyber-muted transition-colors"
+              onClick={() => bumpEditorFontSize(-1)}
+              disabled={editorFontSize <= 10}
+              aria-label="Size −"
+              title="Decrease preview font size"
+            >
+              Size −
+            </button>
+          </>
         )}
         </div>
         {/* Import / Save — pinned to the trailing edge, **outside** the
@@ -2111,17 +2141,13 @@ export function Editor() {
                 // tray can render the per-row Re-link / Dismiss list.
                 outdatedComments={currentComments.filter((c) => c.outdated)}
                 sending={chatStreaming}
-                // Debug Mode only: estimated tokens for the next batch.
-                tokenEstimate={debugMode ? commentBatchTokens : undefined}
+                // Local Model only: estimated tokens for the next batch.
+                tokenEstimate={isLocalModel ? commentBatchTokens : undefined}
                 tokenBudget={
-                  debugMode && !requiresApiKey(api.provider)
-                    ? LOCAL_MAX_NUM_TOKENS
-                    : undefined
+                  isLocalModel ? LOCAL_MAX_NUM_TOKENS : undefined
                 }
                 tokenReserve={
-                  debugMode && !requiresApiKey(api.provider)
-                    ? LOCAL_MAX_OUTPUT_TOKENS
-                    : undefined
+                  isLocalModel ? LOCAL_MAX_OUTPUT_TOKENS : undefined
                 }
                 onSend={handleSendToAi}
                 onDismissOutdated={() => {

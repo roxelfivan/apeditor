@@ -1,6 +1,6 @@
 # Graph view
 
-> A local knowledge graph of the workspace, compiled entirely in the browser from documents, headings, `[[wikilinks]]`, and `@` mentions. No LLM call, no new dependency, no store-schema change. Added in v0.5.4. Pan / orbit navigation added in v0.5.7. The 3D Concept projection added in v0.5.8. Spreading the Concept stack and OrbitControls-driven free navigation in v0.5.8. The document / section scope filter added in v0.5.9, together with zoom widened to 0.05×–12× (which also fixes a silent Concept distance clamp), labels widened to 6–48px across all three projections, and heading tiers made depth-compressed so deep `Comment > A > B > …` paths stay legible. In v0.6.0 the Concept labels were made legible while rotating — typographic hierarchy by node kind, a camera-distance ramp, near-over-far paint order, and a halo — the dark-mode sphere colours were lifted off the background, and the editor toolbar became a single non-wrapping row. The Globe projection was replaced by a horizontal **Mindmap** (spanning tree plus dashed cross-links), and the toolbar projection menu became **Flat / Mindmap / 3D**. In **v0.6.6** Mindmap titles **wrap** (CJK-aware), sit **above** the green connectors, grow with toolbar **−** / **+** without scaling the whole tree, and support **drag-to-scroll**; Globe stereographic math was removed from `sphereProject.ts`.
+> A local knowledge graph of the workspace, compiled entirely in the browser from documents, headings, `[[wikilinks]]`, and `@` mentions. No LLM call, no new dependency, no store-schema change. Added in v0.5.4. Pan / orbit navigation added in v0.5.7. The 3D Concept projection added in v0.5.8. Spreading the Concept stack and OrbitControls-driven free navigation in v0.5.8. The document / section scope filter added in v0.5.9, together with zoom widened to 0.05×–12× (which also fixes a silent Concept distance clamp), labels widened to 6–96px across all three projections, and heading tiers made depth-compressed so deep `Comment > A > B > …` paths stay legible. In v0.6.0 the Concept labels were made legible while rotating — typographic hierarchy by node kind, a camera-distance ramp, near-over-far paint order, and a halo — the dark-mode sphere colours were lifted off the background, and the editor toolbar became a single non-wrapping row. The Globe projection was replaced by a horizontal **Mindmap** (spanning tree plus dashed cross-links), and the toolbar projection menu became **Flat / Mindmap / 3D**. In **v0.6.6** Mindmap titles **wrap** (CJK-aware), sit **above** the green connectors, grow with toolbar **−** / **+** without scaling the whole tree, and support **drag-to-scroll**; Globe stereographic math was removed from `sphereProject.ts`.
 
 ---
 
@@ -314,7 +314,7 @@ interface Bounds { minX: number; minY: number; width: number; height: number }
 
 ## 7. Rendering
 
-`GraphView.tsx` exports `DEFAULT_GRAPH_LABEL_PX = 16`, `MIN_GRAPH_LABEL_PX = 12`, `MAX_GRAPH_LABEL_PX = 28`, `GRAPH_LABEL_STEP = 2`, plus `GraphView`, `GraphViewControls`, and `GraphViewProps`.
+`GraphView.tsx` exports `DEFAULT_GRAPH_LABEL_PX = 16`, `MIN_GRAPH_LABEL_PX = 6`, `MAX_GRAPH_LABEL_PX = 96`, `GRAPH_LABEL_STEP = 2`, plus `GraphView`, `GraphViewControls`, and `GraphViewProps`.
 
 ### Fit to content
 
@@ -432,10 +432,10 @@ Each `<circle>` has `role="button"` and `tabIndex={0}`, with an `onKeyDown` that
 | Control | Behaviour | Disabled |
 |---|---|---|
 | `−` | `labelPx -= GRAPH_LABEL_STEP` | `labelPx <= 6` |
-| `+` | `labelPx += GRAPH_LABEL_STEP` | `labelPx >= 48` |
+| `+` | `labelPx += GRAPH_LABEL_STEP` | `labelPx >= 96` |
 | Readout | The raw `labelPx`, `tabular-nums` | — |
-| **Zoom −** | `zoom /= 1.25`, clamped | `zoom <= 0.05` |
-| **Zoom +** | `zoom *= 1.25`, clamped | `zoom >= 12` |
+| Magnifier − (zoom out) | `zoom /= 1.25`, clamped | `zoom <= 0.05` |
+| Magnifier + (zoom in) | `zoom *= 1.25`, clamped | `zoom >= 12` |
 | Zoom readout | `{Math.round(zoom * 100)}%` | — |
 | **Flat / Mindmap / 3D** | Single dropdown (`aria-haspopup="menu"`). Driven by the `PROJECTION_OPTIONS` table, so the trigger label and the menu rows cannot drift apart. `position: fixed` so the toolbar scroller cannot clip it | Never |
 | **Filter** | Toggles the scope popover. `aria-expanded` tracks it; an `on` badge appears when the scope is non-empty | Never |
@@ -472,10 +472,10 @@ Replaces the former Globe wrap. The same compiled graph is stripped to a **spann
 |---|---|
 | Root | The open document node, else `docs[0]`, else the first node |
 | Tree growth | BFS. Heading children of a node are claimed first, then `wikilink`, then `@`. Disconnected components become extra roots, stacked in Y |
-| Placement | One column per tree **depth**. A column starts after the **widest title in the column before it**, plus `MINDMAP_CONNECTOR`. Siblings share one X. Leaves pack on Y at `MINDMAP_LEAF_GAP`, plus a line's height per extra wrapped line. A parent sits at the vertical midpoint of its children. The drawing is then centred on the origin |
+| Placement | Each child sits just past **its own parent's** title (`mindmapChildStep` = label width + `MINDMAP_CONNECTOR`, floored at `MINDMAP_LAYER_X`). Siblings share one X; different branches at the same depth may sit on different X values so a long aunt does not stretch short branches. Leaves pack on Y at `MINDMAP_LEAF_GAP`, plus a line's height per extra wrapped line. A parent sits at the vertical midpoint of its children. The drawing is then centred on the origin |
 | Tree edges | Cubic `mindmapTreePath` — control points stay on each endpoint's Y so the curve leaves a parent going right and arrives at a child from the left |
 | Cross-links | Quadratic `mindmapCrossPath`, `stroke-dasharray: 8 10`, opacity ~0.45. Vertical-ish leftovers bow to the right (away from the root) |
-| Navigation | Native overflow **plus drag-to-scroll**. The SVG is sized to `layoutBounds × camera.scale` with a full-tree `viewBox`; `[data-graph-mindmap-scroll]` scrolls when the tree is larger than the pane, and a background drag scrolls it under the cursor. No sphere, no far-side culling |
+| Navigation | Native overflow **plus drag-to-scroll**. The SVG is sized to `layoutBounds × camera.scale` with a full-tree `viewBox`; `[data-graph-mindmap-scroll]` scrolls when the tree is larger than the pane, and a background drag scrolls it under the cursor. No sphere, no far-side culling. `layoutBounds` pads right/above with `mindmapLabelWidth` / `mindmapLabelPlan` at the **current** `mindmapWorldFont(labelPx)` — a fixed reference-em pad clips rightmost titles when the user enlarges labels |
 | Labels | Sit to the **right** of the node (`textAnchor: start`) and **above** the green connector. Titles **wrap** at `MINDMAP_LABEL_MAX_COLS` columns. A title that wraps is drawn at `MINDMAP_LONG_LABEL_SCALE` — only that title shrinks |
 
 ### The title model — width in columns, not characters
@@ -493,19 +493,20 @@ A title is measured in **columns**, where a column is one Latin glyph and a CJK 
 | `MINDMAP_REF_LABEL_PX` | `16` | Toolbar size that maps 1:1 onto `MINDMAP_EM_W` |
 | `MINDMAP_CHAR_W` | `36 × 0.6` | Layout units per column at the reference em |
 | `MINDMAP_LABEL_LINE_CLEAR` | `0.2` | Clearance (ems) between title ink and the connector at y = 0 |
-| `MINDMAP_CONNECTOR` | `160` | Buffer between the end of a title and the next column |
+| `MINDMAP_LAYER_X` | `220` | Floor for the parent→child horizontal step |
+| `MINDMAP_CONNECTOR` | `72` | Buffer between the end of a parent title and its children |
 
 ### Font size vs camera scale (v0.6.6)
 
 The Mindmap's camera scale is **pinned** to `mindmapScale() = MINDMAP_REF_LABEL_PX / MINDMAP_EM_W`. It does not fit the tree to the pane, and it does **not** track toolbar **−** / **+**.
 
-> Toolbar **−** / **+** change `mindmapWorldFont(labelPx)` and re-run `layoutMindmap(..., labelPx)`. Text grows relative to nodes and connectors. **Zoom −** / **Zoom +** still multiply the pinned scale. Layout and drawing share the same world font, so reserved column width stays the drawn width.
+> Toolbar **−** / **+** change `mindmapWorldFont(labelPx)` and re-run `layoutMindmap(..., labelPx)`. Text grows relative to nodes and connectors. The magnifier buttons still multiply the pinned scale. Layout and drawing share the same world font, so reserved column width stays the drawn width.
 
-### Why a column starts after the *widest* title
+### Why children pack against *their* parent
 
-The column offset is measured from the widest title in the previous column, not from one node's title.
+Each branch steps from its own parent's title. Siblings still share one X.
 
-> A sibling with a long title used to run into the next column, because the column was only as wide as whichever parent happened to be laid out first. Measuring the column, not the parent, is what makes the rule hold for every node in it.
+> Measuring every depth column from the *widest* title in the previous column left empty runs after short headings whenever a long sibling shared the depth — e.g. "1. Connect…" waiting on "10. Import…". Parent-relative packing keeps short branches compact; the overlap pass still separates titles that share an X.
 
 `layoutMindmap` returns `{ nodes, treeEdgeIds }`. `treeEdgeIds` is a `Set` of `GraphEdge.id`; `GraphView` uses it only for stroke style. Click, hover, Filter, and Reset are the Flat path.
 
@@ -625,7 +626,7 @@ Four mechanisms now compose, all inside the existing label loop:
 
 **Hover opts out of the fade.** The node under the pointer renders at full size and full opacity. Fading it would hide precisely the thing the user aimed at. The neighbour-lit set keeps the existing `0.25` dim.
 
-**The clamp survives the kind scale.** `Math.max(6, Math.min(48, s.labelPx))` is still the first thing the label block computes, and per-kind scaling is applied *after* it — folding the multiplier into the clamp would break `label: the 3D layer honours the SVG label range`, which parses that literal out of the source. `conceptLabelStyle` re-applies the floor afterwards so a `0.82`-scaled term at a 6px base cannot render at 4.9px.
+**The clamp survives the kind scale.** `Math.max(6, Math.min(96, s.labelPx))` is still the first thing the label block computes, and per-kind scaling is applied *after* it — folding the multiplier into the clamp would break `label: the 3D layer honours the SVG label range`, which parses that literal out of the source. `conceptLabelStyle` re-applies the floor afterwards so a `0.82`-scaled term at a 6px base cannot render at 4.9px.
 
 Two incidental fixes in the same block: labels are now **created before** they are positioned (a node appearing mid-session used to sit unpositioned for one frame, flashing at the layer origin), and the theme observer now rewrites the halo alongside the edge and floor materials, so a light-mode halo does not survive a dark flip as a fringe.
 

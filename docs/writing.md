@@ -38,7 +38,7 @@ Graph compiles what is already in the workspace. It does not ask an AI to invent
 - Each sidebar document is a node. The open document is marked.
 - Each Markdown heading (`#` / Setext) is a node under its document. Titles with `>` nest: `# Comment > annotate` and `# Comment > feedback` share a **Comment** node that links to **annotate** and **feedback**. Subheadings (`##`) nest the same way.
 - Hover a node or its label to read the **full title** in the bar at the top of Graph (labels wrap on the canvas; long lines still get a tooltip). The initial map is atomic: the open document is the nucleus, headings sit on concentric shells, and `[[wikilink]]` / other-doc satellites park on the same ray as their source so lines do not cross through the ring.
-- **−** / **+** on the Graph toolbar change label size (6–48 px, default 16). On Mindmap that grows or shrinks the wording relative to the nodes; on Flat and 3D it is the same on-screen label size control. **Zoom −** / **Zoom +** scale the whole map (5–1200%). **Filter** chooses which documents and headings appear. **Reset** restores label size, zoom, projection, filter, and node positions, then redraws the map.
+- **−** / **+** on the Graph toolbar change label size (6–96 px, default 16). On Mindmap that grows or shrinks the wording relative to the nodes; on Flat and 3D it is the same on-screen label size control. The magnifier buttons scale the whole map (5–1200%). **Filter** chooses which documents and headings appear. **Reset** restores label size, zoom, projection, filter, and node positions, then redraws the map.
 - The **Flat / Mindmap / 3D** dropdown on the Graph toolbar switches how the same map is seen. **Flat** is the radial overview. **Mindmap** draws a left-to-right heading tree, with leftover `[[wikilink]]` / `@` loops as dashed curves; when the tree is larger than the pane, the map scrolls. **3D** extrudes headings upward (deep stacks compress so they stay readable).
 - Drag a node (or its label) to rearrange it. A short click from full Graph opens **Split** with Write on the left and selects the heading / `[[term]]`. From Split with Write already open, the selection lands without leaving Split. Positions last until **Reset** or you leave Graph.
 - Drag **empty space** to navigate: in **Flat** it pans the map (at any zoom); in **Mindmap** it scrolls the tree under your cursor; in **3D** it orbits.
@@ -48,7 +48,7 @@ Graph compiles what is already in the workspace. It does not ask an AI to invent
 
 Hover a node to dim everything that is not a neighbor. Click a document to open it. Click a heading or term to open its document and select the passage. Graph does not create a new document when you click a term.
 
-**About Mindmap.** The solid curves are a spanning tree of the workspace — headings first, then leftover links. Extra relationships stay visible as dashed, faded cross-links so the tree itself stays readable. A title too long for one line **wraps** onto a second line, and only that title is drawn a little smaller; every other title keeps the size you set. Titles sit **above** the green connector so they do not run through the line. Each column starts after the widest title above it, so titles never cross into the next column. On Mindmap, toolbar **−** / **+** change text size; **Zoom −** / **Zoom +** scale the whole map. A tree that does not fit the pane is scrollable — drag the background to walk around it. **Reset** returns to the Flat map.
+**About Mindmap.** The solid curves are a spanning tree of the workspace — headings first, then leftover links. Extra relationships stay visible as dashed, faded cross-links so the tree itself stays readable. A title too long for one line **wraps** onto a second line, and only that title is drawn a little smaller; every other title keeps the size you set. Titles sit **above** the green connector so they do not run through the line. Each child sits just past its own parent's title, so a long sibling does not stretch every other branch. On Mindmap, toolbar **−** / **+** change text size; the magnifier buttons scale the whole map. A tree that does not fit the pane is scrollable — drag the background to walk around it. **Reset** returns to the Flat map.
 
 **Reading labels in 3D.** Labels change size by node kind — a document title is largest and boldest, a `[[term]]` smallest — and they fade and shrink as they move away from you, so the near field is clear and the far field settles into texture. Labels nearer the camera always draw on top of the ones behind, and no label is ever removed. Hovering a node keeps its label at full size and brightness. Each label carries a soft halo, so two overlapping labels stay individually readable.
 
@@ -74,12 +74,12 @@ Open the **Format** menu on the toolbar and pick **Size +** or **Size −**. Ran
 
 **Predict** is **off** until you turn it on. It needs a Minimax or OpenAI key. It is not available with **Local Model**.
 
-1. Click **Predict** on the toolbar, or press `Ctrl+\` / `⌘\` (when the control is enabled).
+1. Click the sparkle **Predict** icon on the toolbar, or press `Ctrl+\` / `⌘\` (when the control is enabled).
 2. A suggestion panel appears under the write pane: **Suggestion · Tab to accept · Esc to dismiss**.
 3. Press **Tab** or **Accept** to insert the suggestion.
 4. Press **Esc** or **Reject** to dismiss it.
 
-Click **Predict** again to stop requesting suggestions.
+Click the sparkle icon again to stop requesting suggestions.
 
 If the button is disabled, the tooltip explains why (missing key, or Local Gemma).
 

@@ -1,3 +1,19 @@
+## v0.6.8 — Toolbar polish, compact Mindmap, Preview default
+
+Patch on top of [v0.6.7](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.7). Quieter editor/Graph controls, tighter Mindmap packing, first-run **Preview**, and propose-edit / Local Model token tidy-ups.
+
+### Highlights
+
+- **Predict icon-only; Preview Size ±.** Sparkle without the word; caption font buttons when Preview is selected.
+- **Mindmap stays compact and on-canvas.** Parent-relative horizontal packing; SVG pad tracks enlarged labels (up to 96px); magnifier zoom icons.
+- **Default view is Preview.** Fresh installs open in Preview.
+- **Propose-edit + tokens.** Reject disclosure, collapsed mismatch banner; token counters gate on Local Model (Send left of the counter).
+
+### Notes
+
+- See [`.release-notes-v0.6.8.md`](.release-notes-v0.6.8.md) for the full surface list.
+- `package.json` version bumped to `0.6.8`.
+
 ## v0.6.7 — Chat composer follows the divider
 
 Patch on top of [v0.6.6](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.6). Dragging the strip between the conversation and the input moves **include selection** and grows the chat box with the divider — no empty gap under the handle.

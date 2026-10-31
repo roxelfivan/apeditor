@@ -36,13 +36,13 @@ await fs.writeFile(
 import { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview } from '${path.join(ROOT, 'src/utils/graph/parseWikilinks.ts').replace(/\\/g, '/')}';
 import { buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath } from '${path.join(ROOT, 'src/utils/graph/buildWorkspaceGraph.ts').replace(/\\/g, '/')}';
 import { layoutWorkspaceGraph, nodeRadius, countProperEdgeCrossings, headingDepthByNode } from '${path.join(ROOT, 'src/utils/graph/layoutWorkspaceGraph.ts').replace(/\\/g, '/')}';
-  import { layoutMindmap, spanningTree, mindmapTreePath, mindmapCrossPath, mindmapScale, mindmapSvgPx, mindmapWorldAtScrollCenter, mindmapScrollToWorld, mindmapWrapLabel, mindmapLabelPlan, mindmapLabelWidth, mindmapLeafStride, mindmapTextCols, mindmapWorldFont, treeDepths, MINDMAP_LAYER_X, MINDMAP_LEAF_GAP, MINDMAP_CHAR_W, MINDMAP_GLYPH_EM, MINDMAP_EM_W, MINDMAP_LABEL_MAX_COLS, MINDMAP_LABEL_MAX_LINES, MINDMAP_LONG_LABEL_SCALE, MINDMAP_LINE_HEIGHT, MINDMAP_CONNECTOR } from '${path.join(ROOT, 'src/utils/graph/layoutMindmap.ts').replace(/\\/g, '/')}';
+  import { layoutMindmap, spanningTree, mindmapTreePath, mindmapCrossPath, mindmapScale, mindmapSvgPx, mindmapWorldAtScrollCenter, mindmapScrollToWorld, mindmapWrapLabel, mindmapLabelPlan, mindmapLabelWidth, mindmapChildStep, mindmapLeafStride, mindmapTextCols, mindmapWorldFont, treeDepths, MINDMAP_LAYER_X, MINDMAP_LEAF_GAP, MINDMAP_CHAR_W, MINDMAP_GLYPH_EM, MINDMAP_EM_W, MINDMAP_LABEL_MAX_COLS, MINDMAP_LABEL_MAX_LINES, MINDMAP_LONG_LABEL_SCALE, MINDMAP_LINE_HEIGHT, MINDMAP_CONNECTOR } from '${path.join(ROOT, 'src/utils/graph/layoutMindmap.ts').replace(/\\/g, '/')}';
 import { filterWorkspaceGraph, createScope, createNoneScope, isScopeEmpty, isNoneScope, normalizeScope, resolveDocumentIds, resolveSectionIds } from '${path.join(ROOT, 'src/utils/graph/graphFilter.ts').replace(/\\/g, '/')}';
 import { clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, MIN_GRAPH_ZOOM, MAX_GRAPH_ZOOM } from '${path.join(ROOT, 'src/utils/graph/graphCamera.ts').replace(/\\/g, '/')}';
 import { dragToOrientation, IDENTITY_ORIENTATION, MAX_SPHERE_PITCH, clampPitch } from '${path.join(ROOT, 'src/utils/graph/sphereProject.ts').replace(/\\/g, '/')}';
 import { applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes } from '${path.join(ROOT, 'src/utils/graph/fisheyeLens.ts').replace(/\\/g, '/')}';
 import { conceptZForDepth, conceptZStep, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, clampConceptDistance, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, conceptLabelStyle, conceptLabelDepth, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, MIN_CONCEPT_Z_STEP, CONCEPT_Z_COMPRESS_AFTER, CONCEPT_Z_COMPRESS_RATIO, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE, MIN_CONCEPT_LABEL_PX, CONCEPT_LABEL_NEAR_RATIO, CONCEPT_LABEL_FAR_RATIO, CONCEPT_LABEL_MIN_OPACITY, CONCEPT_LABEL_MIN_SCALE } from '${path.join(ROOT, 'src/utils/graph/conceptProject.ts').replace(/\\/g, '/')}';
-export { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, layoutMindmap, spanningTree, mindmapTreePath, mindmapCrossPath, mindmapScale, mindmapSvgPx, mindmapWorldAtScrollCenter, mindmapScrollToWorld, mindmapWrapLabel, mindmapLabelPlan, mindmapLabelWidth, mindmapLeafStride, mindmapTextCols, mindmapWorldFont, treeDepths, MINDMAP_LAYER_X, MINDMAP_LEAF_GAP, MINDMAP_CHAR_W, MINDMAP_GLYPH_EM, MINDMAP_EM_W, MINDMAP_LABEL_MAX_COLS, MINDMAP_LABEL_MAX_LINES, MINDMAP_LONG_LABEL_SCALE, MINDMAP_LINE_HEIGHT, MINDMAP_CONNECTOR, nodeRadius, countProperEdgeCrossings, headingDepthByNode, filterWorkspaceGraph, createScope, createNoneScope, isScopeEmpty, isNoneScope, normalizeScope, resolveDocumentIds, resolveSectionIds, clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, MIN_GRAPH_ZOOM, MAX_GRAPH_ZOOM, dragToOrientation, IDENTITY_ORIENTATION, MAX_SPHERE_PITCH, clampPitch, applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes, conceptZForDepth, conceptZStep, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, clampConceptDistance, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, conceptLabelStyle, conceptLabelDepth, MIN_CONCEPT_LABEL_PX, CONCEPT_LABEL_NEAR_RATIO, CONCEPT_LABEL_FAR_RATIO, CONCEPT_LABEL_MIN_OPACITY, CONCEPT_LABEL_MIN_SCALE, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, MIN_CONCEPT_Z_STEP, CONCEPT_Z_COMPRESS_AFTER, CONCEPT_Z_COMPRESS_RATIO, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE };
+export { extractWikilinks, resolveWikilink, normalizeWikiSlug, formatWikilinksForPreview, buildWorkspaceGraph, documentNodeId, headingNodeId, termNodeId, splitHeadingPath, layoutWorkspaceGraph, layoutMindmap, spanningTree, mindmapTreePath, mindmapCrossPath, mindmapScale, mindmapSvgPx, mindmapWorldAtScrollCenter, mindmapScrollToWorld, mindmapWrapLabel, mindmapLabelPlan, mindmapLabelWidth, mindmapChildStep, mindmapLeafStride, mindmapTextCols, mindmapWorldFont, treeDepths, MINDMAP_LAYER_X, MINDMAP_LEAF_GAP, MINDMAP_CHAR_W, MINDMAP_GLYPH_EM, MINDMAP_EM_W, MINDMAP_LABEL_MAX_COLS, MINDMAP_LABEL_MAX_LINES, MINDMAP_LONG_LABEL_SCALE, MINDMAP_LINE_HEIGHT, MINDMAP_CONNECTOR, nodeRadius, countProperEdgeCrossings, headingDepthByNode, filterWorkspaceGraph, createScope, createNoneScope, isScopeEmpty, isNoneScope, normalizeScope, resolveDocumentIds, resolveSectionIds, clampGraphZoom, stepGraphZoom, zoomedViewBox, fitCameraTo, panCamera, screenToWorld, worldToScreen, zoomCameraAt, cameraBounds, MIN_GRAPH_ZOOM, MAX_GRAPH_ZOOM, dragToOrientation, IDENTITY_ORIENTATION, MAX_SPHERE_PITCH, clampPitch, applyFisheye, fisheyeRatio, boundaryPointOnRay, clampMagnification, applyFisheyeToNodes, conceptZForDepth, conceptZStep, conceptHeadingY, siblingStoryCount, conceptTermSlot, conceptZoomBy, conceptCameraPosition, dragToConceptPose, clampConceptPose, clampConceptDistance, conceptDistanceFromZoom, floorPointFromRay, layoutToWorld, assignConceptHeights, conceptPoseFromCamera, conceptLabelStyle, conceptLabelDepth, MIN_CONCEPT_LABEL_PX, CONCEPT_LABEL_NEAR_RATIO, CONCEPT_LABEL_FAR_RATIO, CONCEPT_LABEL_MIN_OPACITY, CONCEPT_LABEL_MIN_SCALE, MIN_CONCEPT_DISTANCE, MAX_CONCEPT_DISTANCE, DEFAULT_CONCEPT_DISTANCE, DEFAULT_CONCEPT_POSE, CONCEPT_HEADING_BASE_Z, CONCEPT_Z_STEP, MIN_CONCEPT_Z_STEP, CONCEPT_Z_COMPRESS_AFTER, CONCEPT_Z_COMPRESS_RATIO, CONCEPT_TERM_DEPTH, CONCEPT_TERM_RING_R, CONCEPT_SIBLINGS_PER_STORY, CONCEPT_SIBLING_STORIES_MAX, MIN_POLAR_ANGLE, MAX_POLAR_ANGLE };
 `
 );
 
@@ -82,6 +82,7 @@ const {
   mindmapWrapLabel,
   mindmapLabelPlan,
   mindmapLabelWidth,
+  mindmapChildStep,
   mindmapLeafStride,
   mindmapTextCols,
   mindmapWorldFont,
@@ -1537,8 +1538,13 @@ test('label: the 3D layer keeps the SVG clamp intact behind the kind scale', () 
     path.join(ROOT, 'src/components/Concept3DScene.tsx'),
     'utf8'
   );
+  const max = Number(
+    readFileSync(path.join(ROOT, 'src/components/GraphView.tsx'), 'utf8').match(
+      /MAX_GRAPH_LABEL_PX = (\d+)/
+    )[1]
+  );
   assert.ok(
-    conceptSrc.includes('Math.max(6, Math.min(48, s.labelPx))'),
+    conceptSrc.includes(`Math.max(6, Math.min(${max}, s.labelPx))`),
     'Concept3DScene must still clamp labelPx to the SVG range before any kind scaling'
   );
   // The halo has to be theme-aware; a hardcoded light-mode halo survives a
@@ -1837,34 +1843,103 @@ test('mindmap: only the title that wraps is drawn smaller', () => {
   assert.ok(long.scale < 1 && long.scale > 0.5, 'shrunk, but still readable');
 });
 
-test('mindmap: a column starts after the widest title in the column before it', () => {
+test('mindmap: a child clears its own parent title, not an aunt or uncle', () => {
   // Two siblings under one parent: the first has a short title, the
-  // second a very long one. The grandchildren column must clear the
-  // *long* sibling, not the short one.
+  // second a very long one. Each child's own kids pack just past *that*
+  // child's title — a long aunt must not stretch the short branch.
   const welcome = doc(
     'welcome',
     'Welcome',
-    '# Root\n\n## Short\n\nx\n\n## A Very Long Heading That Goes Past The Maximum Line Length For Sure\n\ny\n'
+    [
+      '# Root',
+      '',
+      '## Short',
+      '',
+      '### Short child',
+      '',
+      'x',
+      '',
+      '## A Very Long Heading That Goes Past The Maximum Line Length For Sure',
+      '',
+      '### Long child',
+      '',
+      'y',
+      '',
+    ].join('\n')
   );
   const g = buildWorkspaceGraph([welcome], {});
   const { nodes } = layoutMindmap(g.nodes, g.edges, 'welcome');
   const long = nodes.find((n) => n.label.startsWith('A Very Long Heading'));
   const short = nodes.find((n) => n.label === 'Short');
-  assert.ok(long && short);
+  const shortChild = nodes.find((n) => n.label === 'Short child');
+  const longChild = nodes.find((n) => n.label === 'Long child');
+  assert.ok(long && short && shortChild && longChild);
   assert.equal(long.x, short.x, 'siblings share one column');
 
-  // The grandchild column (if any) would sit to the right of both.
-  const widest = Math.max(...nodes.map((n) => mindmapLabelWidth(n.label, n.r)));
-  const grandkids = nodes.filter((n) => n.x > long.x);
-  if (grandkids.length > 0) {
-    const gx = Math.min(...grandkids.map((n) => n.x));
-    const leftEnd = long.x + mindmapLabelWidth(long.label, long.r);
-    assert.ok(
-      gx - leftEnd >= MINDMAP_CONNECTOR - 1e-6,
-      `grandchild column at ${gx} must clear the long title ending at ${leftEnd}`
-    );
-  }
-  assert.ok(widest > 0);
+  const shortEnd = short.x + mindmapLabelWidth(short.label, short.r);
+  const longEnd = long.x + mindmapLabelWidth(long.label, long.r);
+  assert.ok(
+    Math.abs(shortChild.x - (short.x + mindmapChildStep(short.label, short.r))) < 1e-6,
+    'short branch packs against the short title'
+  );
+  assert.ok(
+    Math.abs(longChild.x - (long.x + mindmapChildStep(long.label, long.r))) < 1e-6,
+    'long branch packs against the long title'
+  );
+  assert.ok(
+    shortChild.x < longChild.x,
+    'short branch stays closer in than the long branch'
+  );
+  assert.ok(
+    shortChild.x - shortEnd >= MINDMAP_CONNECTOR - 1e-6,
+    `short child at ${shortChild.x} must clear short title ending at ${shortEnd}`
+  );
+  assert.ok(
+    longChild.x - longEnd >= MINDMAP_CONNECTOR - 1e-6,
+    `long child at ${longChild.x} must clear long title ending at ${longEnd}`
+  );
+});
+
+test('mindmap: default 16px layout stays compact on a short branch', () => {
+  // Calibration against the Welcome outline: a short heading must not
+  // inherit the horizontal gap forced by a long sibling in the same depth.
+  const welcome = doc(
+    'welcome',
+    'Welcome to ApEditor',
+    [
+      '# 1. Connect an AI Assistant',
+      '',
+      '## How to Connect',
+      '',
+      '### Option A — Use an API Key',
+      '',
+      'x',
+      '',
+      '# 10. Import Text from Photos or PDFs',
+      '',
+      'y',
+      '',
+    ].join('\n')
+  );
+  const g = buildWorkspaceGraph([welcome], {});
+  const { nodes } = layoutMindmap(g.nodes, g.edges, 'welcome', 16);
+  const connect = nodes.find((n) => n.label.startsWith('1. Connect'));
+  const how = nodes.find((n) => n.label === 'How to Connect');
+  const importH = nodes.find((n) => n.label.startsWith('10. Import'));
+  assert.ok(connect && how && importH);
+  const gapAfterConnect = how.x - (connect.x + mindmapLabelWidth(connect.label, connect.r));
+  const gapIfWidest =
+    mindmapLabelWidth(importH.label, importH.r) -
+    mindmapLabelWidth(connect.label, connect.r) +
+    MINDMAP_CONNECTOR;
+  assert.ok(
+    gapAfterConnect <= MINDMAP_CONNECTOR + 1e-6,
+    `gap after short title is ${gapAfterConnect}, expected ~${MINDMAP_CONNECTOR}`
+  );
+  assert.ok(
+    gapAfterConnect < gapIfWidest * 0.5,
+    'short branch must not pay the long-sibling column tax'
+  );
 });
 
 test('mindmap: no title in a layout overlaps another title', () => {
@@ -1988,6 +2063,36 @@ test('mindmap: toolbar −/+ changes world font, camera scale stays put', () => 
   assert.match(src, /mindmapWorldFont\(labelPx\)/);
   assert.match(src, /layoutMindmap\([\s\S]*labelPx/);
   assert.match(src, /isMindmap \? mindmapCamScale : null/);
+});
+
+test('mindmap: SVG pad tracks the current label size, not the reference em', () => {
+  // Bug: layoutBounds called mindmapLabelWidth without `em`, so enlarging
+  // labels past 16px left rightmost titles clipped at the SVG edge
+  // ("Option A — Use a", "Option B — Goog"). The pad must grow with
+  // mindmapWorldFont(labelPx), and GraphView must pass that em through.
+  const label = 'Option A — Use a cloud API key';
+  const r = 16;
+  const at16 = mindmapLabelWidth(label, r, mindmapWorldFont(16));
+  const at96 = mindmapLabelWidth(label, r, mindmapWorldFont(96));
+  assert.ok(
+    at96 > at16 * 4,
+    `96px label width (${at96}) must be much larger than 16px (${at16})`
+  );
+  const top16 = -mindmapLabelPlan(label, mindmapWorldFont(16)).top;
+  const top96 = -mindmapLabelPlan(label, mindmapWorldFont(96)).top;
+  assert.ok(top96 > top16 * 4, `large-font title reaches farther up (${top96} vs ${top16})`);
+  const src = readFileSync(path.join(ROOT, 'src/components/GraphView.tsx'), 'utf8');
+  assert.match(
+    src,
+    /mindmapLabelWidth\(n\.label, n\.r, em\)/,
+    'layoutBounds must pad with the current em, not the default'
+  );
+  assert.match(
+    src,
+    /mindmapLabelPlan\(n\.label, em\)\.top/,
+    'layoutBounds must pad above for large-font titles'
+  );
+  assert.match(src, /\[placed, isMindmap, labelPx\]/);
 });
 
 test('mindmap: the background drag scrolls the pane', () => {
