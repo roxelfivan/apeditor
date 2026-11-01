@@ -7,7 +7,7 @@ This page is the in-app changelog. It stays with the version in the top bar. Old
 **Nested tags, pin/recent, legal Preview, and Word-style compare.**
 
 - **Sidebar.** Search titles and tags. Star a document to pin it. Recent lists the last ten opened files. Nested tags (`#drafts/essays` in the body, or **#** on a row) group the list. Untagged documents stay in their own section.
-- **Preview / print.** **Lines** shows source line numbers. **Outline** numbers headings as `1 / 1.1 / 1.1.1` or **Article / Section / (a)**. **Print** hides chrome and keeps those labels.
+- **Preview / print.** The numbered-list icon opens **line numbers** and heading **outline** (`1 / 1.1 / 1.1.1` or **Article / Section / (a)**). **Print** hides chrome and keeps those labels.
 - **Compare.** **File → Compare…** imports another `.md`, `.json` backup, `.docx`, or workspace document and builds a full suggested-edit set against the open draft. Apply or skip each change like a chat proposal.
 
 Older documents gain empty `tags`, `starred: false`, and `lastOpenedAt` on load. Hashtags already in the body are picked up automatically.

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { v4 as uuid } from 'uuid';
 import { useStore, useCurrentDocument } from '@/store/useStore';
 import { PreviewMarkdown } from '@/components/PreviewMarkdown';
+import { PreviewNumberingMenu } from '@/components/PreviewNumberingMenu';
 import { useInlineCompletion } from '@/hooks/useInlineCompletion';
 import { useDocumentMentions } from '@/hooks/useDocumentMentions';
 import {
@@ -12,7 +13,6 @@ import {
   DEFAULT_EDITOR_SPLIT_PCT,
 } from '@/hooks/useDragResize';
 import { formatWikilinksForPreview } from '@/utils/graph/parseWikilinks';
-import type { OutlineScheme } from '@/utils/outlineNumbering';
 import { requiresApiKey } from '@/config/providers';
 import {
   getSelectionRect,
@@ -208,9 +208,7 @@ export function Editor() {
   );
   const splitLeftMode = useStore((s) => s.layout.splitLeftMode) ?? 'write';
   const previewLineNumbers = useStore((s) => s.layout.previewLineNumbers) === true;
-  const outlineNumbering =
-    (useStore((s) => s.layout.outlineNumbering) as OutlineScheme | undefined) ??
-    'off';
+  const outlineNumbering = useStore((s) => s.layout.outlineNumbering) ?? 'off';
   const setLayout = useStore((s) => s.setLayout);
   const bumpEditorFontSize = useStore((s) => s.bumpEditorFontSize);
   const updateContent = useStore((s) => s.updateDocumentContent);
@@ -1885,34 +1883,7 @@ export function Editor() {
             >
               Size −
             </button>
-            <button
-              type="button"
-              className={`inline-flex items-center justify-center h-9 px-2.5 rounded border text-[15px] leading-none transition-colors ${
-                previewLineNumbers
-                  ? 'border-cyber-clay dark:border-cyber-cyan bg-paper-elevated dark:bg-ape-elevated text-cyber-clay dark:text-cyber-cyan'
-                  : 'border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-panel text-paper-inkSoft dark:text-cyber-muted hover:border-cyber-clay dark:hover:border-cyber-cyan'
-              }`}
-              aria-pressed={previewLineNumbers}
-              onClick={() => setLayout({ previewLineNumbers: !previewLineNumbers })}
-              title="Show source line numbers in Preview and print"
-            >
-              Lines
-            </button>
-            <select
-              aria-label="Outline numbering"
-              value={outlineNumbering}
-              onChange={(e) =>
-                setLayout({
-                  outlineNumbering: e.target.value as OutlineScheme,
-                })
-              }
-              className="appearance-none cursor-pointer pl-2 pr-6 h-9 text-[15px] leading-none rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-panel text-paper-ink dark:text-cyber-primary hover:border-cyber-clay dark:hover:border-cyber-cyan focus:outline-none focus:border-cyber-clay dark:focus:border-cyber-cyan transition-colors"
-              title="Number headings in Preview and print"
-            >
-              <option value="off">Outline off</option>
-              <option value="decimal">Outline 1.1.1</option>
-              <option value="legal">Outline Article/Section</option>
-            </select>
+            <PreviewNumberingMenu />
             <button
               type="button"
               className="inline-flex items-center justify-center h-9 px-2.5 rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-panel text-[15px] leading-none text-paper-inkSoft dark:text-cyber-muted hover:border-cyber-clay dark:hover:border-cyber-cyan hover:text-cyber-clay dark:hover:text-cyber-cyan transition-colors"

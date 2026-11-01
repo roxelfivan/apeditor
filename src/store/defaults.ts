@@ -117,10 +117,10 @@ Preview on the left (use the tabs) with Graph on the right.
 \`⌘/Ctrl + B\` / \`I\` / \`U\` bold, italicise, and underline while
 you type; the **Format** menu also adjusts the text size.
 
-In **Preview**, **Lines** numbers source lines (useful for briefs),
-**Outline** numbers headings as \`1.1.1\` or Article/Section, and
-**Print** hides the rest of the chrome. Those labels are display-only
-— your Markdown file is not rewritten.
+In **Preview**, the numbered-list icon opens line numbers and heading
+outline (\`1.1.1\` or Article/Section). **Print** hides the rest of
+the chrome. Those labels are display-only — your Markdown file is
+not rewritten.
 
 ## 3. 📂 Find documents in the sidebar
 

@@ -21,8 +21,7 @@ On Preview (and Split with Preview on the left), extra toolbar controls:
 
 | Control | What it does |
 | --- | --- |
-| **Lines** | Source line numbers in the gutter (the starting line of each block). Included when you **Print**. |
-| **Outline off / 1.1.1 / Article/Section** | Numbers headings in Preview only. Decimal is `1`, `1.1`, `1.1.1`. Legal is `Article I`, `Section 1`, `(a)` for the first three heading levels. The stored markdown is not rewritten. |
+| Numbered-list icon | Opens **line numbers** (gutter) and **outline** (`Off`, `1 / 1.1 / 1.1.1`, or Article/Section). Preview only; stored markdown is not rewritten. Included when you **Print**. |
 | **Print** | Browser print. Sidebar, Chat, and the toolbar hide; Preview (with lines and outline) remains. |
 
 Those choices are remembered in this browser.

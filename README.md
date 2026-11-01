@@ -26,7 +26,7 @@
 > Nested tags, pin/recent, legal Preview numbering, and Word-style document compare. Patch on top of [v0.6.8](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.8).
 
 1. **Sidebar that scales.** Search titles and tags. Star to pin. Recent is the last ten opened files. Nested `#drafts/essays` tags group the list.
-2. **Preview / print.** **Lines** numbers source lines. **Outline** numbers headings (`1.1.1` or Article/Section). **Print** hides chrome.
+2. **Preview / print.** The numbered-list icon opens line numbers and heading outline (`1.1.1` or Article/Section). **Print** hides chrome.
 3. **Compare.** **File → Compare…** redlines another `.md` / `.json` / `.docx` or workspace document into proposed-edit cards.
 
 See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.9 entry and prior changelogs.

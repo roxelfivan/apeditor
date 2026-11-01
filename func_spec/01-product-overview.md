@@ -43,7 +43,7 @@ ApEditor is built for a single, narrow audience:
 |---|---|
 | Multiple documents: create, rename, switch, delete; nested tags, pin, recent, search | [`Sidebar.tsx`](../src/components/Sidebar.tsx), [`utils/tags.ts`](../src/utils/tags.ts) |
 | Four editor views — **Write**, **Preview**, **Graph**, **Split** (Split = Write/Preview left + Graph right) | [`Editor.tsx`](../src/components/Editor.tsx) |
-| Markdown rendering with GFM, raw HTML, sanitization; Preview line numbers and heading outline schemes | [`utils/markdown.ts`](../src/utils/markdown.ts), [`PreviewMarkdown.tsx`](../src/components/PreviewMarkdown.tsx), [`utils/outlineNumbering.ts`](../src/utils/outlineNumbering.ts) |
+| Markdown rendering with GFM, raw HTML, sanitization; Preview line numbers and heading outline schemes | [`utils/markdown.ts`](../src/utils/markdown.ts), [`PreviewMarkdown.tsx`](../src/components/PreviewMarkdown.tsx), [`PreviewNumberingMenu.tsx`](../src/components/PreviewNumberingMenu.tsx), [`utils/outlineNumbering.ts`](../src/utils/outlineNumbering.ts) |
 | Bold / Italic / Underline + font size (10–24 px) | `wrapSelection` in [`Editor.tsx`](../src/components/Editor.tsx) |
 | **Predict** — inline sentence completion, opt-in | [`useInlineCompletion.ts`](../src/hooks/useInlineCompletion.ts) |
 | Revision history: snapshot, diff, restore | [`RevisionHistory.tsx`](../src/components/RevisionHistory.tsx) |

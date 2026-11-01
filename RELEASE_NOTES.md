@@ -5,7 +5,7 @@ Patch on top of [v0.6.8](https://github.com/roxelfivan/apeditor/releases/tag/v0.
 ### Highlights
 
 - **Sidebar.** Search, Bear-style `#drafts/essays` tags, star/pin, Recent (last 10). Pencil rename does not open the row or reshuffle Recent.
-- **Preview / print.** **Lines**, **Outline** (`1.1.1` or Article/Section), **Print** (chrome hidden). Source markdown is not rewritten.
+- **Preview / print.** Numbered-list icon (line numbers + heading outline `1.1.1` or Article/Section), **Print** (chrome hidden). Source markdown is not rewritten.
 - **Compare.** Import `.md` / `.json` / `.docx` or pick another sidebar document; apply hunks as proposed-edit cards.
 
 ### Notes
