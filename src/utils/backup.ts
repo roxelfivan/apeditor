@@ -38,6 +38,7 @@ import type {
 } from '@/types';
 import { v4 as uuid } from 'uuid';
 import { sanitizeFilename } from '@/utils/storage';
+import { mergeDocumentTags } from '@/utils/tags';
 
 export const BACKUP_SCHEMA = 'apeditor-document-backup';
 export const BACKUP_VERSION = 1;
@@ -260,12 +261,24 @@ function parseDocument(value: unknown): DocumentRecord {
   if (!isPlainObject(value)) {
     throw new BackupParseError('Backup document is not an object');
   }
+  const content = requireString(value, 'content');
+  const rawTags = value.tags;
+  const tags = mergeDocumentTags(
+    Array.isArray(rawTags)
+      ? rawTags.filter((t): t is string => typeof t === 'string')
+      : [],
+    content
+  );
   return {
     id: requireNonEmptyString(value, 'id'),
     title: requireString(value, 'title'),
-    content: requireString(value, 'content'),
+    content,
     createdAt: requireNumber(value, 'createdAt'),
     updatedAt: requireNumber(value, 'updatedAt'),
+    tags,
+    starred: value.starred === true,
+    lastOpenedAt:
+      typeof value.lastOpenedAt === 'number' ? value.lastOpenedAt : 0,
   };
 }
 
@@ -747,6 +760,8 @@ export function buildKeepBothDocument(args: {
   sourceContent: string;
   sourceCreatedAt: number;
   sourceUpdatedAt: number;
+  tags?: string[];
+  starred?: boolean;
 }): DocumentRecord {
   const SUFFIX = ' (imported)';
   const baseSafe = sanitizeFilename(args.sourceTitle, '');
@@ -767,5 +782,8 @@ export function buildKeepBothDocument(args: {
     content: args.sourceContent,
     createdAt: args.sourceCreatedAt,
     updatedAt: args.sourceUpdatedAt,
+    tags: mergeDocumentTags(args.tags, args.sourceContent),
+    starred: Boolean(args.starred),
+    lastOpenedAt: Date.now(),
   };
 }

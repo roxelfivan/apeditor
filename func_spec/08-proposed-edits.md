@@ -351,7 +351,11 @@ The footer count subtracts `committed` ids, so **Apply N changes** shows only wh
 | 8 | `mvp:select-range` is dispatched after every apply so the caret lands on the changed text. Removing it makes Apply feel like nothing happened. |
 | 9 | `parseProposedEdits` tolerates an unterminated fence. Preserve the `\|(?:```\|$)` alternative. |
 
-## 10. Next
+## 10. Document compare
+
+[`compareToProposedEdits`](../src/utils/documentCompare.ts) turns a line diff (open document = original, imported file = revised) into `ProposedEdit[]` with unique `original` spans. UI: **File → Compare…** → [`CompareReviewPanel.tsx`](../src/components/CompareReviewPanel.tsx). Cards use `dismissOnly` (no reject-with-feedback). Apply all snapshots `"Before compare"`.
+
+## 11. Next
 
 - The prompt that produces these fences → [AI chat & prompts](07-ai-chat.md)
 - Where the rationale is stored and displayed → [Comments §8](06-comments.md#8-applied-rationales)

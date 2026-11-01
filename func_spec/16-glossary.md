@@ -59,6 +59,9 @@ type Role = 'system' | 'user' | 'assistant';
 | `content` | `string` | The entire document as one string |
 | `createdAt` | `number` | |
 | `updatedAt` | `number` | Bumped by `updateDocumentContent` |
+| `tags` | `string[]` | Nested paths without `#`. Merged with body hashtags |
+| `starred` | `boolean` | Sidebar pin |
+| `lastOpenedAt` | `number` | Bumped by `setCurrentDocument` |
 
 ### `Revision`
 

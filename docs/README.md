@@ -10,18 +10,18 @@ This guide is for people using the app. It covers every screen and everyday task
 
 - Write Markdown in **Write**, **Preview**, **Graph**, or **Split** view (Split = text + Graph)
 - See [What's new](whats-new.md) for the current release
-- Keep many documents in the sidebar
+- Keep many documents in the sidebar (search, nested tags, pin, recent)
 - Comment on a passage, then **Send to AI** in one batch
 - Chat with MiniMax, OpenAI, or **Local Model (require around 2gb disk space)**
 - Review proposed edits as cards — **Apply**, **Reject**, or apply several at once
 - Save and restore **revisions**
-- Import text from photos or PDFs
+- Import text from photos or PDFs; compare another `.md` / `.json` / `.docx` as suggested edits
 - Get optional inline **Predict** suggestions while you type
 - Reference other documents with `@` — attach another doc or its headings (`§…`) in chat, comments, or rejection feedback. See [Reference other documents (`@`)](reference-other-documents.md).
 
 ## Start here
 
-1. [What's new](whats-new.md) — current release (toolbar polish, compact Mindmap, Preview default in v0.6.8)
+1. [What's new](whats-new.md) — current release (sidebar tags, Preview numbering, document compare)
 2. [Getting started](getting-started.md) — first launch, connect AI, first document
 3. [Your workspace](workspace.md) — layout, theme, panels, Help
 4. [Documents](documents.md) — create, rename, switch, delete

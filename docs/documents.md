@@ -28,6 +28,7 @@ If the editor says **No document selected**, click **Create one**.
 - **Export .json** — download the document plus comments, chat, and revisions
 - **Import photos / PDFs** — OCR into the editor at the caret. See [Import from photos or PDFs](import.md)
 - **Import .json** — restore a JSON backup, asking before overwrite
+- **Compare…** — redline another `.md` / `.json` / `.docx` or workspace document and produce suggested edits. See [Import](import.md#compare-with-another-file)
 
 ## Switch documents
 
@@ -36,6 +37,14 @@ Click a title in the sidebar. The top bar shows `/` plus that title.
 Each document has its own Chat thread. Switching documents switches the conversation too.
 
 Other documents can be attached to a Chat or comment turn with `@`. The picker lists every document **except** the one you are editing. See [Reference other documents](reference-other-documents.md).
+
+## Pin, recent, and tags
+
+- **☆ / ★** pins a document at the top of the sidebar
+- **Recent** lists the last ten documents you opened
+- **#** on a row adds a nested tag (`drafts/essays`). Hashtags in the body (`#drafts/essays`) are picked up on save. See [Your workspace](workspace.md)
+
+The search box filters by title or tag.
 
 ## Rename
 

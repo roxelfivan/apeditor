@@ -23,6 +23,9 @@
     "test:local-prompt-compact": "node scripts/test-local-prompt-compact.mjs",
     "test:token-estimate": "node scripts/test-token-estimate.mjs",
     "test:token-counter-render": "node scripts/test-token-counter-render.mjs",
+    "test:outline-numbering": "node scripts/test-outline-numbering.mjs",
+    "test:tags": "node scripts/test-tags.mjs",
+    "test:document-compare": "node scripts/test-document-compare.mjs",
     "check:docs": "node scripts/check-func-spec-links.mjs"
   },
   "dependencies": {
@@ -32,6 +35,7 @@
     "@litert-lm/core": "^0.18.0",
     "@paddleocr/paddleocr-js": "^0.4.2",
     "diff": "^5.2.0",
+    "mammoth": "^1.13.0",
     "onnxruntime-web": "^1.30.0",
     "pdfjs-dist": "^4.6.0",
     "react": "^18.3.1",

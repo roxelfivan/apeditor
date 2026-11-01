@@ -83,6 +83,7 @@ const showWriteTools = showWrite;
 | `GraphViewControls` | — | — | ✅ | ✅ | ✅ |
 | **Format** dropdown (B/I/U + Size ±) | ✅ | — | ✅ | — | — |
 | **Size +** / **Size −** (preview caption) | — | ✅ | — | ✅ | — |
+| **Lines** / outline select / **Print** | — | ✅ | — | ✅ | — |
 | **Comment** | ✅ | — | ✅ | — | — |
 | Predict (sparkle icon) | ✅ | — | ✅ | — | — |
 | Debug status pill / counters | ✅\* | — | ✅\* | — | — |
@@ -118,6 +119,8 @@ The Graph view has its own inner projection dropdown — `Flat` / `Mindmap` / `3
 Empty content renders `*Nothing to preview yet.*`. Write mode is unchanged — it still shows the raw `[[…]]` syntax.
 
 This only works because `rehype-raw` is enabled and the shared sanitize schema allows `span` / `mark` with `className`. Styled by `.wiki-link` in [`index.css`](../src/index.css) (purple in light and dark).
+
+Preview is rendered by [`PreviewMarkdown.tsx`](../src/components/PreviewMarkdown.tsx). Optional **source line numbers** (`layout.previewLineNumbers`) stamp `data-line` via `rehypeSourceLines`. Optional **outline numbering** (`layout.outlineNumbering`) prepends labels from [`outlineNumbering.ts`](../src/utils/outlineNumbering.ts) onto `h1`–`h6` without rewriting stored markdown. `@media print` hides `[data-print-hide]` chrome and keeps `[data-print-root]`.
 
 ## 3. Formatting
 

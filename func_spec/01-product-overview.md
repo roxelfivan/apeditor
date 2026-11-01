@@ -41,9 +41,9 @@ ApEditor is built for a single, narrow audience:
 
 | Capability | Where it lives |
 |---|---|
-| Multiple documents: create, rename, switch, delete | [`Sidebar.tsx`](../src/components/Sidebar.tsx) |
+| Multiple documents: create, rename, switch, delete; nested tags, pin, recent, search | [`Sidebar.tsx`](../src/components/Sidebar.tsx), [`utils/tags.ts`](../src/utils/tags.ts) |
 | Four editor views — **Write**, **Preview**, **Graph**, **Split** (Split = Write/Preview left + Graph right) | [`Editor.tsx`](../src/components/Editor.tsx) |
-| Markdown rendering with GFM, raw HTML, sanitization | [`utils/markdown.ts`](../src/utils/markdown.ts) |
+| Markdown rendering with GFM, raw HTML, sanitization; Preview line numbers and heading outline schemes | [`utils/markdown.ts`](../src/utils/markdown.ts), [`PreviewMarkdown.tsx`](../src/components/PreviewMarkdown.tsx), [`utils/outlineNumbering.ts`](../src/utils/outlineNumbering.ts) |
 | Bold / Italic / Underline + font size (10–24 px) | `wrapSelection` in [`Editor.tsx`](../src/components/Editor.tsx) |
 | **Predict** — inline sentence completion, opt-in | [`useInlineCompletion.ts`](../src/hooks/useInlineCompletion.ts) |
 | Revision history: snapshot, diff, restore | [`RevisionHistory.tsx`](../src/components/RevisionHistory.tsx) |
@@ -75,6 +75,7 @@ ApEditor is built for a single, narrow audience:
 | Customizable System Message + Rationale Rules (Debug Mode) | [`api/chat.ts`](../src/api/chat.ts), [`SettingsModal.tsx`](../src/components/SettingsModal.tsx) |
 | Prompt token counter for Chat + Comment sends (Local Model mode) | [`utils/tokenEstimate.ts`](../src/utils/tokenEstimate.ts), [`TokenCounter.tsx`](../src/components/TokenCounter.tsx) |
 | Proposed-edit cards with Apply / Reject / Highlight Apply | [`ProposedEditCard.tsx`](../src/components/ProposedEditCard.tsx), [`utils/proposedEdit.ts`](../src/utils/proposedEdit.ts) |
+| Document compare (redline → proposed-edit set) | [`utils/documentCompare.ts`](../src/utils/documentCompare.ts), [`CompareReviewPanel.tsx`](../src/components/CompareReviewPanel.tsx) |
 | Per-edit rationale stored on the comment round | `recordAppliedEdit` in [`store/actions.ts`](../src/store/actions.ts) |
 | Reject-with-feedback batching | `formatRejectionBatch` in [`utils/proposedEdit.ts`](../src/utils/proposedEdit.ts) |
 

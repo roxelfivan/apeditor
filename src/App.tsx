@@ -6,6 +6,7 @@ import { Editor } from '@/components/Editor';
 import { ChatPanel } from '@/components/ChatPanel';
 import { PromptLibrary } from '@/components/PromptLibrary';
 import { RevisionHistory } from '@/components/RevisionHistory';
+import { CompareReviewPanel } from '@/components/CompareReviewPanel';
 import { SettingsModal } from '@/components/SettingsModal';
 import { HelpDocs } from '@/components/HelpDocs';
 import { FuncSpecDocs } from '@/components/FuncSpecDocs';
@@ -446,6 +447,7 @@ export default function App() {
   return (
     <div className="h-full flex flex-col relative">
       {!topbarCollapsed && (
+        <div data-print-hide>
         <Topbar
           onOpenSettings={() => setSettingsOpen(true)}
           onOpenPrompts={() => setPromptsOpen(true)}
@@ -461,14 +463,20 @@ export default function App() {
           moreOpen={moreOpen}
           onToggleMore={() => setMoreOpen((open) => !open)}
         />
+        </div>
       )}
       <div className="flex-1 flex min-h-0 relative">
+        <div data-print-hide className="contents">
         <Sidebar />
+        </div>
         <Editor />
+        <div data-print-hide className="contents">
         <ChatPanel />
+        </div>
         {/* Edge-anchor toggles: a single always-visible chevron strip on
             each side acts as both the hide and the show button. The
             chevron direction reflects the current state. */}
+        <div data-print-hide>
         <EdgeAnchor
           side="left"
           collapsed={sidebarCollapsed}
@@ -479,6 +487,8 @@ export default function App() {
             setSidebarCollapsed(next);
           }}
         />
+        </div>
+        <div data-print-hide>
         <EdgeAnchor
           side="right"
           collapsed={chatCollapsed}
@@ -495,17 +505,20 @@ export default function App() {
             }
           }}
         />
+        </div>
       </div>
       {/* Top-anchor is rendered as a sibling of the Topbar (not inside the
           content row) so its `absolute top-0` resolves to the very top of
           the page — the same upper edge of the topbar — regardless of
           whether the topbar is currently visible. */}
+      <div data-print-hide>
       <EdgeAnchor
         side="top"
         collapsed={topbarCollapsed}
         label={topbarCollapsed ? 'Show topbar' : 'Hide topbar'}
         onClick={() => setTopbarCollapsed(!topbarCollapsed)}
       />
+      </div>
 
       <MoreSheet
         open={moreOpen}
@@ -603,6 +616,7 @@ export default function App() {
         open={revisionsOpen}
         onClose={() => setRevisionsOpen(false)}
       />
+      <CompareReviewPanel />
       <HelpDocs
         open={helpOpen}
         initialPage={helpPage}

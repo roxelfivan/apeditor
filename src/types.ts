@@ -56,6 +56,15 @@ export interface DocumentRecord {
   content: string;
   createdAt: number;
   updatedAt: number;
+  /**
+   * Nested tag paths without a leading `#` (e.g. `drafts/essays`).
+   * Merged with Bear-style hashtags found in `content`.
+   */
+  tags: string[];
+  /** Star / pin — listed in the sidebar Pinned section. */
+  starred: boolean;
+  /** Last time this document was opened. 0 if never. */
+  lastOpenedAt: number;
 }
 
 export interface Revision {

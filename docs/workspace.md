@@ -23,7 +23,13 @@ To hide the top bar, click the chevron on the **top edge** of the window. Click 
 
 ## Sidebar and Chat
 
-The left column lists your documents. The right column is Chat.
+The left column lists your documents, grouped so a large workspace stays scannable. The right column is Chat.
+
+**Search** at the top of the sidebar filters by title or tag path.
+
+**Pinned** (star on a row) stays at the top. **Recent** is the last ten documents you opened.
+
+**Tags** are Bear-style nested paths. Write `#drafts/essays` in the markdown (not an ATX heading), or click **#** on a row and type `drafts/essays`. Nested folders expand in the sidebar. A document can have several tags. **Untagged** lists everything else.
 
 | Edge | Shortcut | Action |
 | --- | --- | --- |

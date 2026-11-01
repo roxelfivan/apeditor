@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
 import { v4 as uuid } from 'uuid';
 import { useStore, useCurrentDocument } from '@/store/useStore';
+import { PreviewMarkdown } from '@/components/PreviewMarkdown';
 import { useInlineCompletion } from '@/hooks/useInlineCompletion';
 import { useDocumentMentions } from '@/hooks/useDocumentMentions';
 import {
@@ -11,8 +11,8 @@ import {
   MAX_EDITOR_SPLIT_PCT,
   DEFAULT_EDITOR_SPLIT_PCT,
 } from '@/hooks/useDragResize';
-import { remarkPlugins, rehypePlugins } from '@/utils/markdown';
 import { formatWikilinksForPreview } from '@/utils/graph/parseWikilinks';
+import type { OutlineScheme } from '@/utils/outlineNumbering';
 import { requiresApiKey } from '@/config/providers';
 import {
   getSelectionRect,
@@ -207,6 +207,10 @@ export function Editor() {
     MAX_EDITOR_SPLIT_PCT
   );
   const splitLeftMode = useStore((s) => s.layout.splitLeftMode) ?? 'write';
+  const previewLineNumbers = useStore((s) => s.layout.previewLineNumbers) === true;
+  const outlineNumbering =
+    (useStore((s) => s.layout.outlineNumbering) as OutlineScheme | undefined) ??
+    'off';
   const setLayout = useStore((s) => s.setLayout);
   const bumpEditorFontSize = useStore((s) => s.bumpEditorFontSize);
   const updateContent = useStore((s) => s.updateDocumentContent);
@@ -1515,7 +1519,10 @@ export function Editor() {
           so scrolling the controls cannot drag Save
           out of reach — it is always one click away.
       */}
-      <div className="flex flex-nowrap items-center gap-2 px-4 py-2 border-b border-paper-hairline dark:border-cyber-border bg-paper-base dark:bg-ape-base text-[15px] leading-none">
+      <div
+        data-print-hide
+        className="flex flex-nowrap items-center gap-2 px-4 py-2 border-b border-paper-hairline dark:border-cyber-border bg-paper-base dark:bg-ape-base text-[15px] leading-none"
+      >
         {/* Scrolling region. `min-w-0` on a flex item is what actually lets
             it shrink below its content width — without it the child keeps
             its intrinsic width, `overflow-x` never engages, and the pinned
@@ -1878,6 +1885,42 @@ export function Editor() {
             >
               Size −
             </button>
+            <button
+              type="button"
+              className={`inline-flex items-center justify-center h-9 px-2.5 rounded border text-[15px] leading-none transition-colors ${
+                previewLineNumbers
+                  ? 'border-cyber-clay dark:border-cyber-cyan bg-paper-elevated dark:bg-ape-elevated text-cyber-clay dark:text-cyber-cyan'
+                  : 'border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-panel text-paper-inkSoft dark:text-cyber-muted hover:border-cyber-clay dark:hover:border-cyber-cyan'
+              }`}
+              aria-pressed={previewLineNumbers}
+              onClick={() => setLayout({ previewLineNumbers: !previewLineNumbers })}
+              title="Show source line numbers in Preview and print"
+            >
+              Lines
+            </button>
+            <select
+              aria-label="Outline numbering"
+              value={outlineNumbering}
+              onChange={(e) =>
+                setLayout({
+                  outlineNumbering: e.target.value as OutlineScheme,
+                })
+              }
+              className="appearance-none cursor-pointer pl-2 pr-6 h-9 text-[15px] leading-none rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-panel text-paper-ink dark:text-cyber-primary hover:border-cyber-clay dark:hover:border-cyber-cyan focus:outline-none focus:border-cyber-clay dark:focus:border-cyber-cyan transition-colors"
+              title="Number headings in Preview and print"
+            >
+              <option value="off">Outline off</option>
+              <option value="decimal">Outline 1.1.1</option>
+              <option value="legal">Outline Article/Section</option>
+            </select>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center h-9 px-2.5 rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-panel text-[15px] leading-none text-paper-inkSoft dark:text-cyber-muted hover:border-cyber-clay dark:hover:border-cyber-cyan hover:text-cyber-clay dark:hover:text-cyber-cyan transition-colors"
+              onClick={() => window.print()}
+              title="Print Preview (line numbers and outline included)"
+            >
+              Print
+            </button>
           </>
         )}
         </div>
@@ -1914,7 +1957,10 @@ export function Editor() {
           </button>
         </div>
       </div>
-      <div className="px-4 pt-3 pb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 bg-paper-base dark:bg-ape-base">
+      <div
+        data-print-hide
+        className="px-4 pt-3 pb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 bg-paper-base dark:bg-ape-base"
+      >
         <h2 className="font-semibold text-paper-ink dark:text-cyber-primary truncate text-base min-w-0">
           {doc.title}
         </h2>
@@ -1953,6 +1999,7 @@ export function Editor() {
                 the main select stays on Split; Graph stays on the right. */}
             {isSplit && (
               <div
+                data-print-hide
                 role="tablist"
                 aria-label="Split left pane"
                 className="flex shrink-0 items-center gap-1 px-2 py-1.5 border-b border-paper-hairline dark:border-cyber-border bg-paper-base dark:bg-ape-base"
@@ -1986,6 +2033,7 @@ export function Editor() {
             {showWrite && (
             <>
             <div
+              data-print-hide
               className={`flex-1 flex min-h-0 relative ${isNarrow ? 'flex-col' : ''}`}
             >
               {/* Textarea + mirror overlay. The mirror sits *behind*
@@ -2392,39 +2440,42 @@ export function Editor() {
             )}
             {showPreview && isSplit && (
               <div
-                className="flex-1 min-w-0 overflow-y-auto p-4 prose-md bg-paper-base dark:bg-ape-base"
-                style={{ fontSize: `${editorFontSize}px`, lineHeight: 1.55 }}
+                data-print-root
+                className="flex-1 min-w-0 overflow-y-auto p-4 bg-paper-base dark:bg-ape-base"
               >
-                <ReactMarkdown
-                  remarkPlugins={remarkPlugins}
-                  rehypePlugins={rehypePlugins}
-                >
-                  {previewMarkdown}
-                </ReactMarkdown>
+                <PreviewMarkdown
+                  source={previewMarkdown}
+                  lineNumbers={previewLineNumbers}
+                  outlineScheme={outlineNumbering}
+                  style={{ fontSize: `${editorFontSize}px`, lineHeight: 1.55 }}
+                />
               </div>
             )}
             {isSplit && !isNarrow && (
+              <span data-print-hide>
               <ResizeHandle
                 handle="right"
                 onPointerDown={(e) => beginSplitResize('right', e)}
               />
+              </span>
             )}
           </div>
         )}
         {showPreview && !isSplit && (
           <div
-              className="flex-1 min-w-0 overflow-y-auto p-4 prose-md bg-paper-base dark:bg-ape-base"
+              data-print-root
+              className="flex-1 min-w-0 overflow-y-auto p-4 bg-paper-base dark:bg-ape-base"
+            >
+            <PreviewMarkdown
+              source={previewMarkdown}
+              lineNumbers={previewLineNumbers}
+              outlineScheme={outlineNumbering}
               style={{ fontSize: `${editorFontSize}px`, lineHeight: 1.55 }}
-            >
-            <ReactMarkdown
-              remarkPlugins={remarkPlugins}
-              rehypePlugins={rehypePlugins}
-            >
-              {previewMarkdown}
-            </ReactMarkdown>
+            />
           </div>
         )}
         {showGraph && (
+          <div data-print-hide className="contents">
           <GraphView
             key={graphEpoch}
             labelPx={graphLabelPx}
@@ -2434,6 +2485,7 @@ export function Editor() {
             scope={graphScope}
             onClearScope={() => setGraphScope(createScope())}
           />
+          </div>
         )}
       </div>
     </div>

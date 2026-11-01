@@ -52,6 +52,9 @@ function makeDoc(
     content: body,
     createdAt: 0,
     updatedAt: 0,
+    tags: [],
+    starred: false,
+    lastOpenedAt: 0,
   };
 }
 
