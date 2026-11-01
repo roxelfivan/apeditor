@@ -53,6 +53,8 @@ import {
   makeDoc,
   seedPrompts,
 } from './defaults';
+import { isOutlineScheme } from '@/utils/outlineNumbering';
+import { mergeDocumentTags, normalizeTagList, normalizeTagPath } from '@/utils/tags';
 import type { StoreState } from './types';
 import {
   addCommentAction,
@@ -97,7 +99,11 @@ export const useStore = create<StoreState>()(
         editorSplitPct: DEFAULT_EDITOR_SPLIT_PCT,
         splitLeftMode: 'write',
         previewSizes: {},
+        previewLineNumbers: false,
+        outlineNumbering: 'off',
+        sidebarExpandedTags: [],
       },
+      compareSession: null,
       editorFocus: {},
       proposedEditHighlights: {},
       comments: {},
@@ -116,7 +122,10 @@ export const useStore = create<StoreState>()(
         const source = get().documents.find((d) => d.id === id);
         if (!source) return null;
         const fallback = `${source.title || 'Untitled'} copy`;
-        const doc = makeDoc(title?.trim() || fallback, source.content);
+        const doc = makeDoc(title?.trim() || fallback, source.content, {
+          tags: source.tags,
+          starred: source.starred,
+        });
         set((s) => ({
           documents: [doc, ...s.documents],
           currentDocumentId: doc.id,
@@ -158,6 +167,8 @@ export const useStore = create<StoreState>()(
               sourceContent: plan.document.content,
               sourceCreatedAt: plan.document.createdAt,
               sourceUpdatedAt: plan.document.updatedAt,
+              tags: plan.document.tags,
+              starred: plan.document.starred,
             });
             resolvedId = newDoc.id;
             return {
@@ -226,13 +237,61 @@ export const useStore = create<StoreState>()(
                 : s.currentDocumentId,
           };
         }),
-      setCurrentDocument: (id) => set({ currentDocumentId: id }),
+      setCurrentDocument: (id) =>
+        set((s) => ({
+          currentDocumentId: id,
+          documents: id
+            ? s.documents.map((d) =>
+                d.id === id ? { ...d, lastOpenedAt: Date.now() } : d
+              )
+            : s.documents,
+        })),
       updateDocumentContent: (id, content) =>
         set((s) => ({
           documents: s.documents.map((d) =>
-            d.id === id ? { ...d, content, updatedAt: Date.now() } : d
+            d.id === id
+              ? {
+                  ...d,
+                  content,
+                  updatedAt: Date.now(),
+                  tags: mergeDocumentTags(d.tags, content),
+                }
+              : d
           ),
         })),
+      toggleDocumentStarred: (id) =>
+        set((s) => ({
+          documents: s.documents.map((d) =>
+            d.id === id ? { ...d, starred: !d.starred } : d
+          ),
+        })),
+      setDocumentTags: (id, tags) =>
+        set((s) => ({
+          documents: s.documents.map((d) =>
+            d.id === id ? { ...d, tags: normalizeTagList(tags) } : d
+          ),
+        })),
+      addDocumentTag: (id, tag) =>
+        set((s) => {
+          const n = normalizeTagPath(tag);
+          if (!n) return s;
+          return {
+            documents: s.documents.map((d) =>
+              d.id === id
+                ? { ...d, tags: normalizeTagList([...d.tags, n]) }
+                : d
+            ),
+          };
+        }),
+      removeDocumentTag: (id, tag) =>
+        set((s) => ({
+          documents: s.documents.map((d) =>
+            d.id === id
+              ? { ...d, tags: (d.tags ?? []).filter((t) => t !== tag) }
+              : d
+          ),
+        })),
+      setCompareSession: (compareSession) => set({ compareSession }),
 
       saveRevision: (documentId, label) =>
         set((s) => {
@@ -638,6 +697,15 @@ export const useStore = create<StoreState>()(
           if (slm !== 'write' && slm !== 'preview') {
             layoutPatch.splitLeftMode = 'write';
           }
+          if (typeof state.layout?.previewLineNumbers !== 'boolean') {
+            layoutPatch.previewLineNumbers = false;
+          }
+          if (!isOutlineScheme(state.layout?.outlineNumbering)) {
+            layoutPatch.outlineNumbering = 'off';
+          }
+          if (!Array.isArray(state.layout?.sidebarExpandedTags)) {
+            layoutPatch.sidebarExpandedTags = [];
+          }
           if (Object.keys(layoutPatch).length > 0) {
             repairs.layout = { ...state.layout, ...layoutPatch } as StoreState['layout'];
           }
@@ -757,6 +825,29 @@ export const useStore = create<StoreState>()(
           }
           if (typeof state.persistApiKey !== 'boolean') {
             repairs.persistApiKey = true;
+          }
+          if (Array.isArray(state.documents)) {
+            let docsChanged = false;
+            const documents = state.documents.map((d) => {
+              const tags = mergeDocumentTags(
+                Array.isArray(d.tags) ? d.tags : [],
+                d.content ?? ''
+              );
+              const starred = Boolean(d.starred);
+              const lastOpenedAt =
+                typeof d.lastOpenedAt === 'number' ? d.lastOpenedAt : 0;
+              if (
+                !Array.isArray(d.tags) ||
+                d.tags.length !== tags.length ||
+                d.starred !== starred ||
+                d.lastOpenedAt !== lastOpenedAt
+              ) {
+                docsChanged = true;
+                return { ...d, tags, starred, lastOpenedAt };
+              }
+              return { ...d, tags, starred, lastOpenedAt };
+            });
+            if (docsChanged) repairs.documents = documents;
           }
           // Older payloads predate parked conversations. Default to
           // `{}` so History never has to special-case `undefined`.

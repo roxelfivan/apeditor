@@ -11,6 +11,7 @@
 1. **New** / **Save** / **Save As**
 2. **Export .md** / **Export .json**
 3. **Import photos / PDFs** (OCR sub-panel) / **Import .json**
+4. **Compare…** (file or workspace document → proposed-edit set)
 
 The editor toolbar keeps only the floppy **Save** (revision snapshot).
 

@@ -43,7 +43,7 @@ Split from a single 1,485-line file in v0.5.2.
 | `documents` | `DocumentRecord[]` | `[Welcome, Ideas]` | ✅ | Newest-first; `createDocument` prepends |
 | `currentDocumentId` | `string \| null` | `initialDocs[0].id` | ✅ | Falls back to `documents[0].id ?? null` on delete |
 
-`DocumentRecord` = `{ id, title, content, createdAt, updatedAt }`.
+`DocumentRecord` = `{ id, title, content, createdAt, updatedAt, tags, starred, lastOpenedAt }`. Older payloads missing the last three fields are repaired on rehydrate (`tags` merged from body hashtags, `starred: false`, `lastOpenedAt: 0`).
 
 ### 3.2 Per-document collections
 
@@ -114,6 +114,9 @@ All three are `Record<documentId, …>`. They are deleted with the document.
 | `layout.editorSplitPct` | `number` | `50` | ✅ | `20`–`80` % (left pane of Split; Graph takes the rest) |
 | `layout.splitLeftMode` | `'write' \| 'preview'` | `'write'` | ✅ | Left pane content in Split; missing values rehydrate to `'write'` |
 | `layout.previewSizes` | `Record<string, {w,h}>` | `{}` | ✅ | Per ProposedEditCard, keyed `${messageId}:${editId}` |
+| `layout.previewLineNumbers` | `boolean` | `false` | ✅ | Source-line gutter in Preview / print |
+| `layout.outlineNumbering` | `'off' \| 'decimal' \| 'legal'` | `'off'` | ✅ | Heading labels in Preview / print only |
+| `layout.sidebarExpandedTags` | `string[]` | `[]` | ✅ | Open nested-tag paths |
 
 > `previewSizes` is persisted but is **not** part of `setLayout`'s signature. It has its own `setPreviewSize(key, patch)` action.
 
@@ -124,6 +127,7 @@ All three are `Record<documentId, …>`. They are deleted with the document.
 | `editorFocus` | `Record<documentId, { focused, selectionStart, selectionEnd }>` | Lets ProposedEditCard decide whether Highlight Apply is available. `-1` offsets until the user has clicked in the editor. |
 | `proposedEditHighlights` | `Record<documentId, ProposedEditHighlight[]>` | Temporary editor highlight of a card's matched span, keyed `${messageId}:${editId}`. |
 | `commentUndoStack` | `CommentOp[]` | Session-only undo. A fresh reload starts empty **by design**. |
+| `compareSession` | `{ sourceLabel, edits, skippedHunks } \| null` | In-session document compare. Not persisted. |
 
 ## 4. `localStorage` schema
 

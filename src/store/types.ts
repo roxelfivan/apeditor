@@ -13,6 +13,7 @@ import type {
   DocumentRecord,
   MentionToken,
   Prompt,
+  ProposedEdit,
   Revision,
   Theme,
 } from '@/types';
@@ -127,7 +128,22 @@ export interface StoreState {
      */
     splitLeftMode: 'write' | 'preview';
     previewSizes: Record<string, { w: number; h: number }>;
+    /** Source-line gutter in Preview / print. */
+    previewLineNumbers: boolean;
+    /** Heading numbering painted in Preview / print only. */
+    outlineNumbering: 'off' | 'decimal' | 'legal';
+    /** Expanded nested-tag paths in the sidebar. */
+    sidebarExpandedTags: string[];
   };
+
+  /**
+   * In-session document compare (redline). Not persisted.
+   */
+  compareSession: {
+    sourceLabel: string;
+    edits: ProposedEdit[];
+    skippedHunks: number;
+  } | null;
 
   /**
    * Per-document editor focus + caret state. Updated by `Editor.tsx` on
@@ -175,6 +191,11 @@ export interface StoreState {
   deleteDocument: (id: string) => void;
   setCurrentDocument: (id: string | null) => void;
   updateDocumentContent: (id: string, content: string) => void;
+  toggleDocumentStarred: (id: string) => void;
+  setDocumentTags: (id: string, tags: string[]) => void;
+  addDocumentTag: (id: string, tag: string) => void;
+  removeDocumentTag: (id: string, tag: string) => void;
+  setCompareSession: (session: StoreState['compareSession']) => void;
 
   /**
    * Apply one resolved ImportPlan to the store. Built alongside the
@@ -237,6 +258,9 @@ export interface StoreState {
       chatWidth: number;
       editorSplitPct: number;
       splitLeftMode: 'write' | 'preview';
+      previewLineNumbers: boolean;
+      outlineNumbering: 'off' | 'decimal' | 'legal';
+      sidebarExpandedTags: string[];
     }>
   ) => void;
   setPreviewSize: (

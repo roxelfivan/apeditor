@@ -15,6 +15,18 @@ Use the dropdown on the left of the editor toolbar (order: Write → Preview →
 
 An empty Preview shows *Nothing to preview yet.*
 
+### Line numbers and outline numbering
+
+On Preview (and Split with Preview on the left), extra toolbar controls:
+
+| Control | What it does |
+| --- | --- |
+| **Lines** | Source line numbers in the gutter (the starting line of each block). Included when you **Print**. |
+| **Outline off / 1.1.1 / Article/Section** | Numbers headings in Preview only. Decimal is `1`, `1.1`, `1.1.1`. Legal is `Article I`, `Section 1`, `(a)` for the first three heading levels. The stored markdown is not rewritten. |
+| **Print** | Browser print. Sidebar, Chat, and the toolbar hide; Preview (with lines and outline) remains. |
+
+Those choices are remembered in this browser.
+
 ### Wikilinks in Preview
 
 In **Write**, keep the Obsidian-style syntax: `[[Name]]`, `[[Name|label]]`, or `[[Name#Heading]]`.

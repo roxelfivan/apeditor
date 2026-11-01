@@ -70,9 +70,22 @@ export const seedPrompts: Prompt[] = [
  * Build a fresh `DocumentRecord` with a uuid + timestamps. Used by the
  * store's `createDocument` action and by the welcome-doc seeding pass.
  */
-export function makeDoc(title: string, content = ''): DocumentRecord {
+export function makeDoc(
+  title: string,
+  content = '',
+  extra?: Partial<Pick<DocumentRecord, 'tags' | 'starred'>>
+): DocumentRecord {
   const now = Date.now();
-  return { id: uuid(), title, content, createdAt: now, updatedAt: now };
+  return {
+    id: uuid(),
+    title,
+    content,
+    createdAt: now,
+    updatedAt: now,
+    tags: extra?.tags ?? [],
+    starred: extra?.starred ?? false,
+    lastOpenedAt: now,
+  };
 }
 
 export const initialDocs: DocumentRecord[] = [

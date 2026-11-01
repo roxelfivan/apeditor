@@ -16,6 +16,12 @@ import {
   type ImportDecision,
 } from '@/utils/backup';
 import type { ImportPlan } from '@/store/types';
+import {
+  COMPARE_FILE_ACCEPT,
+  CompareSourceError,
+  readCompareFile,
+} from '@/utils/importCompareSource';
+import { compareToProposedEdits } from '@/utils/documentCompare';
 
 const VIEWPORT_PAD = 8;
 const POPOVER_WIDTH = 288; // Tailwind w-72
@@ -72,7 +78,7 @@ const LANG_OPTIONS: { code: Lang; label: string }[] = [
 const MENU_ITEM_CLASS =
   'w-full text-left px-3 py-1.5 text-[15px] text-paper-ink dark:text-cyber-primary hover:bg-paper-elevated dark:hover:bg-ape-elevated hover:text-cyber-clay dark:hover:text-cyber-cyan transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-paper-ink dark:disabled:hover:text-cyber-primary';
 
-type FilePanel = 'closed' | 'menu' | 'ocr';
+type FilePanel = 'closed' | 'menu' | 'ocr' | 'compare';
 
 /**
  * Sidebar **File** menu. Owns document create / snapshot / duplicate
@@ -106,8 +112,10 @@ export function FileActionsButton() {
   const createDocument = useStore((s) => s.createDocument);
   const saveRevision = useStore((s) => s.saveRevision);
   const duplicateDocument = useStore((s) => s.duplicateDocument);
+  const setCompareSession = useStore((s) => s.setCompareSession);
   const inputRef = useRef<HTMLInputElement>(null);
   const backupInputRef = useRef<HTMLInputElement>(null);
+  const compareInputRef = useRef<HTMLInputElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const importModalRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -135,6 +143,7 @@ export function FileActionsButton() {
   >({});
   const menuOpen = panel === 'menu';
   const ocrOpen = panel === 'ocr';
+  const compareOpen = panel === 'compare';
   const panelVisible =
     panel !== 'closed' || busy || Boolean(error) || pendingParsed !== null;
 
@@ -565,13 +574,47 @@ export function FileActionsButton() {
     setPanel('closed');
   };
 
+  const startCompare = (label: string, text: string) => {
+    if (!currentDoc) {
+      setError('Open a document first, then compare.');
+      return;
+    }
+    const result = compareToProposedEdits(currentDoc.content, text);
+    setCompareSession({
+      sourceLabel: label,
+      edits: result.edits,
+      skippedHunks: result.skippedHunks,
+    });
+    setPanel('closed');
+  };
+
+  const onCompareFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const source = await readCompareFile(file);
+      startCompare(source.title, source.text);
+    } catch (err) {
+      const msg =
+        err instanceof CompareSourceError
+          ? err.message
+          : (err as Error).message || 'Could not read the comparison file.';
+      setError(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div ref={anchorRef} className="relative inline-flex items-center">
       <button
         type="button"
         data-file-actions-toggle
         aria-haspopup="menu"
-        aria-expanded={menuOpen || ocrOpen}
+        aria-expanded={menuOpen || ocrOpen || compareOpen}
         aria-label="File"
         className="btn-fire-sm !text-[15px] !py-1.5 disabled:opacity-50"
         onClick={() =>
@@ -708,6 +751,77 @@ export function FileActionsButton() {
           >
             Import .json
           </button>
+          <div
+            className="my-1 border-t border-paper-hairline dark:border-cyber-border"
+            aria-hidden
+          />
+          <button
+            type="button"
+            role="menuitem"
+            className={MENU_ITEM_CLASS}
+            onClick={() => setPanel('compare')}
+            disabled={!hasDoc}
+            title={
+              hasDoc
+                ? 'Redline another file or document against the open draft'
+                : 'Open a document first to compare'
+            }
+          >
+            Compare…
+          </button>
+        </div>
+      )}
+      {compareOpen && !busy && (
+        <div
+          ref={popoverRef}
+          className="fixed z-40 w-72 max-w-[calc(100vw-1rem)] bg-paper-panel dark:bg-ape-panel border border-paper-hairline dark:border-cyber-border rounded shadow-ape-paper-lift dark:shadow-lg p-3 text-xs space-y-2 box-border"
+        >
+          <div className="font-semibold text-sm text-cyber-clay dark:text-cyber-cyan uppercase tracking-wide">
+            Compare
+          </div>
+          <p className="text-paper-inkSoft dark:text-cyber-muted leading-snug">
+            Treat the open document as the original. Import a revised
+            .md, .json backup, or .docx (or pick another workspace
+            document) to produce a full suggested-edit set.
+          </p>
+          {error && (
+            <div className="text-[11px] text-cyber-danger">{error}</div>
+          )}
+          <button
+            type="button"
+            className="btn-fire-sm w-full"
+            onClick={() => compareInputRef.current?.click()}
+          >
+            Compare with file…
+          </button>
+          <div className="max-h-40 overflow-y-auto space-y-0.5">
+            {documents
+              .filter((d) => d.id !== currentDoc?.id)
+              .map((d) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  className={MENU_ITEM_CLASS}
+                  onClick={() => startCompare(d.title || 'Untitled', d.content)}
+                >
+                  {d.title || 'Untitled'}
+                </button>
+              ))}
+            {documents.filter((d) => d.id !== currentDoc?.id).length === 0 && (
+              <p className="text-paper-inkSoft dark:text-cyber-muted px-1">
+                No other documents in this workspace.
+              </p>
+            )}
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              className="btn-cyan-sm"
+              onClick={() => setPanel('closed')}
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
       {ocrOpen && !busy && (
@@ -910,6 +1024,13 @@ export function FileActionsButton() {
         accept="application/json,.json"
         className="hidden"
         onChange={onBackupFile}
+      />
+      <input
+        ref={compareInputRef}
+        type="file"
+        accept={COMPARE_FILE_ACCEPT}
+        className="hidden"
+        onChange={onCompareFile}
       />
     </div>
   );

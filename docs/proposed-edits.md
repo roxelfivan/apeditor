@@ -84,6 +84,10 @@ Edits apply automatically when **original** is still findable (exact or best-eff
 
 Open **Show what the AI was looking for** on the card if you need to see the quote. Then either restore the old wording from [Revision history](revisions.md), or select the target span and use **Highlight Apply**.
 
+## Compare two documents
+
+**File → Compare…** can also fill these cards without Chat. The open document is treated as Original; the imported file or other sidebar document is Revised. Each hunk becomes one card (`original` is a verbatim span of the open document). **Skip** dismisses a hunk; there is no “reject with feedback” path because no model is involved.
+
 ## Reference other documents in rejection feedback
 
 The **Comment (optional)** box on a proposed-edit card supports `@`, so you can attach another document to your rejection reason. For example, *“see the policy in `<Other Doc>` § Risk Owners”* — the model gets that context when you **Send N rejection comments**. Details: [Reference other documents](reference-other-documents.md).

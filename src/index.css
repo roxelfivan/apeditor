@@ -369,6 +369,54 @@ html.dark .prose-md strong {
   @apply text-paper-base;
 }
 
+.prose-md .outline-num {
+  @apply font-semibold text-paper-inkSoft mr-1;
+  font-variant-numeric: tabular-nums;
+}
+html.dark .prose-md .outline-num {
+  @apply text-cyber-muted;
+}
+
+.prose-md.preview-linenumbers {
+  position: relative;
+  padding-left: 3.25rem;
+}
+.prose-md.preview-linenumbers [data-line] {
+  position: relative;
+}
+.prose-md.preview-linenumbers [data-line]::before {
+  content: attr(data-line);
+  position: absolute;
+  left: -3.15rem;
+  width: 2.7rem;
+  text-align: right;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75em;
+  line-height: inherit;
+  color: #8a847c;
+  user-select: none;
+  pointer-events: none;
+}
+html.dark .prose-md.preview-linenumbers [data-line]::before {
+  color: #6b7280;
+}
+
+@media print {
+  [data-print-hide] {
+    display: none !important;
+  }
+  [data-print-root] {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    position: static !important;
+    box-shadow: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+}
+
 /* Help docs overlay — slightly roomier tables / lists than editor Preview. */
 .help-docs-article.prose-md h1 {
   @apply text-3xl mt-0 mb-4;

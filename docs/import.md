@@ -37,3 +37,16 @@ While work is in progress, the **File** button shows a pulse and stays disabled.
 Image and PDF recognition does **not** upload your files to ApEditor (there is no ApEditor server). The recognized text is then sent to **your** configured AI endpoint so it can be rewritten as Markdown, the same way Chat sends prompts.
 
 Clear the inserted text from the document if you do not want it kept in local storage with the rest of the draft.
+
+## Compare with another file
+
+**File → Compare…** redlines a second document against the one you have open (the open file is the original; the imported file is the revision).
+
+You can pick:
+
+- A `.md` or `.txt` file
+- An ApEditor `.json` backup (uses that backup’s document body)
+- A `.docx` file (converted in the browser)
+- Another document already in the sidebar
+
+The result is a panel of **suggested edits**, the same cards Chat uses. **Apply**, **Skip**, or **Apply all**. A revision snapshot labelled **Before compare** is saved before a bulk apply. This does not send the files to an AI.

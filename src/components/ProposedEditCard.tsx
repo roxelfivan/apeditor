@@ -59,6 +59,12 @@ interface Props {
     comment: string;
     mentions: MentionToken[];
   }) => void;
+  /**
+   * Compare-review mode: Reject dismisses the card immediately and
+   * the "reject with feedback" chat path is hidden.
+   */
+  dismissOnly?: boolean;
+  onDismiss?: (editId: string) => void;
 }
 
 type CardStatus =
@@ -86,7 +92,7 @@ const DEFAULT_HEIGHT = 220;
  * (`free` mode). Per-card size is keyed by `${messageId}:${edit.id}` and
  * persisted via the `layout.previewSizes` slice of the store.
  */
-export function ProposedEditCard({ edit, docId, messageId, staged, committed, onStageReject }: Props) {
+export function ProposedEditCard({ edit, docId, messageId, staged, committed, onStageReject, dismissOnly, onDismiss }: Props) {
   // Subscribe to documents so re-renders fire on store updates.
   const documents = useStore((s) => s.documents);
   const doc = documents.find((d) => d.id === docId);
@@ -528,6 +534,7 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
   const handleReject = () => {
     // Plain Reject — hide right now, no chat message.
     setStatus({ kind: 'rejected' });
+    onDismiss?.(edit.id);
   };
 
   const handleRejectWithFeedback = () => {
@@ -758,17 +765,23 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
         <button
           type="button"
           className="btn-ghost-sm"
-          onClick={() => setRejectOpen((v) => !v)}
+          onClick={() =>
+            dismissOnly ? handleReject() : setRejectOpen((v) => !v)
+          }
           disabled={appliedOrBusy}
-          aria-expanded={rejectOpen}
-          aria-controls={`pe-reject-panel-${messageId}-${edit.id}`}
+          aria-expanded={dismissOnly ? undefined : rejectOpen}
+          aria-controls={
+            dismissOnly ? undefined : `pe-reject-panel-${messageId}-${edit.id}`
+          }
           title={
-            rejectOpen
-              ? 'Close the rejection panel without rejecting'
-              : 'Reject this change — optionally add a reason for the AI'
+            dismissOnly
+              ? 'Skip this change'
+              : rejectOpen
+                ? 'Close the rejection panel without rejecting'
+                : 'Reject this change — optionally add a reason for the AI'
           }
         >
-          {rejectOpen ? 'Cancel' : 'Reject'}
+          {dismissOnly ? 'Skip' : rejectOpen ? 'Cancel' : 'Reject'}
         </button>
         <button
           type="button"
@@ -815,7 +828,7 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
           the textarea to read-only so the user can review what they sent
           without being able to edit a comment that has already been
           queued for the next chat turn. */}
-      {rejectOpen && !appliedOrBusy && (
+      {rejectOpen && !appliedOrBusy && !dismissOnly && (
         <div
           id={`pe-reject-panel-${messageId}-${edit.id}`}
           className="pe-comment shrink-0"
