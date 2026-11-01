@@ -27,20 +27,23 @@ function matchesQuery(doc: DocumentRecord, q: string): boolean {
 
 function SidebarDocRow({
   doc,
+  rowKey,
   active,
   isEditing,
   draft,
   setDraft,
-  setEditingId,
+  setEditingKey,
   onOpen,
   compact,
 }: {
   doc: DocumentRecord;
+  /** Unique among every row that can render this document (Pinned + Recent + All). */
+  rowKey: string;
   active: boolean;
   isEditing: boolean;
   draft: string;
   setDraft: (v: string) => void;
-  setEditingId: (id: string | null) => void;
+  setEditingKey: (key: string | null) => void;
   onOpen: () => void;
   compact?: boolean;
 }) {
@@ -50,10 +53,21 @@ function SidebarDocRow({
   const addDocumentTag = useStore((s) => s.addDocumentTag);
   const removeDocumentTag = useStore((s) => s.removeDocumentTag);
   const [tagDraft, setTagDraft] = useState<string | null>(null);
+  const skipBlurCommit = useRef(false);
+
+  const startRename = () => {
+    skipBlurCommit.current = false;
+    setDraft(doc.title);
+    setEditingKey(rowKey);
+  };
 
   const commitRename = () => {
+    if (skipBlurCommit.current) {
+      skipBlurCommit.current = false;
+      return;
+    }
     renameDocument(doc.id, draft || doc.title);
-    setEditingId(null);
+    setEditingKey(null);
   };
 
   return (
@@ -90,8 +104,14 @@ function SidebarDocRow({
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commitRename}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') commitRename();
-              else if (e.key === 'Escape') setEditingId(null);
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.currentTarget.blur();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                skipBlurCommit.current = true;
+                setEditingKey(null);
+              }
             }}
             className="flex-1 bg-white dark:bg-ape-base border border-cyber-clay dark:border-cyber-cyan text-paper-ink dark:text-cyber-primary rounded px-1 text-sm outline-none focus:border-cyber-clay dark:focus:shadow-ape-glow-soft"
             onClick={(e) => e.stopPropagation()}
@@ -101,8 +121,7 @@ function SidebarDocRow({
             className="flex-1 truncate text-sm"
             onDoubleClick={(e) => {
               e.stopPropagation();
-              setEditingId(doc.id);
-              setDraft(doc.title);
+              startRename();
             }}
           >
             {doc.title || 'Untitled'}
@@ -124,8 +143,7 @@ function SidebarDocRow({
             title="Rename"
             onClick={(e) => {
               e.stopPropagation();
-              setEditingId(doc.id);
-              setDraft(doc.title);
+              startRename();
             }}
           >
             ✎
@@ -200,10 +218,10 @@ function TagBranch({
   depth,
   docsById,
   currentId,
-  editingId,
+  editingKey,
   draft,
   setDraft,
-  setEditingId,
+  setEditingKey,
   onOpen,
   expanded,
   toggleExpanded,
@@ -212,10 +230,10 @@ function TagBranch({
   depth: number;
   docsById: Map<string, DocumentRecord>;
   currentId: string | null;
-  editingId: string | null;
+  editingKey: string | null;
   draft: string;
   setDraft: (v: string) => void;
-  setEditingId: (id: string | null) => void;
+  setEditingKey: (key: string | null) => void;
   onOpen: (id: string) => void;
   expanded: Set<string>;
   toggleExpanded: (path: string) => void;
@@ -242,11 +260,12 @@ function TagBranch({
             <SidebarDocRow
               key={doc.id}
               doc={doc}
+              rowKey={`tag:${node.path}:${doc.id}`}
               active={doc.id === currentId}
-              isEditing={editingId === doc.id}
+              isEditing={editingKey === `tag:${node.path}:${doc.id}`}
               draft={draft}
               setDraft={setDraft}
-              setEditingId={setEditingId}
+              setEditingKey={setEditingKey}
               onOpen={() => onOpen(doc.id)}
             />
           ))}
@@ -257,10 +276,10 @@ function TagBranch({
                 depth={depth + 1}
                 docsById={docsById}
                 currentId={currentId}
-                editingId={editingId}
+                editingKey={editingKey}
                 draft={draft}
                 setDraft={setDraft}
-                setEditingId={setEditingId}
+                setEditingKey={setEditingKey}
                 onOpen={onOpen}
                 expanded={expanded}
                 toggleExpanded={toggleExpanded}
@@ -284,7 +303,7 @@ export function Sidebar() {
   const expandedTags = useStore((s) => s.layout.sidebarExpandedTags) ?? [];
   const isNarrow = useIsNarrow();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [query, setQuery] = useState('');
   const { start } = useDragResize({
@@ -381,11 +400,12 @@ export function Sidebar() {
                 <SidebarDocRow
                   key={`pin-${doc.id}`}
                   doc={doc}
+                  rowKey={`pin:${doc.id}`}
                   active={doc.id === currentId}
-                  isEditing={editingId === doc.id}
+                  isEditing={editingKey === `pin:${doc.id}`}
                   draft={draft}
                   setDraft={setDraft}
-                  setEditingId={setEditingId}
+                  setEditingKey={setEditingKey}
                   onOpen={() => onOpen(doc.id)}
                   compact
                 />
@@ -403,11 +423,12 @@ export function Sidebar() {
                 <SidebarDocRow
                   key={`recent-${doc.id}`}
                   doc={doc}
+                  rowKey={`recent:${doc.id}`}
                   active={doc.id === currentId}
-                  isEditing={editingId === doc.id}
+                  isEditing={editingKey === `recent:${doc.id}`}
                   draft={draft}
                   setDraft={setDraft}
-                  setEditingId={setEditingId}
+                  setEditingKey={setEditingKey}
                   onOpen={() => onOpen(doc.id)}
                   compact
                 />
@@ -427,10 +448,10 @@ export function Sidebar() {
                 depth={0}
                 docsById={docsById}
                 currentId={currentId}
-                editingId={editingId}
+                editingKey={editingKey}
                 draft={draft}
                 setDraft={setDraft}
-                setEditingId={setEditingId}
+                setEditingKey={setEditingKey}
                 onOpen={onOpen}
                 expanded={expanded}
                 toggleExpanded={toggleExpanded}
@@ -448,11 +469,12 @@ export function Sidebar() {
                 <SidebarDocRow
                   key={doc.id}
                   doc={doc}
+                  rowKey={`all:${doc.id}`}
                   active={doc.id === currentId}
-                  isEditing={editingId === doc.id}
+                  isEditing={editingKey === `all:${doc.id}`}
                   draft={draft}
                   setDraft={setDraft}
-                  setEditingId={setEditingId}
+                  setEditingKey={setEditingKey}
                   onOpen={() => onOpen(doc.id)}
                 />
               ))}
