@@ -14,10 +14,22 @@
 > functional specification). See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.6.8](https://img.shields.io/badge/version-0.6.8-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.8)
+[![v0.6.9](https://img.shields.io/badge/version-0.6.9-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.9)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
+
+---
+
+## What's new in v0.6.9
+
+> Nested tags, pin/recent, legal Preview numbering, and Word-style document compare. Patch on top of [v0.6.8](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.8).
+
+1. **Sidebar that scales.** Search titles and tags. Star to pin. Recent is the last ten opened files. Nested `#drafts/essays` tags group the list.
+2. **Preview / print.** **Lines** numbers source lines. **Outline** numbers headings (`1.1.1` or Article/Section). **Print** hides chrome.
+3. **Compare.** **File → Compare…** redlines another `.md` / `.json` / `.docx` or workspace document into proposed-edit cards.
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.9 entry and prior changelogs.
 
 ---
 

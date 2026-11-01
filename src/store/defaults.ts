@@ -117,7 +117,21 @@ Preview on the left (use the tabs) with Graph on the right.
 \`⌘/Ctrl + B\` / \`I\` / \`U\` bold, italicise, and underline while
 you type; the **Format** menu also adjusts the text size.
 
-## 3. 🕸️ Explore the Graph
+In **Preview**, **Lines** numbers source lines (useful for briefs),
+**Outline** numbers headings as \`1.1.1\` or Article/Section, and
+**Print** hides the rest of the chrome. Those labels are display-only
+— your Markdown file is not rewritten.
+
+## 3. 📂 Find documents in the sidebar
+
+**Search** at the top of Documents filters by title or tag. **Star** a
+row to pin it. **Recent** is the last ten files you opened. Nested
+tags work like Bear: write \`#drafts/essays\` in the note, or click
+**#** on a row and type \`drafts/essays\`. Click **✎** to rename (one
+click; it will not open the document). **File** is New, Save, Import,
+Export, and **Compare…**.
+
+## 4. 🕸️ Explore the Graph
 
 **Pick Graph** for a full map, or **Split** to keep writing beside it.
 Both show your workspace as documents, headings, and links — built
@@ -134,7 +148,7 @@ Use **Filter** to narrow the graph to particular documents and
 sections. Clicking a document node opens it; clicking a heading jumps
 straight to that section.
 
-## 4. 💬 Comment on a passage
+## 5. 💬 Comment on a passage
 
 **Select text → Comment in the editor toolbar.** A highlight and a
 numbered margin badge mark the passage. Open a badge to **Edit** or
@@ -147,21 +161,21 @@ If the text under a comment is later edited, the comment turns
 Dismiss**: **Re-link** opens a picker of headings and paragraphs so you
 can point the comment at the right place again; **Dismiss** drops it.
 
-## 5. ✅ Apply or Reject AI edits
+## 6. ✅ Apply or Reject AI edits
 
 **AI rewrites arrive as cards**, each with a rationale. Click **Apply**
 or **Reject**. For several changes in one reply, use **Apply N changes**
 in the chat footer. If a quote no longer matches the document, select
 the target text and use **Highlight Apply** instead.
 
-## 6. @ Reference another document
+## 7. @ Reference another document
 
 **Type \`@\` in Chat, a comment, or rejection feedback.** Pick another
 document, then choose **Whole document** or tick individual headings
 and **Use selection**. A chip — and often a \`§\` caption — shows what
 you attached. You need at least two documents in the sidebar.
 
-## 7. 📚 Use a saved prompt
+## 8. 📚 Use a saved prompt
 
 **Open Prompt library** (bookmark, top bar) or press \`⌘/Ctrl + ,\`.
 Click a prompt to drop it into the chat input, or write your own and
@@ -169,20 +183,20 @@ ask the AI to rewrite / shorten / expand the selection. Tick
 **include selection** in the chat panel when you want the selected
 text sent along with your message.
 
-## 8. ✨ Get sentence suggestions while writing
+## 9. ✨ Get sentence suggestions while writing
 
 **Predict starts off** and needs **Minimax** or **OpenAI** (not Local
 Model). Click **Predict** (or \`⌘/Ctrl + \\\`) to turn it on and request
 a suggestion at the cursor. Press \`Tab\` to insert it, \`Esc\` to
 dismiss it. Click the same button again to turn it back off.
 
-## 9. 💾 Save a snapshot
+## 10. 💾 Save a snapshot
 
 **Click Save in the editor toolbar** when you like a draft. Open
 **Revision history** (clock, top bar, or \`⌘/Ctrl + h\`) later to diff
 any two revisions and restore one.
 
-## 10. 📷 Import text from photos or PDFs
+## 11. 📷 Import text from photos or PDFs
 
 **File → Import photos / PDFs** in the Documents sidebar. Pick an
 image or a PDF. Recognition runs in your browser; the extracted text
@@ -191,7 +205,7 @@ model and inserted at your caret. (OCR→Markdown rewrite needs a keyed
 provider.) You can also click **+** in Chat to attach the same file
 types to a question without inserting into the document.
 
-## 11. 💾 Keep a copy outside the browser
+## 12. 💾 Keep a copy outside the browser
 
 The same **File** menu also exports. **Export .md** downloads this
 document as plain Markdown. **Export .json** packs the document with
@@ -201,7 +215,11 @@ to another machine. **Import .json** restores one, asking before it
 overwrites anything. **Save As** duplicates the current document in
 the sidebar under a new title.
 
-## 12. ❓ Help, shortcuts, and settings
+**File → Compare…** redlines another \`.md\`, \`.json\` backup, \`.docx\`,
+or sidebar document against this one and turns the diff into
+suggested-edit cards — Apply or Skip each, like a chat proposal.
+
+## 13. ❓ Help, shortcuts, and settings
 
 **Help** (\`?\` in the top bar, or \`⌘/Ctrl + /\`) is the full guide,
 including **What's new**. The **Settings** modal (\`⌘/Ctrl + .\`) holds

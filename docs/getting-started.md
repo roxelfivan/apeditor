@@ -8,8 +8,8 @@ Use the hosted copy of ApEditor, or a copy you run locally. The browser tab titl
 
 On first visit you should see:
 
-- Two sample documents in the left sidebar: **Welcome** and **Ideas**
-- The **Welcome** document open in the center
+- Two sample documents in the left sidebar: **Welcome** and **Ideas** (search, pin, Recent, and nested tags live in that same column)
+- The **Welcome** document open in the center (read it for a short tour, including Preview line numbers and **File → Compare…**)
 - The **Chat** panel on the right
 - **Settings** may open automatically if your provider needs an API key and you have not saved one yet
 

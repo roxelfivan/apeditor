@@ -2,7 +2,7 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
-## Sidebar tags, Preview numbering, document compare
+## v0.6.9 — Sidebar tags, Preview numbering, document compare
 
 **Nested tags, pin/recent, legal Preview, and Word-style compare.**
 

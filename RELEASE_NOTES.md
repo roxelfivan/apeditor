@@ -1,3 +1,19 @@
+## v0.6.9 — Sidebar tags, Preview numbering, document compare
+
+Patch on top of [v0.6.8](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.8). Nested tags, pin, and Recent keep a large workspace scannable; Preview/print can number lines and headings; **File → Compare…** produces a full suggested-edit set from another file.
+
+### Highlights
+
+- **Sidebar.** Search, Bear-style `#drafts/essays` tags, star/pin, Recent (last 10). Pencil rename does not open the row or reshuffle Recent.
+- **Preview / print.** **Lines**, **Outline** (`1.1.1` or Article/Section), **Print** (chrome hidden). Source markdown is not rewritten.
+- **Compare.** Import `.md` / `.json` / `.docx` or pick another sidebar document; apply hunks as proposed-edit cards.
+
+### Notes
+
+- See [`.release-notes-v0.6.9.md`](.release-notes-v0.6.9.md) for the full surface list.
+- `package.json` version bumped to `0.6.9`.
+- Older documents pick up `tags`, `starred`, and `lastOpenedAt` on rehydrate.
+
 ## v0.6.8 — Toolbar polish, compact Mindmap, Preview default
 
 Patch on top of [v0.6.7](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.7). Quieter editor/Graph controls, tighter Mindmap packing, first-run **Preview**, and propose-edit / Local Model token tidy-ups.
