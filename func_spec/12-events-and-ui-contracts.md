@@ -80,7 +80,7 @@ rg "mvp:" src/ -n
 
 | Component | File | Props | Responsibility |
 |---|---|---|---|
-| `Sidebar` | [`Sidebar.tsx`](../src/components/Sidebar.tsx) | — | Document list, inline rename (double-click or ✎), delete with `confirm`, `+ New`. Returns `null` when collapsed. A narrow-viewport modal drawer otherwise. Resizes via `useDragResize`. |
+| `Sidebar` | [`Sidebar.tsx`](../src/components/Sidebar.tsx) | — | Document list, inline rename (double-click or ✎), delete with `confirm`, left-aligned **File** menu (`FileActionsButton`). Returns `null` when collapsed. A narrow-viewport modal drawer otherwise. Resizes via `useDragResize`. |
 | `EdgeAnchor` | [`EdgeAnchor.tsx`](../src/components/EdgeAnchor.tsx) | `{ side: 'left' \| 'right' \| 'top'; collapsed: boolean; label: string; onClick: () => void }` | A chevron strip that is both the hide and the show button. No state, no store. |
 | `ResizeHandle` | [`ResizeHandle.tsx`](../src/components/ResizeHandle.tsx) | `{ handle: HandleName; onPointerDown; className? }` | One of 8 resize edges/corners. `role="separator"`, `data-resize-handle`. |
 | `useDragResize` | [`useDragResize.ts`](../src/hooks/useDragResize.ts) | `{ mode: 'axis' \| 'free', axis?, onDelta }` → `{ start(handle, e) }` | rAF-coalesced pointer drag. Also exports every bounds constant. |
@@ -112,7 +112,7 @@ rg "mvp:" src/ -n
 | `PromptLibrary` | [`PromptLibrary.tsx`](../src/components/PromptLibrary.tsx) | Saved prompt CRUD plus `{{selection}}` substitution. |
 | `SettingsModal` | [`SettingsModal.tsx`](../src/components/SettingsModal.tsx) | Every setting. See the field table in [Build & configuration §7](13-build-and-config.md#7-settings-modal-fields). |
 | `RevisionHistory` | [`RevisionHistory.tsx`](../src/components/RevisionHistory.tsx) | Snapshot list, Preview / Diff tabs, restore, delete. |
-| `FileActionsButton` | [`FileActionsButton.tsx`](../src/components/FileActionsButton.tsx) | Import popover plus the two export actions. Dynamic-imports the heavy OCR deps. |
+| `FileActionsButton` | [`FileActionsButton.tsx`](../src/components/FileActionsButton.tsx) | Sidebar **File** menu: New / Save / Save As, Export `.md` / `.json`, Import photos / PDFs (OCR panel), Import `.json`. Dynamic-imports the heavy OCR deps. |
 
 ### 3.5 Mentions
 

@@ -143,7 +143,7 @@ Early UI overhauls and bug fixes.
 │   docs   │                                      │   ┌─────────────┐ │
 │  • Notes │   Pick **Write**, **Preview**,       │   │ system:     │ │
 │  • Blog  │   **Split**, or **Graph**.           │   │ You are...  │ │
-│  + New   │                                      │   │             │ │
+│  File ▾  │                                      │   │             │ │
 │          │   Select a passage → **Comment** →   │   │ [▢ include  │ │
 │          │   write your note. When you're       │   │  selection] │ │
 │          │   ready, click **Send to AI** to     │   │ [▢ selection│ │
@@ -183,9 +183,10 @@ toggles in the topbar.
   let Chat **Send** / **Apply N changes** auto-snapshot
   (`Before AI send` / `Before Apply All`). Open **History** (top-bar
   clock / `⌘/Ctrl + H`) to diff and restore.
-- **Import text from photos or PDFs** — in-browser OCR (PaddleOCR +
-  ONNX Runtime), then Markdown rewrite via your configured model
-  before insert at the caret. See [OCR / PDF import](#ocr--pdf-import).
+- **File menu** (Documents sidebar) — **New**, **Save**, **Save As**,
+  **Export .md** / **.json**, **Import photos / PDFs** (in-browser
+  OCR then Markdown rewrite at the caret), **Import .json**. See
+  [OCR / PDF import](#ocr--pdf-import).
 
 ### AI
 
@@ -543,9 +544,9 @@ specific paragraph of one) to the outgoing turn:
 
 ## OCR / PDF import
 
-The editor toolbar's **Import text from photos or PDFs** button
-recognizes text from one or more images or PDF files and inserts
-the result at your caret.
+**File → Import photos / PDFs** in the Documents sidebar recognizes
+text from one or more images or PDF files and inserts the result at
+your caret.
 
 ### Accepted formats
 
@@ -560,7 +561,7 @@ the result at your caret.
 
 1. Open (or create) a document and place the caret where the
    imported text should land.
-2. Click **Import text from photos or PDFs** in the editor toolbar.
+2. Open **File** in the Documents sidebar and click **Import photos / PDFs**.
 3. Pick the language(s), then choose your file(s).
 4. A small progress chip (`reading… 2/5`) appears while the
    engine works.
@@ -595,7 +596,7 @@ the result at your caret.
 - `src/utils/ocrMarkdown.ts` — streams the extracted text
   through the configured model and unwraps an accidental outer
   markdown fence.
-- `src/components/FileActionsButton.tsx` (formerly `ImportMediaButton.tsx`) — image+PDF picker, language checkboxes, progress UI, plus one-click Markdown and JSON-backup exports; after OCR, dispatches an
+- `src/components/FileActionsButton.tsx` (formerly `ImportMediaButton.tsx`) — Documents sidebar **File** menu (New / Save / Save As, export `.md` / `.json`, import photos / PDFs and `.json`); after OCR, dispatches an
   `mvp:insert-text` `CustomEvent` that `Editor.tsx` consumes to
   splice the Markdown in.
 

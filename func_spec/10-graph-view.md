@@ -447,16 +447,16 @@ The same `zoom` multiplier drives all three projections; Concept derives its eye
 
 ### The toolbar is one row, always
 
-The editor toolbar in `Editor.tsx` and the controls group here were **both `flex-wrap`**, which stacked twice over: the controls broke internally at *their own* width, and the outer toolbar broke again at the pane's, dropping **Filter / Reset** onto a second line and then **Import / Save** onto a third. The overflow point drifted with pane width, so the same controls sat differently at every size.
+The editor toolbar in `Editor.tsx` and the controls group here were **both `flex-wrap`**, which stacked twice over: the controls broke internally at *their own* width, and the outer toolbar broke again at the pane's, dropping **Filter / Reset** onto a second line and then **Save** onto a third. The overflow point drifted with pane width, so the same controls sat differently at every size.
 
 Both are now `flex-nowrap`, and the toolbar row scrolls horizontally instead:
 
 | Element | Contract |
 |---|---|
 | Toolbar row | `flex flex-nowrap`, one band at any width |
-| `div[data-editor-toolbar-scroll]` | `flex-1 min-w-0 overflow-x-auto` — the controls slide under the Import / Save cluster rather than stacking |
+| `div[data-editor-toolbar-scroll]` | `flex-1 min-w-0 overflow-x-auto` — the controls slide under the Save control rather than stacking |
 | `GraphViewControls` | `inline-flex flex-nowrap shrink-0` — one unbreakable unit inside the scroller |
-| Import / Save | `shrink-0`, **outside** the scroller, so they never move off the right edge |
+| Save | `shrink-0`, **outside** the scroller, so it never moves off the right edge. File import / export live on the Documents sidebar **File** menu |
 | `flex-1 min-w-2` spacer | **Removed.** With a `nowrap` row it had nothing to push against, and it was the element whose wrap the second row used to break on |
 
 `min-w-0` on the scroller is load-bearing: a flex item keeps its intrinsic content width by default, so without it `overflow-x` never engages and the pinned cluster gets shoved out instead of the row scrolling.

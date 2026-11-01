@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useStore } from '@/store/useStore';
+import { FileActionsButton } from '@/components/FileActionsButton';
 import { ResizeHandle } from '@/components/ResizeHandle';
 import {
   useDragResize,
@@ -23,7 +24,6 @@ export function Sidebar() {
   // below intentionally lives AFTER every hook.
   const documents = useStore((s) => s.documents);
   const currentId = useStore((s) => s.currentDocumentId);
-  const createDocument = useStore((s) => s.createDocument);
   const renameDocument = useStore((s) => s.renameDocument);
   const deleteDocument = useStore((s) => s.deleteDocument);
   const setCurrentDocument = useStore((s) => s.setCurrentDocument);
@@ -59,22 +59,16 @@ export function Sidebar() {
       className="h-full border-r border-paper-hairline dark:border-cyber-border flex flex-col bg-paper-panel dark:bg-ape-panel"
       style={{ width: '100%' }}
     >
-      <div className="px-3 py-2 border-b border-paper-hairline dark:border-cyber-border flex items-center justify-between bg-paper-elevated/50 dark:bg-ape-elevated/40">
+      <div className="px-3 py-2 border-b border-paper-hairline dark:border-cyber-border flex items-center justify-start gap-2 bg-paper-elevated/50 dark:bg-ape-elevated/40">
+        <FileActionsButton />
         <span className="text-[15px] font-medium text-paper-ink dark:text-cyber-primary">
           Documents
         </span>
-        <button
-          onClick={() => createDocument()}
-          className="btn-fire-sm !text-[15px] !py-1.5"
-          title="New document"
-        >
-          + New
-        </button>
       </div>
       <ul className="flex-1 overflow-y-auto py-1">
         {documents.length === 0 && (
           <li className="px-3 py-4 text-sm text-paper-inkSoft dark:text-cyber-muted">
-            No documents yet.
+            No documents yet. Open File → New.
           </li>
         )}
         {documents.map((doc) => {

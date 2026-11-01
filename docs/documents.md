@@ -13,9 +13,21 @@ You can rename or delete them like any other document.
 
 ## Create a document
 
-Click **+ New** in the sidebar. The new document is named **Untitled** and opens immediately.
+Open **File** at the far left of the Documents header and click **New**. The new document is named **Untitled** and opens immediately.
 
 If the editor says **No document selected**, click **Create one**.
+
+## File menu
+
+**File** sits on the far left of the Documents header:
+
+- **New** — blank Untitled document
+- **Save** — snapshot of the current document (same as the editor floppy-disk). The live draft still auto-saves in this browser
+- **Save As** — duplicate the current document's text under a new title
+- **Export .md** — download the current document as Markdown
+- **Export .json** — download the document plus comments, chat, and revisions
+- **Import photos / PDFs** — OCR into the editor at the caret. See [Import from photos or PDFs](import.md)
+- **Import .json** — restore a JSON backup, asking before overwrite
 
 ## Switch documents
 
@@ -42,7 +54,7 @@ After a delete, ApEditor opens the first remaining document, or shows **No docum
 
 ## Empty list
 
-If you delete everything, the sidebar shows **No documents yet.** Use **+ New** to start again.
+If you delete everything, the sidebar shows **No documents yet.** Use **File → New** to start again.
 
 ## Auto-save
 

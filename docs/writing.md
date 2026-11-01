@@ -52,7 +52,7 @@ Hover a node to dim everything that is not a neighbor. Click a document to open 
 
 **Reading labels in 3D.** Labels change size by node kind — a document title is largest and boldest, a `[[term]]` smallest — and they fade and shrink as they move away from you, so the near field is clear and the far field settles into texture. Labels nearer the camera always draw on top of the ones behind, and no label is ever removed. Hovering a node keeps its label at full size and brightness. Each label carries a soft halo, so two overlapping labels stay individually readable.
 
-**About the toolbar row.** The editor toolbar is a single row. If the window is too narrow for every control, the row scrolls sideways and **Import** / **Save** stay pinned at the right edge.
+**About the toolbar row.** The editor toolbar is a single row. If the window is too narrow for every control, the row scrolls sideways and **Save** stays pinned at the right edge. Import and export live under **File** in the Documents sidebar.
 
 ## Bold, italic, underline
 
@@ -87,7 +87,7 @@ You can drag the top of the suggestion panel to make it taller or shorter.
 
 ## Import photos and PDFs
 
-The camera-style control on the toolbar imports text from images or PDFs. Full steps: [Import from photos or PDFs](import.md).
+Use **File → Import photos / PDFs** in the Documents sidebar. Full steps: [Import from photos or PDFs](import.md).
 
 ## Save a revision
 

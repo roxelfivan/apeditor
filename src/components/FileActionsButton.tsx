@@ -21,26 +21,31 @@ const VIEWPORT_PAD = 8;
 const POPOVER_WIDTH = 288; // Tailwind w-72
 
 /**
- * Pin a popover to the viewport so a left-side (or wrapped) Import
- * button cannot shove it off-screen on a narrow/vertical layout.
- * Uses `fixed` coordinates measured from the toggle button.
+ * Pin a popover to the viewport under the sidebar File trigger.
+ * Prefers left-aligning to the button (Documents column is on the
+ * far left), then clamps so both edges stay on screen.
  */
 function clampPopoverToViewport(panel: HTMLElement, anchor: HTMLElement) {
   const pad = VIEWPORT_PAD;
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const maxW = Math.min(POPOVER_WIDTH, Math.max(0, vw - pad * 2));
-  panel.style.width = `${maxW}px`;
+  const lockWidth = panel.dataset.lockWidth !== 'false';
+  const desired = lockWidth ? POPOVER_WIDTH : panel.offsetWidth || 200;
+  const maxW = Math.min(desired, Math.max(0, vw - pad * 2));
+  if (lockWidth) {
+    panel.style.width = `${maxW}px`;
+  } else {
+    panel.style.width = 'auto';
+  }
   panel.style.maxWidth = `${Math.max(0, vw - pad * 2)}px`;
   panel.style.maxHeight = `${Math.max(0, vh - pad * 2)}px`;
   panel.style.overflowY = 'auto';
 
   const ar = anchor.getBoundingClientRect();
-  // Prefer right-aligning to the button (desktop toolbar), then clamp
-  // so both edges stay on screen.
-  let left = ar.right - maxW;
+  const width = lockWidth ? maxW : Math.min(panel.offsetWidth || maxW, maxW);
+  let left = ar.left;
   if (left < pad) left = pad;
-  if (left + maxW > vw - pad) left = Math.max(pad, vw - pad - maxW);
+  if (left + width > vw - pad) left = Math.max(pad, vw - pad - width);
 
   let top = ar.bottom + 4;
   const h = panel.offsetHeight;
@@ -64,36 +69,28 @@ const LANG_OPTIONS: { code: Lang; label: string }[] = [
   { code: 'chi_tra', label: 'Traditional Chinese' },
 ];
 
-interface ImportMediaButtonProps {
-  /** Disabled when no document is open. */
-  disabled?: boolean;
-}
+const MENU_ITEM_CLASS =
+  'w-full text-left px-3 py-1.5 text-[15px] text-paper-ink dark:text-cyber-primary hover:bg-paper-elevated dark:hover:bg-ape-elevated hover:text-cyber-clay dark:hover:text-cyber-cyan transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-paper-ink dark:disabled:hover:text-cyber-primary';
+
+type FilePanel = 'closed' | 'menu' | 'ocr';
 
 /**
- * Toolbar button that opens a popover with two file actions for the
- * current document:
- *   1. **Import** photos or PDFs — pick one or more files, the OCR
- *      pipeline runs locally, the extracted text is rewritten as
- *      reader-friendly Markdown by your configured chat model, then
- *      inserted into the editor via a `mvp:insert-text` event. The
- *      language picker is the three checkboxes (English, Simplified
- *      Chinese, Traditional Chinese); at least one must stay checked.
- *   2. **Export** the current document as Markdown — the only durable
- *      off-tab backup of your writing today. Filename is the document
- *      title, sanitised; defaults to `untitled.md`.
- *
- * The toolbar icon (a page with up + down arrows) intentionally reads
- * as both directions rather than picking one; the toggle's
- * `aria-label` and `title` mention Import first because that's the
- * primary identity of the button, but Export is always visible inside
- * the popover too.
+ * Sidebar **File** menu. Owns document create / snapshot / duplicate
+ * plus the import and export actions that used to live on the editor
+ * toolbar:
+ *   - **New / Save / Save As** — store actions.
+ *   - **Export .md / Export .json** — download the current document.
+ *   - **Import photos / PDFs** — OCR panel (language checkboxes, then
+ *     a file picker). Extracted text is rewritten as Markdown and
+ *     inserted via `mvp:insert-text`.
+ *   - **Import .json** — restore a versioned document backup.
  *
  * Cleanup: after every OCR batch the file input is reset to '' so the
  * same files can be re-picked without a refresh. The OCR util itself
  * handles revoking ObjectURLs, releasing canvases, and terminating the
  * worker.
  */
-export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) {
+export function FileActionsButton() {
   const api = useStore((s) => s.api);
   const currentDoc = useCurrentDocument();
   // Pulled from the store for the JSON backup export. Independent
@@ -106,12 +103,15 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
   const revisionsByDoc = useStore((s) => s.revisions);
   const setCurrentDocument = useStore((s) => s.setCurrentDocument);
   const applyImportPlan = useStore((s) => s.applyImportPlan);
+  const createDocument = useStore((s) => s.createDocument);
+  const saveRevision = useStore((s) => s.saveRevision);
+  const duplicateDocument = useStore((s) => s.duplicateDocument);
   const inputRef = useRef<HTMLInputElement>(null);
   const backupInputRef = useRef<HTMLInputElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const importModalRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
+  const [panel, setPanel] = useState<FilePanel>('closed');
   const [langs, setLangs] = useState<Set<Lang>>(() => new Set(['eng']));
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<OcrProgress | null>(null);
@@ -133,36 +133,46 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
   const [pendingChoices, setPendingChoices] = useState<
     Record<string, 'replace' | 'skip' | 'keep-both'>
   >({});
+  const menuOpen = panel === 'menu';
+  const ocrOpen = panel === 'ocr';
   const panelVisible =
-    open || busy || Boolean(error) || pendingParsed !== null;
+    panel !== 'closed' || busy || Boolean(error) || pendingParsed !== null;
 
-  // Close the popover on outside click. While the import modal is
-  // open the popover must NOT close — otherwise the modal's anchor
-  // disappears behind another panel and the viewport-clamp reference
-  // is gone. The modal has its own Cancel / Apply buttons so it stays
-  // dismissible on its own terms.
+  // Close the menu / OCR panel on outside click. While the import
+  // modal is open the panel must NOT close — otherwise the modal's
+  // anchor disappears. The modal has its own Cancel / Apply buttons.
   useEffect(() => {
-    if (!open) return;
+    if (panel === 'closed') return;
     const onDocPointer = (e: PointerEvent) => {
       const target = e.target as Node | null;
       if (!target) return;
       if (popoverRef.current?.contains(target)) return;
       if (importModalRef.current?.contains(target)) return;
-      // Also ignore clicks on the toggle button itself (which controls `open`).
       const btn = (e.target as HTMLElement | null)?.closest(
         '[data-file-actions-toggle]'
       );
       if (btn) return;
-      setOpen(false);
+      setPanel('closed');
     };
     document.addEventListener('pointerdown', onDocPointer);
     return () => document.removeEventListener('pointerdown', onDocPointer);
-  }, [open]);
+  }, [panel]);
 
-  // Reset error when popover opens.
   useEffect(() => {
-    if (open) setError(null);
-  }, [open]);
+    if (panel === 'closed') return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (pendingParsed) return;
+      setPanel('closed');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [panel, pendingParsed]);
+
+  // Reset error when the File menu opens.
+  useEffect(() => {
+    if (panel === 'menu') setError(null);
+  }, [panel]);
 
   // Keep the language / progress / error panels inside the viewport
   // after wrap (mobile) or when the window is resized / scrolled.
@@ -181,7 +191,7 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
       window.removeEventListener('orientationchange', apply);
       window.removeEventListener('scroll', apply, true);
     };
-  }, [panelVisible, open, busy, error]);
+  }, [panelVisible, panel, busy, error]);
 
   // Pin the collision-resolution modal to the viewport the same way
   // the popover is, so on a narrow/vertical layout the modal never
@@ -355,7 +365,7 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
       // so the editor switches over cleanly.
       e.target.value = '';
       runImport(parsed, decisions);
-      setOpen(false);
+      setPanel('closed');
     } else {
       // Pop the modal. Default choices match the auto path, and the
       // user can override per row.
@@ -478,7 +488,7 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
     setBusy(true);
     setError(null);
     setProgress({ done: 0, total: fileArray.length, label: 'starting…' });
-    setOpen(false);
+    setPanel('closed');
     try {
       // Lazy-load OCR (+ pdfjs, PaddleOCR, OpenCV) only when importing.
       const { extractTextFromFiles } = await import('@/utils/ocr');
@@ -521,65 +531,190 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
   // + Simplified Chinese + Traditional Chinese in one pass, so the
   // checkbox state is informational only (no model swap).
   const strategyLabel = `${langs.size} language${langs.size === 1 ? '' : 's'} checked (single pass; multilingual model)`;
+  const hasDoc = Boolean(currentDoc);
+
+  const onNew = () => {
+    createDocument();
+    setPanel('closed');
+  };
+  const onSave = () => {
+    if (!currentDoc) return;
+    saveRevision(currentDoc.id);
+    setPanel('closed');
+  };
+  const onSaveAs = () => {
+    if (!currentDoc) return;
+    const next = window.prompt(
+      'Save as',
+      `${currentDoc.title || 'Untitled'} copy`
+    );
+    if (next === null || next.trim() === '') return;
+    duplicateDocument(currentDoc.id, next);
+    setPanel('closed');
+  };
+  const onExportMd = () => {
+    onExportClick();
+    if (currentDoc) setPanel('closed');
+  };
+  const onExportJson = () => {
+    onBackupClick();
+    if (currentDoc) setPanel('closed');
+  };
+  const onImportJson = () => {
+    onImportBackupClick();
+    setPanel('closed');
+  };
 
   return (
     <div ref={anchorRef} className="relative inline-flex items-center">
       <button
         type="button"
         data-file-actions-toggle
-        aria-label="Document file actions — Import photos / PDFs or Export this document as Markdown"
-        className="btn-icon-square disabled:opacity-50"
-        onClick={() => setOpen((v) => !v)}
-        disabled={disabled || busy}
-        title={
-          busy
-            ? 'Reading file…'
-            : 'Document file actions: Import photos / PDFs (OCR) or Export this document as Markdown'
+        aria-haspopup="menu"
+        aria-expanded={menuOpen || ocrOpen}
+        aria-label="File"
+        className="btn-fire-sm !text-[15px] !py-1.5 disabled:opacity-50"
+        onClick={() =>
+          setPanel((p) => (p === 'menu' ? 'closed' : 'menu'))
         }
+        disabled={busy}
+        title={busy ? 'Reading file…' : 'File — new, save, import, and export'}
       >
         {busy ? (
-          // Spinner — three small dots that pulse in sequence. Pure CSS,
-          // mirrors the one used in the editor's streaming indicator.
           <span className="inline-flex gap-0.5">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse" style={{ animationDelay: '0ms' }} />
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse" style={{ animationDelay: '150ms' }} />
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse" style={{ animationDelay: '300ms' }} />
           </span>
         ) : (
-          // Document-with-arrows icon: a page (rectangle with a folded
-          // corner) flanked by an upward arrow (Export out) and a
-          // downward arrow (Import in). Reads as "this button handles
-          // both directions for a document" without picking one, so
-          // neither label is misleading. Stroke geometry matches the
-          // rest of the editor toolbar (16×16 viewBox, 1.5 stroke).
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 16 16"
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            {/* Up arrow (Export) — sits left of the page. */}
-            <path d="M2.5 7 L2.5 2.5" />
-            <path d="M1 4 L2.5 2.5 L4 4" />
-            {/* Page outline with a folded top-right corner. */}
-            <path d="M6 2 L11 2 L13.5 4.5 L13.5 14 L6 14 Z" />
-            <path d="M11 2 L11 4.5 L13.5 4.5" />
-            {/* Down arrow (Import) — sits right of the page. */}
-            <path d="M13.5 9 L13.5 13.5" />
-            <path d="M12 12 L13.5 13.5 L15 12" />
-          </svg>
+          <>
+            <span>File</span>
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 10 10"
+              className={`h-2.5 w-2.5 transition-transform ${
+                menuOpen || ocrOpen ? 'rotate-180' : ''
+              }`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M2 4 L5 7 L8 4" />
+            </svg>
+          </>
         )}
       </button>
-      {open && !busy && (
+      {menuOpen && !busy && (
+        <div
+          ref={popoverRef}
+          role="menu"
+          aria-label="File"
+          data-lock-width="false"
+          className="fixed z-40 min-w-[200px] rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-panel shadow-lg py-1"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className={MENU_ITEM_CLASS}
+            onClick={onNew}
+            title="Create a blank Untitled document"
+          >
+            New
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={MENU_ITEM_CLASS}
+            onClick={onSave}
+            disabled={!hasDoc}
+            title={
+              hasDoc
+                ? 'Save current content as a revision'
+                : 'Open a document first to save a revision'
+            }
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={MENU_ITEM_CLASS}
+            onClick={onSaveAs}
+            disabled={!hasDoc}
+            title={
+              hasDoc
+                ? 'Duplicate this document under a new title'
+                : 'Open a document first to save a copy'
+            }
+          >
+            Save As
+          </button>
+          <div
+            className="my-1 border-t border-paper-hairline dark:border-cyber-border"
+            aria-hidden
+          />
+          <button
+            type="button"
+            role="menuitem"
+            className={MENU_ITEM_CLASS}
+            onClick={onExportMd}
+            disabled={!hasDoc}
+            title={
+              hasDoc
+                ? 'Download this document as Markdown'
+                : 'Open a document first to export it'
+            }
+          >
+            Export .md
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            data-backup-toggle
+            className={MENU_ITEM_CLASS}
+            onClick={onExportJson}
+            disabled={!hasDoc}
+            title={
+              hasDoc
+                ? 'Download a full JSON backup (document + comments + chat + revisions)'
+                : 'Open a document first to export a backup'
+            }
+          >
+            Export .json
+          </button>
+          <div
+            className="my-1 border-t border-paper-hairline dark:border-cyber-border"
+            aria-hidden
+          />
+          <button
+            type="button"
+            role="menuitem"
+            className={MENU_ITEM_CLASS}
+            onClick={() => setPanel('ocr')}
+            title="Import text from photos or PDFs"
+          >
+            Import photos / PDFs
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            data-import-backup-toggle
+            className={MENU_ITEM_CLASS}
+            onClick={onImportJson}
+            disabled={busy || pendingParsed !== null}
+            title="Restore a document and its slices from a JSON backup file"
+          >
+            Import .json
+          </button>
+        </div>
+      )}
+      {ocrOpen && !busy && (
         <div
           ref={popoverRef}
           className="fixed z-40 w-72 max-w-[calc(100vw-1rem)] bg-paper-panel dark:bg-ape-panel border border-paper-hairline dark:border-cyber-border rounded shadow-ape-paper-lift dark:shadow-lg p-3 text-xs space-y-2 box-border"
         >
-          {/* Section 1: Import (primary identity of the toolbar button). */}
           <div className="font-semibold text-sm text-cyber-clay dark:text-cyber-cyan uppercase tracking-wide">
             Import photos / PDFs
           </div>
@@ -613,12 +748,6 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
           <div className="text-[11px] text-paper-inkSoft dark:text-cyber-muted font-mono">
             Strategy: {strategyLabel}.
           </div>
-          {/* Gated-state hint. Surfaces WHY import will or won't work
-            without an API key — OCR runs locally, but Markdown
-            rewrite goes through the chat endpoint, which needs one.
-            Replaces the previous static "Needs API key" paragraph
-            with a flip so the user always knows which path they're
-            on. */}
           <p className="text-[11px] text-paper-inkSoft dark:text-cyber-muted leading-snug">
             {api.apiKey && api.apiEndpoint ? (
               <>
@@ -636,7 +765,17 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
               </>
             )}
           </p>
-          <div className="flex items-center justify-end pt-1">
+          {error && (
+            <div className="text-[11px] text-cyber-danger">{error}</div>
+          )}
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              type="button"
+              className="btn-cyan-sm"
+              onClick={() => setPanel('closed')}
+            >
+              Close
+            </button>
             <button
               type="button"
               className="btn-fire-sm disabled:opacity-50 disabled:cursor-not-allowed"
@@ -647,105 +786,6 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
               Choose Import File(s)
             </button>
           </div>
-          <div className="border-t border-paper-hairline dark:border-cyber-border" />
-          {/* Section 2: Export (the second action exposed by the same
-              toolbar button). Same primary CTA style as the Import
-              button above so the two sections feel symmetric. */}
-          <div className="font-semibold text-sm text-cyber-clay dark:text-cyber-cyan uppercase tracking-wide">
-            Export this document
-          </div>
-          <p className="text-paper-inkSoft dark:text-cyber-muted leading-snug">
-            Download the current document as Markdown so you have a
-            copy outside the browser; local storage can be cleared
-            without warning.
-          </p>
-          <div className="flex items-center justify-end pt-1">
-            <button
-              type="button"
-              className="btn-fire-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={onExportClick}
-              disabled={!currentDoc}
-              title={
-                currentDoc
-                  ? 'Download this document as Markdown'
-                  : 'Open a document first to export it'
-              }
-            >
-              Export .md
-            </button>
-          </div>
-          <div className="border-t border-paper-hairline dark:border-cyber-border" />
-          {/* Section 3: Import full backup (JSON). Round-trip
-              counterpart to Section 4 below. Same header / two-
-              sentence description / right-aligned primary CTA
-              template as the other three sections so the popover
-              keeps a consistent rhythm. */}
-          <div className="font-semibold text-sm text-cyber-clay dark:text-cyber-cyan uppercase tracking-wide">
-            Import full backup (JSON)
-          </div>
-          <p className="text-paper-inkSoft dark:text-cyber-muted leading-snug">
-            Restore a document plus its comments, chat history,
-            archived chats, and revisions from a{' '}
-            <code className="font-mono">.json</code>{' '}
-            file produced by an earlier Export. Conflicts with existing
-            documents ask before overwriting.
-          </p>
-          <div className="flex items-center justify-end pt-1">
-            <button
-              type="button"
-              data-import-backup-toggle
-              className="btn-fire-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={onImportBackupClick}
-              disabled={busy || pendingParsed !== null}
-              title="Restore a document and its slices from a JSON backup file"
-            >
-              Import .json
-            </button>
-          </div>
-          <div className="border-t border-paper-hairline dark:border-cyber-border" />
-          {/* Section 4: Full JSON backup export. Same structural
-              template as the three sections above so the popover
-              keeps a consistent rhythm: header → two-sentence
-              description → primary CTA aligned right. */}
-          <div className="font-semibold text-sm text-cyber-clay dark:text-cyber-cyan uppercase tracking-wide">
-            Export full backup (JSON)
-          </div>
-          <p className="text-paper-inkSoft dark:text-cyber-muted leading-snug">
-            Download the document plus its comments, chat history,
-            archived chats, and revisions as a single JSON file —
-            useful before
-            clearing browser storage or switching devices.
-          </p>
-          <div className="flex items-center justify-end pt-1">
-            <button
-              type="button"
-              data-backup-toggle
-              className="btn-fire-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={onBackupClick}
-              disabled={!currentDoc}
-              title={
-                currentDoc
-                  ? 'Download a full JSON backup (document + comments + chat + revisions)'
-                  : 'Open a document first to export a backup'
-              }
-            >
-              Export .json
-            </button>
-          </div>
-          <div className="flex items-center justify-end pt-2">
-            <button
-              type="button"
-              className="btn-cyan-sm"
-              onClick={() => setOpen(false)}
-            >
-              Close
-            </button>
-          </div>
-          {error && (
-            <div className="text-[11px] text-cyber-danger">
-              {error}
-            </div>
-          )}
         </div>
       )}
       {busy && progress && (
@@ -762,7 +802,7 @@ export function FileActionsButton({ disabled = false }: ImportMediaButtonProps) 
           </div>
         </div>
       )}
-      {error && !open && !busy && (
+      {error && panel === 'closed' && !busy && (
         <div
           ref={popoverRef}
           className="fixed z-40 w-72 max-w-[calc(100vw-1rem)] bg-paper-panel dark:bg-ape-panel border border-cyber-danger/40 dark:border-cyber-danger/60 rounded shadow-ape-paper-lift dark:shadow-lg px-3 py-2 text-xs text-cyber-danger box-border"

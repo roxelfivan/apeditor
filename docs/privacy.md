@@ -35,7 +35,7 @@ When you finish on a shared machine, clear this site’s data (or use a private 
 
 ## Import and OCR
 
-Choosing **Import text from photos or PDFs** runs recognition on-device. Files are not uploaded to ApEditor. After recognition, only the extracted text is sent to your AI provider for Markdown formatting.
+Choosing **File → Import photos / PDFs** in the Documents sidebar runs recognition on-device. Files are not uploaded to ApEditor. After recognition, only the extracted text is sent to your AI provider for Markdown formatting.
 
 Chat **+** uses the same on-device recognition. Original images and PDFs are not kept in chat history — only filenames and the extracted text.
 

@@ -238,6 +238,7 @@ All actions follow the same pattern: never mutate, always `set(...)`, return the
 | Action | Behaviour |
 |---|---|
 | `createDocument(title?)` | `makeDoc(title?.trim() \|\| 'Untitled')`, **prepends**, sets `currentDocumentId`, returns the new id |
+| `duplicateDocument(id, title?)` | Copies source **content** into a new doc (`title?.trim()` or `` `${source.title} copy` ``), **prepends**, sets `currentDocumentId`. Chat / comments / revisions stay on the source. Returns `null` if `id` is missing |
 | `renameDocument(id, title)` | Trims; empty → `'Untitled'` |
 | `deleteDocument(id)` | Removes the doc and `delete`s `chats[id]`, `chatArchives[id]`, `revisions[id]`, `comments[id]`; `currentDocumentId` → `documents[0]?.id ?? null` |
 | `setCurrentDocument(id)` | Direct set |

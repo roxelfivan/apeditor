@@ -112,6 +112,18 @@ export const useStore = create<StoreState>()(
         return doc.id;
       },
 
+      duplicateDocument: (id, title) => {
+        const source = get().documents.find((d) => d.id === id);
+        if (!source) return null;
+        const fallback = `${source.title || 'Untitled'} copy`;
+        const doc = makeDoc(title?.trim() || fallback, source.content);
+        set((s) => ({
+          documents: [doc, ...s.documents],
+          currentDocumentId: doc.id,
+        }));
+        return doc.id;
+      },
+
       /**
        * Apply one resolved ImportPlan to the store. The caller (the
        * Import-backup popover in `FileActionsButton.tsx`) is

@@ -4,13 +4,15 @@
 
 ---
 
-## 1. Two pipelines, one button
+## 1. Two pipelines, one File menu
 
-[`FileActionsButton.tsx`](../src/components/FileActionsButton.tsx) owns a single popover with three sections:
+[`FileActionsButton.tsx`](../src/components/FileActionsButton.tsx) is the Documents sidebar **File** dropdown. Menu order:
 
-1. **Import photos / PDFs** — recognition plus Markdown rewrite.
-2. **Export this document** — `.md`.
-3. **Export full backup (JSON)** — `.json`.
+1. **New** / **Save** / **Save As**
+2. **Export .md** / **Export .json**
+3. **Import photos / PDFs** (OCR sub-panel) / **Import .json**
+
+The editor toolbar keeps only the floppy **Save** (revision snapshot).
 
 > The component was renamed from `ImportMediaButton.tsx` in v0.5.0 when export was added. Old references in comments and docs still mention the old name.
 
@@ -21,7 +23,7 @@
 | `POPOVER_WIDTH` | `288` (`w-72`) |
 | `VIEWPORT_PAD` | `8` |
 
-`clampPopoverToViewport` positions with `fixed` coordinates measured from the toggle, prefers right-aligning to the button, flips above when it would overflow the bottom, and re-applies on `resize`, `orientationchange`, and capture-phase `scroll`.
+`clampPopoverToViewport` positions with `fixed` coordinates measured from the File trigger, prefers **left-aligning** to the button (Documents column is on the far left), flips above when it would overflow the bottom, and re-applies on `resize`, `orientationchange`, and capture-phase `scroll`. The item list uses `data-lock-width="false"` so it keeps its natural width; the OCR panel and collision modal still lock to `POPOVER_WIDTH`.
 
 ## 2. Import
 
@@ -248,12 +250,11 @@ Parse still accepts older v1 files that omit `chatArchives` and treats the field
 
 ## 5. Import
 
-The backup round-trip counterpart to §4.2 — a v1 `DocumentBackup` produced by `serialiseDocumentBackup` can be parsed and merged into the live store through a new "Import full backup (JSON)" section in the same `FileActionsButton` popover. The popover catalogue is now:
+The backup round-trip counterpart to §4.2 — a v1 `DocumentBackup` produced by `serialiseDocumentBackup` can be parsed and merged into the live store through **File → Import .json** on the Documents sidebar. The File menu catalogue is:
 
-1. **Import photos / PDFs** — recognition plus Markdown rewrite.
-2. **Export this document** — `.md`.
-3. **Import full backup (JSON)** — restore a `.json` file.
-4. **Export full backup (JSON)** — `.json`.
+1. **New** / **Save** / **Save As**
+2. **Export .md** / **Export .json**
+3. **Import photos / PDFs** / **Import .json**
 
 ### 5.1 Detection + limits
 

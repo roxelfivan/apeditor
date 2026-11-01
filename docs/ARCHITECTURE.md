@@ -110,7 +110,7 @@ Key files:
 | [`RevisionHistory.tsx`](components/RevisionHistory.tsx) | 232 | List + diff + restore + delete saved revisions. |
 | [`CommentComposer.tsx`](components/CommentComposer.tsx) | 246 | Floating composer for a new comment. Wraps `MentionInput`. |
 | [`CommentLayer.tsx`](components/CommentLayer.tsx) | 155 | Mirror overlay that paints `<mark>` highlights behind the textarea. Forwards ref to `getSelectionRect`. |
-| [`FileActionsButton.tsx`](components/FileActionsButton.tsx) (formerly `ImportMediaButton.tsx`) | — | Pick image/PDF → OCR (PaddleOCR) or text extract (pdfjs) → re-format via LLM, OR download the current document as Markdown. Dynamic-imports heavy deps. |
+| [`FileActionsButton.tsx`](components/FileActionsButton.tsx) (formerly `ImportMediaButton.tsx`) | — | Sidebar **File** menu: New / Save / Save As, OCR import, Markdown/JSON export, JSON backup import. Dynamic-imports heavy deps. |
 | [`PromptLibrary.tsx`](components/PromptLibrary.tsx) | 174 | Saved prompt CRUD + `{{selection}}` placeholder. |
 | [`HelpDocs.tsx`](components/HelpDocs.tsx) | 185 | In-app viewer for the 14 pages under `docs/`. Theme follows the app. |
 | [`Sidebar.tsx`](components/Sidebar.tsx) | 156 | Document list, rename inline, delete with confirm. |

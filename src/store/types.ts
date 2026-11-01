@@ -164,6 +164,13 @@ export interface StoreState {
 
   // Actions
   createDocument: (title?: string) => string;
+  /**
+   * Copy `id`'s title+content into a new sidebar document and switch
+   * to it. Chat, comments, and revisions stay on the source. Empty
+   * `title` falls back to `${source.title} copy`. Returns the new id,
+   * or `null` when the source is missing.
+   */
+  duplicateDocument: (id: string, title?: string) => string | null;
   renameDocument: (id: string, title: string) => void;
   deleteDocument: (id: string) => void;
   setCurrentDocument: (id: string | null) => void;
