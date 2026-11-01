@@ -171,21 +171,22 @@ any two revisions and restore one.
 
 ## 10. 📷 Import text from photos or PDFs
 
-**Open the import button in the editor toolbar** and pick an image or
-a PDF. Recognition runs in your browser; the extracted text is
-rewritten as readable Markdown by your configured Minimax/OpenAI model
-and inserted at your caret. (OCR→Markdown rewrite needs a keyed
+**File → Import photos / PDFs** in the Documents sidebar. Pick an
+image or a PDF. Recognition runs in your browser; the extracted text
+is rewritten as readable Markdown by your configured Minimax/OpenAI
+model and inserted at your caret. (OCR→Markdown rewrite needs a keyed
 provider.) You can also click **+** in Chat to attach the same file
 types to a question without inserting into the document.
 
 ## 11. 💾 Keep a copy outside the browser
 
-The same import button also exports. **Export .md** downloads this
+The same **File** menu also exports. **Export .md** downloads this
 document as plain Markdown. **Export .json** packs the document with
 its comments, chat history, and revisions into one versioned file —
 worth taking before clearing browser data, or for moving a workspace
 to another machine. **Import .json** restores one, asking before it
-overwrites anything.
+overwrites anything. **Save As** duplicates the current document in
+the sidebar under a new title.
 
 ## 12. ❓ Help, shortcuts, and settings
 

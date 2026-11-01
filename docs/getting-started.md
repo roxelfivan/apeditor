@@ -42,7 +42,7 @@ Keys stay in this browser only. See [Privacy and your data](privacy.md).
 
 ## Choose a document
 
-Click **Welcome** or **Ideas** in the sidebar, or click **+ New** to start a blank **Untitled** document.
+Click **Welcome** or **Ideas** in the sidebar, or open **File → New** to start a blank **Untitled** document.
 
 Type in the center pane. Your work auto-saves in the browser. Next to the title you will see a hint such as **saved just now**.
 

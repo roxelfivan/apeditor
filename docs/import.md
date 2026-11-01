@@ -13,7 +13,7 @@ Chat has a separate **+** next to the message box. It accepts the same image and
 ## How to import
 
 1. Open a document and click where the text should appear.
-2. Click **Import text from photos or PDFs** on the editor toolbar.
+2. Open **File** in the Documents sidebar and click **Import photos / PDFs**.
 3. Choose at least one **OCR language**: **English**, **Simplified Chinese**, **Traditional Chinese**.
 4. Click **Choose Import File(s)** and pick files.
 5. Wait for the progress chip (for example `2/5`, then **formatting as Markdown…**).
@@ -30,7 +30,7 @@ The popover explains: recognition stays in the browser; after a successful impor
 - Recognizable text in the files, or **No text was recognized in the selected file(s).**
 - If the engine fails: **OCR failed.**
 
-While work is in progress, the toolbar control shows **Reading file…**
+While work is in progress, the **File** button shows a pulse and stays disabled.
 
 ## Privacy
 

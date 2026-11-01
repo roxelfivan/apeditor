@@ -195,7 +195,7 @@ Sentinel format, budget, and cascade semantics are in [@-references](09-mentions
 ## 7. OCR / PDF import
 
 ```
-FileActionsButton → popover → "Import photos / PDFs"
+FileActionsButton (sidebar File menu) → "Import photos / PDFs" OCR panel
   ├─ gated on api.apiKey && api.apiEndpoint
   │    (OCR itself is local; the Markdown rewrite needs a model)
   ├─ pick languages (eng default; at least one must remain checked)

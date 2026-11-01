@@ -131,7 +131,7 @@ Keyed providers use this HTTP path. Local Model (`local-gemma`) streams via [`lo
 | [`ProposedEditCard.tsx`](../src/components/ProposedEditCard.tsx) | 925 | One AI proposal: Split/Inline view, Apply / Highlight Apply / Reject / Reject-with-feedback, editor highlight, resizable. |
 | [`CommentPopover.tsx`](../src/components/CommentPopover.tsx) | 911 | Read/edit one comment, multi-round rationale list, resize, persistence of popover size. |
 | [`SettingsModal.tsx`](../src/components/SettingsModal.tsx) | 834 | Provider, key, endpoint, model, system message, rationale rules, temperature, UI font size, debug mode. |
-| [`FileActionsButton.tsx`](../src/components/FileActionsButton.tsx) | 517 | Import (images + PDFs → OCR → Markdown) and Export (`.md`, `.json`). Dynamic-imports the heavy OCR deps. |
+| [`FileActionsButton.tsx`](../src/components/FileActionsButton.tsx) | — | Sidebar **File** menu: New / Save / Save As, Export `.md` / `.json`, Import photos / PDFs, Import `.json`. Dynamic-imports the heavy OCR deps. |
 | [`GraphView.tsx`](../src/components/GraphView.tsx) | — | SVG rendering, node drag, zoom, hover dimming, edge labels, `GraphViewControls`, the flat / sphere / concept projection switch. |
 | [`Concept3DScene.tsx`](../src/components/Concept3DScene.tsx) | — | 3D Concept projection. three.js WebGL scene behind `React.lazy` + `await import('three')`, so it ships as its own chunk. Raycasts for hover/click, then forwards pointer events to `GraphView`. |
 | [`CommentComposer.tsx`](../src/components/CommentComposer.tsx) | 246 | Floating composer for a new comment. |

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import ReactMarkdown from 'react-markdown';
 import { v4 as uuid } from 'uuid';
 import { useStore, useCurrentDocument } from '@/store/useStore';
-import { FileActionsButton } from '@/components/FileActionsButton';
 import { useInlineCompletion } from '@/hooks/useInlineCompletion';
 import { useDocumentMentions } from '@/hooks/useDocumentMentions';
 import {
@@ -1506,15 +1505,15 @@ export function Editor() {
     >
       {/* Toolbar band — **one row, always**. It used to be
           `flex flex-wrap`, which meant the overflow point drifted with the
-          pane width and Import / Save kept landing alone on a second line
+          pane width and Save kept landing alone on a second line
           under the graph controls. Now the row is `flex-nowrap` and
           horizontally scrollable: a control group that outgrows the pane
-          slides under the Import / Save cluster instead of stacking, and
-          the pinned cluster never moves off the right edge.
+          slides under the Save control instead of stacking, and
+          the pinned Save never moves off the right edge.
 
-          The scroller is a sibling of the pinned group, not their parent,
-          so scrolling the controls cannot drag the Import / Save buttons
-          out of reach — they are always one click away.
+          The scroller is a sibling of the pinned Save, not its parent,
+          so scrolling the controls cannot drag Save
+          out of reach — it is always one click away.
       */}
       <div className="flex flex-nowrap items-center gap-2 px-4 py-2 border-b border-paper-hairline dark:border-cyber-border bg-paper-base dark:bg-ape-base text-[15px] leading-none">
         {/* Scrolling region. `min-w-0` on a flex item is what actually lets
@@ -1882,15 +1881,13 @@ export function Editor() {
           </>
         )}
         </div>
-        {/* Import / Save — pinned to the trailing edge, **outside** the
-            scroller above. `shrink-0` keeps both buttons at full size
-            however hard the controls are squeezed, so the two actions that
-            must never be hunted for are permanently in the same place. The
-            old `flex-1 min-w-2` spacer is gone: with the row `flex-nowrap`
-            it had nothing to push against, and it was the element whose
-            wrap the second row used to break on. */}
+        {/* Save — pinned to the trailing edge, **outside** the
+            scroller above. `shrink-0` keeps the revision snapshot at
+            full size however hard the controls are squeezed. File
+            import / export live on the Documents sidebar File menu.
+            The old `flex-1 min-w-2` spacer is gone: with the row
+            `flex-nowrap` it had nothing to push against. */}
         <div className="inline-flex items-center gap-2 shrink-0">
-          <FileActionsButton />
           <button
             type="button"
             aria-label="Save current content as a revision"
