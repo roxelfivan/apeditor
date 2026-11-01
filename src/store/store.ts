@@ -238,14 +238,19 @@ export const useStore = create<StoreState>()(
           };
         }),
       setCurrentDocument: (id) =>
-        set((s) => ({
-          currentDocumentId: id,
-          documents: id
-            ? s.documents.map((d) =>
-                d.id === id ? { ...d, lastOpenedAt: Date.now() } : d
-              )
-            : s.documents,
-        })),
+        set((s) => {
+          // Re-clicking the open doc must not bump lastOpenedAt: Recent
+          // re-sorts on that field, which remounts the row and aborts rename.
+          if (s.currentDocumentId === id) return s;
+          return {
+            currentDocumentId: id,
+            documents: id
+              ? s.documents.map((d) =>
+                  d.id === id ? { ...d, lastOpenedAt: Date.now() } : d
+                )
+              : s.documents,
+          };
+        }),
       updateDocumentContent: (id, content) =>
         set((s) => ({
           documents: s.documents.map((d) =>

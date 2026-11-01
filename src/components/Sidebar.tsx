@@ -61,13 +61,17 @@ function SidebarDocRow({
     setEditingKey(rowKey);
   };
 
-  const commitRename = () => {
+  const commitRename = (value: string) => {
     if (skipBlurCommit.current) {
       skipBlurCommit.current = false;
       return;
     }
-    renameDocument(doc.id, draft || doc.title);
+    renameDocument(doc.id, value || doc.title);
     setEditingKey(null);
+  };
+
+  const stopRowActivate = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation();
   };
 
   return (
@@ -77,19 +81,24 @@ function SidebarDocRow({
           ? 'bg-paper-elevated text-cyber-clay dark:bg-ape-elevated dark:text-cyber-cyan border-cyber-clay dark:border-cyber-cyan'
           : 'border-transparent text-paper-ink dark:text-cyber-primary hover:bg-paper-elevated dark:hover:bg-ape-elevated hover:border-paper-hairline dark:hover:border-cyber-border'
       }`}
-      onClick={() => {
-        if (!isEditing) onOpen();
+      onClick={(e) => {
+        if (isEditing) return;
+        const target = e.target as HTMLElement | null;
+        if (target?.closest('button, input, [data-row-action]')) return;
+        onOpen();
       }}
     >
       <div className="flex items-center gap-1 px-2 py-1">
         <button
           type="button"
+          data-row-action
           className={`text-xs px-0.5 ${
             doc.starred
               ? 'text-cyber-clay dark:text-cyber-cyan'
               : 'text-paper-inkSoft dark:text-cyber-muted opacity-100 sm:opacity-0 sm:group-hover:opacity-100'
           }`}
           title={doc.starred ? 'Unpin' : 'Pin / star'}
+          onPointerDown={stopRowActivate}
           onClick={(e) => {
             e.stopPropagation();
             toggleDocumentStarred(doc.id);
@@ -102,7 +111,11 @@ function SidebarDocRow({
             autoFocus
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            onBlur={commitRename}
+            onBlur={(e) => {
+              // Strict Mode remounts the input; that blur must not save/exit.
+              if (!e.currentTarget.isConnected) return;
+              commitRename(e.currentTarget.value);
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
@@ -114,7 +127,8 @@ function SidebarDocRow({
               }
             }}
             className="flex-1 bg-white dark:bg-ape-base border border-cyber-clay dark:border-cyber-cyan text-paper-ink dark:text-cyber-primary rounded px-1 text-sm outline-none focus:border-cyber-clay dark:focus:shadow-ape-glow-soft"
-            onClick={(e) => e.stopPropagation()}
+            onPointerDown={stopRowActivate}
+            onClick={stopRowActivate}
           />
         ) : (
           <span
@@ -127,8 +141,14 @@ function SidebarDocRow({
             {doc.title || 'Untitled'}
           </span>
         )}
-        <div className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center gap-0.5">
+        <div
+          data-row-action
+          className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center gap-0.5"
+          onPointerDown={stopRowActivate}
+          onClick={stopRowActivate}
+        >
           <button
+            type="button"
             className="text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan text-xs px-1"
             title="Add tag"
             onClick={(e) => {
@@ -139,16 +159,22 @@ function SidebarDocRow({
             #
           </button>
           <button
+            type="button"
             className="text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan text-xs px-1"
             title="Rename"
-            onClick={(e) => {
+            onPointerDown={(e) => {
+              // pointerdown so the row's click-to-open never runs, and so
+              // a single click is enough (no double-click needed).
+              e.preventDefault();
               e.stopPropagation();
               startRename();
             }}
+            onClick={stopRowActivate}
           >
             ✎
           </button>
           <button
+            type="button"
             className="text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-danger text-xs px-1"
             title="Delete"
             onClick={(e) => {
