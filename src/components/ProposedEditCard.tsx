@@ -65,6 +65,33 @@ interface Props {
    */
   dismissOnly?: boolean;
   onDismiss?: (editId: string) => void;
+  /**
+   * Notify the parent that Apply succeeded. Used by the Compare overlay
+   * so a per-card Apply drops out of the remaining count and swaps the
+   * interactive card for the resolved row — without this the panel kept
+   * counting the edit as pending after the document had already changed.
+   */
+  onApplied?: (editId: string) => void;
+  /**
+   * Fill the parent container instead of using a stored pixel size.
+   *
+   * The Compare overlay is itself resizable, so a card that kept a
+   * stored size could overflow the panel. In this mode the card always
+   * spans the available width and the user resizes the panel instead.
+   */
+  fillParent?: boolean;
+  /**
+   * Text to show in the diff preview instead of `edit.original` /
+   * `edit.replacement`.
+   *
+   * A compare edit's `original` is expanded with surrounding context
+   * until the span is unique, so the Apply waterfall can anchor on it.
+   * That context is already visible in the Compare overlay's document
+   * view, so the preview shows only the hunk itself. Anchoring and
+   * Apply still use the expanded `edit.original`.
+   */
+  previewOriginal?: string;
+  previewReplacement?: string;
 }
 
 type CardStatus =
@@ -92,7 +119,7 @@ const DEFAULT_HEIGHT = 220;
  * (`free` mode). Per-card size is keyed by `${messageId}:${edit.id}` and
  * persisted via the `layout.previewSizes` slice of the store.
  */
-export function ProposedEditCard({ edit, docId, messageId, staged, committed, onStageReject, dismissOnly, onDismiss }: Props) {
+export function ProposedEditCard({ edit, docId, messageId, staged, committed, onStageReject, dismissOnly, onDismiss, onApplied, fillParent, previewOriginal, previewReplacement }: Props) {
   // Subscribe to documents so re-renders fire on store updates.
   const documents = useStore((s) => s.documents);
   const doc = documents.find((d) => d.id === docId);
@@ -307,17 +334,23 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
   // Unified (Inline) view still uses a line-level +/- diff. Split view
   // renders full Original / Proposed columns as Preview-style markdown
   // instead of line-synced monospace rows.
+  //
+  // `previewOriginal` / `previewReplacement` override what is shown.
+  // The compare overlay passes the raw hunk text so the preview does
+  // not repeat the context that the edit's anchor was expanded with.
+  const shownOriginal = previewOriginal ?? edit.original;
+  const shownReplacement = previewReplacement ?? edit.replacement;
   const flatDiff = useMemo(
-    () => lineDiff(edit.original, edit.replacement),
-    [edit.original, edit.replacement]
+    () => lineDiff(shownOriginal, shownReplacement),
+    [shownOriginal, shownReplacement]
   );
   const unifiedLines = useMemo(
     () => flatDiff.filter((l) => l.kind !== 'context'),
     [flatDiff]
   );
   const hasTextChange =
-    edit.original !== edit.replacement &&
-    (edit.original.length > 0 || edit.replacement.length > 0);
+    shownOriginal !== shownReplacement &&
+    (shownOriginal.length > 0 || shownReplacement.length > 0);
 
   // Resize wiring. The hook only gives us the pointer delta; we apply it
   // to the start size using the dragged handle to compute the new rect.
@@ -466,6 +499,7 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
       const r = applyEdit(doc.content, edit.original, edit.replacement);
       if (r.ok) {
         performReplace(r.anchor);
+        onApplied?.(edit.id);
       } else {
         setStatus({ kind: 'idle' });
       }
@@ -493,6 +527,7 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
       { idx: prepared.idx, length: prepared.length },
       prepared.text
     );
+    onApplied?.(edit.id);
   };
 
   /**
@@ -529,6 +564,7 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
       })
     );
     setStatus({ kind: 'applied' });
+    onApplied?.(edit.id);
   };
 
   const handleReject = () => {
@@ -573,7 +609,9 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
       : null;
 
   const size = storedSize ?? { w: DEFAULT_WIDTH, h: DEFAULT_HEIGHT };
-  const isSized = !!storedSize;
+  // In fill-parent mode the stored pixel size is ignored: the Compare
+  // overlay owns the resize, and the card always spans its container.
+  const isSized = !!storedSize && !fillParent;
 
   return (
     <div
@@ -722,8 +760,8 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
           </div>
         ) : viewMode === 'split' ? (
           <MarkdownSplitPreview
-            original={edit.original}
-            replacement={edit.replacement}
+            original={shownOriginal}
+            replacement={shownReplacement}
             splitPct={splitPct}
             onSplitPointerDown={onSplitHandleDown}
             splitRowRef={splitRowRef}
@@ -929,15 +967,21 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
         </details>
       )}
 
-      {/* 8 resize handles */}
-      <ResizeHandle handle="top" onPointerDown={onResizePointerDown('top')} />
-      <ResizeHandle handle="bottom" onPointerDown={onResizePointerDown('bottom')} />
-      <ResizeHandle handle="left" onPointerDown={onResizePointerDown('left')} />
-      <ResizeHandle handle="right" onPointerDown={onResizePointerDown('right')} />
-      <ResizeHandle handle="tl" onPointerDown={onResizePointerDown('tl')} />
-      <ResizeHandle handle="tr" onPointerDown={onResizePointerDown('tr')} />
-      <ResizeHandle handle="bl" onPointerDown={onResizePointerDown('bl')} />
-      <ResizeHandle handle="br" onPointerDown={onResizePointerDown('br')} />
+      {/* 8 resize handles. Hidden in fill-parent mode — the Compare
+          overlay owns the resize there, and a card-level handle would
+          fight it. */}
+      {!fillParent && (
+        <>
+          <ResizeHandle handle="top" onPointerDown={onResizePointerDown('top')} />
+          <ResizeHandle handle="bottom" onPointerDown={onResizePointerDown('bottom')} />
+          <ResizeHandle handle="left" onPointerDown={onResizePointerDown('left')} />
+          <ResizeHandle handle="right" onPointerDown={onResizePointerDown('right')} />
+          <ResizeHandle handle="tl" onPointerDown={onResizePointerDown('tl')} />
+          <ResizeHandle handle="tr" onPointerDown={onResizePointerDown('tr')} />
+          <ResizeHandle handle="bl" onPointerDown={onResizePointerDown('bl')} />
+          <ResizeHandle handle="br" onPointerDown={onResizePointerDown('br')} />
+        </>
+      )}
     </div>
   );
 }

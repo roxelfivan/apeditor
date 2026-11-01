@@ -610,6 +610,199 @@ html.dark .proposed-edit-card .pe-comment {
 }
 
 /* =========================================================================
+   Compare overlay — side-by-side document view
+   =========================================================================
+ *
+ * The Compare popup renders the whole compared document as an
+ * Original | Revised view. Unchanged text occupies both columns so it
+ * keeps its proper horizontal position; each change is a full-width
+ * block holding a ProposedEditCard.
+ */
+.cmp-cols-head {
+  @apply flex sticky top-0 z-10 text-[10px] uppercase tracking-wide;
+  background: #FFFCF8;
+  border-bottom: 1px solid theme('colors.paper.hairline');
+}
+html.dark .cmp-cols-head {
+  background: #1A2026;
+  border-bottom-color: theme('colors.cyber.border');
+}
+.cmp-col-head {
+  @apply flex-1 px-3 py-1.5 text-center;
+}
+/* The Original column is tinted like the card's original pane. */
+.cmp-col-head--orig {
+  color: #a83232;
+  background: rgba(190, 50, 50, 0.06);
+  border-right: 1px solid theme('colors.paper.hairline');
+}
+html.dark .cmp-col-head--orig {
+  color: #e09079;
+  background: rgba(192, 67, 43, 0.12);
+  border-right-color: theme('colors.cyber.border');
+}
+/* The Revised column is tinted like the card's proposed pane. */
+.cmp-col-head--rev {
+  color: #1f6f3e;
+  background: rgba(0, 130, 70, 0.08);
+}
+html.dark .cmp-col-head--rev {
+  color: #8fd3b0;
+  background: rgba(111, 191, 153, 0.1);
+}
+
+.cmp-doc {
+  @apply flex flex-col;
+}
+
+.cmp-row {
+  @apply flex items-start;
+  border-bottom: 1px solid theme('colors.paper.hairline');
+}
+html.dark .cmp-row {
+  border-bottom-color: theme('colors.cyber.border');
+}
+.cmp-cell {
+  @apply flex-1 min-w-0 px-3 py-1.5 text-[12px] leading-snug;
+}
+/* Unchanged text reads as context, not as a change. */
+.cmp-cell--same {
+  @apply text-paper-inkSoft dark:text-cyber-muted;
+}
+.cmp-cell--del {
+  color: #a83232;
+  background: rgba(190, 50, 50, 0.06);
+  border-right: 1px solid theme('colors.paper.hairline');
+}
+html.dark .cmp-cell--del {
+  color: #e09079;
+  background: rgba(192, 67, 43, 0.12);
+  border-right-color: theme('colors.cyber.border');
+}
+.cmp-cell--add {
+  color: #1f6f3e;
+  background: rgba(0, 130, 70, 0.08);
+}
+html.dark .cmp-cell--add {
+  color: #8fd3b0;
+  background: rgba(111, 191, 153, 0.1);
+}
+.cmp-empty {
+  @apply text-[11px] italic;
+}
+
+/* Markdown inside the unchanged cells — tighter than the editor's
+   Preview stack so a long document stays compact in the panel. */
+.cmp-md.prose-md {
+  font-size: 12px;
+  line-height: 1.45;
+}
+.cmp-md.prose-md p {
+  @apply my-1 leading-snug;
+}
+.cmp-md.prose-md p:first-child {
+  margin-top: 0;
+}
+.cmp-md.prose-md p:last-child {
+  margin-bottom: 0;
+}
+.cmp-md.prose-md h1 {
+  @apply text-[13px] font-semibold mt-2 mb-1;
+}
+.cmp-md.prose-md h2 {
+  @apply text-[12.5px] font-semibold mt-2 mb-1;
+}
+.cmp-md.prose-md h3 {
+  @apply text-[12px] font-semibold mt-1.5 mb-0.5;
+}
+.cmp-md.prose-md ul,
+.cmp-md.prose-md ol {
+  @apply list-disc pl-4 my-1;
+}
+.cmp-md.prose-md ol {
+  @apply list-decimal;
+}
+.cmp-md.prose-md li {
+  @apply my-0;
+}
+.cmp-md.prose-md code {
+  @apply text-[11px];
+}
+.cmp-md.prose-md pre {
+  @apply text-[11px] p-1.5;
+}
+.cmp-md.prose-md blockquote {
+  @apply my-1 pl-2;
+}
+.cmp-md.prose-md table {
+  @apply text-[11px];
+}
+.cmp-md.prose-md hr {
+  @apply my-2;
+}
+
+/* A change occupies the full width so its ProposedEditCard can render
+   its own Original | Proposed panes without being squeezed. */
+.cmp-change {
+  @apply border-b border-paper-hairline dark:border-cyber-border;
+}
+.cmp-change .proposed-edit-card {
+  @apply mt-0 rounded-none border-0;
+}
+
+/* A hunk that could not be anchored, or a change that was already
+   applied / skipped: shown, but not interactive. */
+.cmp-row--resolved {
+  @apply flex flex-wrap;
+}
+.cmp-note {
+  @apply w-full px-3 py-1 text-[11px] leading-snug;
+}
+.cmp-note--warn {
+  @apply text-cyber-warn;
+  background: rgba(183, 121, 31, 0.08);
+}
+.cmp-note--applied {
+  @apply text-cyber-clay dark:text-cyber-cyan;
+  background: rgba(27, 70, 54, 0.07);
+}
+html.dark .cmp-note--applied {
+  background: rgba(111, 191, 153, 0.1);
+}
+.cmp-note--muted {
+  @apply text-paper-inkSoft dark:text-cyber-muted;
+  background: rgba(92, 87, 79, 0.06);
+}
+html.dark .cmp-note--muted {
+  background: rgba(168, 174, 168, 0.08);
+}
+
+/* The Compare panel's left edge — a slightly wider strip than the
+   default handle, with a hairline that signals it can be dragged. */
+.cmp-resize-handle {
+  width: 8px !important;
+  left: -4px !important;
+}
+.cmp-resize-handle::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: transparent;
+  transition: background-color 120ms ease;
+}
+.cmp-resize-handle:hover::after,
+.cmp-resize-handle:active::after {
+  background: rgba(27, 70, 54, 0.45);
+}
+html.dark .cmp-resize-handle:hover::after,
+html.dark .cmp-resize-handle:active::after {
+  background: rgba(111, 191, 153, 0.6);
+}
+
+/* =========================================================================
    Resize handles + edge-anchors
    ========================================================================= */
 .resize-handle {

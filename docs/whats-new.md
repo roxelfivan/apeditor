@@ -2,6 +2,18 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## v0.6.11 — Compare shows the whole document
+
+**Side-by-side Original \| Revised, with unchanged text among the changes, and a resizable panel.**
+
+- **Document order.** Unchanged paragraphs sit between the change cards, so you can see where each edit lands.
+- **Resize.** Drag the left edge of Compare; the width is remembered.
+- **Cards still Apply / Skip.** Each pending change is the same proposed-edit card as before; Apply all works as before.
+
+No migration.
+
+---
+
 ## v0.6.10 — Dependency security fixes and spec refresh
 
 **No user-visible changes.** A maintenance release that clears the outstanding `npm audit` findings and refreshes the Functional Specification.

@@ -1,3 +1,20 @@
+## v0.6.11 — Compare overlay: side-by-side document view + resize
+
+Patch on top of [v0.6.10](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.10). The Compare popup shows the whole document in order — unchanged text among the changes — and is resizable from its left edge.
+
+### Highlights
+
+- **Document view.** Side-by-side Original \| Revised with unchanged runs between full proposed-edit cards (no more change-only stack).
+- **Resize.** Left-edge drag; width persisted as `layout.compareWidth` (360–900, default 560).
+- **No duplicated hunks.** Card previews show only the raw hunk; expanded Apply anchors stay out of the preview.
+- **Per-card Apply.** Remaining count and resolved rows stay in sync after a single Apply.
+
+### Notes
+
+- See [`.release-notes-v0.6.11.md`](.release-notes-v0.6.11.md) for the full surface list.
+- `package.json` version bumped to `0.6.11`.
+- New `test:compare-panel-render` harness (9 cases); `test:document-compare` covers segment ordering.
+
 ## v0.6.10 — Dependency security fixes and spec refresh
 
 Patch on top of [v0.6.9](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.9). No user-visible behaviour changes — this release clears the outstanding `npm audit` findings, records install-script approvals, and brings the Functional Specification back in line with the code.

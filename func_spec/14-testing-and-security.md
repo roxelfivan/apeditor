@@ -35,6 +35,7 @@ npm run test:token-counter-render
 npm run test:outline-numbering
 npm run test:tags
 npm run test:document-compare
+npm run test:compare-panel-render
 ```
 
 ---
@@ -264,6 +265,7 @@ npm run test:token-counter-render
 npm run test:outline-numbering
 npm run test:tags
 npm run test:document-compare
+npm run test:compare-panel-render
 npm run check:docs
 npm run build
 ```

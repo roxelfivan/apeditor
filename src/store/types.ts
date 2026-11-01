@@ -17,6 +17,7 @@ import type {
   Revision,
   Theme,
 } from '@/types';
+import type { CompareSegment } from '@/utils/documentCompare';
 
 /** Per-document editor focus + caret state (kept in the store, not persisted). */
 export interface EditorFocusState {
@@ -120,6 +121,8 @@ export interface StoreState {
   layout: {
     sidebarWidth: number;
     chatWidth: number;
+    /** Width of the Compare overlay (right-docked panel), in px. */
+    compareWidth: number;
     /** Left-pane width as % of the editor Split row (Graph takes the rest). */
     editorSplitPct: number;
     /**
@@ -142,6 +145,12 @@ export interface StoreState {
   compareSession: {
     sourceLabel: string;
     edits: ProposedEdit[];
+    /**
+     * The compared document in document order, interleaving unchanged
+     * text with the changes. Lets the overlay render the whole document
+     * instead of only the changed hunks.
+     */
+    segments: CompareSegment[];
     skippedHunks: number;
   } | null;
 
@@ -256,6 +265,7 @@ export interface StoreState {
     patch: Partial<{
       sidebarWidth: number;
       chatWidth: number;
+      compareWidth: number;
       editorSplitPct: number;
       splitLeftMode: 'write' | 'preview';
       previewLineNumbers: boolean;

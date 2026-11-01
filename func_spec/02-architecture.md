@@ -32,7 +32,7 @@
 | Largest file | `Editor.tsx` — 2,464 lines |
 | Second largest | `ChatPanel.tsx` — 1,707 lines |
 | Largest pure module | `utils/proposedEdit.ts` — 1,379 lines |
-| Tests | 14 Node scripts, 0 test-framework dependencies |
+| Tests | 15 Node scripts, 0 test-framework dependencies |
 
 Three files dominate: `Editor.tsx`, `ChatPanel.tsx`, and `utils/proposedEdit.ts`. The first two were deliberately *not* merged — see [the event bus](#6-the-event-bus).
 

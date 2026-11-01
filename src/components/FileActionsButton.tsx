@@ -583,6 +583,7 @@ export function FileActionsButton() {
     setCompareSession({
       sourceLabel: label,
       edits: result.edits,
+      segments: result.segments,
       skippedHunks: result.skippedHunks,
     });
     setPanel('closed');

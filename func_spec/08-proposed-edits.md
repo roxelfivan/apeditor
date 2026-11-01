@@ -353,7 +353,7 @@ The footer count subtracts `committed` ids, so **Apply N changes** shows only wh
 
 ## 10. Document compare
 
-[`compareToProposedEdits`](../src/utils/documentCompare.ts) turns a line diff (open document = original, imported file = revised) into `ProposedEdit[]` with unique `original` spans. UI: **File → Compare…** → [`CompareReviewPanel.tsx`](../src/components/CompareReviewPanel.tsx). Cards use `dismissOnly` (no reject-with-feedback). Apply all snapshots `"Before compare"`.
+[`compareToProposedEdits`](../src/utils/documentCompare.ts) turns a line diff (open document = original, imported file = revised) into `ProposedEdit[]` with unique `original` spans, plus ordered `segments` (`unchanged` | `change` | `skipped`) so the UI can render the whole document. UI: **File → Compare…** → [`CompareReviewPanel.tsx`](../src/components/CompareReviewPanel.tsx) — side-by-side Original \| Revised, resizable from the left edge (`layout.compareWidth`, 360–900, default 560). Cards use `dismissOnly` / `fillParent` / hunk-only previews (no reject-with-feedback). Per-card Apply notifies the panel via `onApplied` so the remaining count and resolved rows stay correct. Apply all snapshots `"Before compare"`.
 
 ## 11. Next
 

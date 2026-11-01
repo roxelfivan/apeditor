@@ -1,7 +1,7 @@
 {
   "name": "apeditor",
   "private": true,
-  "version": "0.6.10",
+  "version": "0.6.11",
   "type": "module",
   "description": "Minimal local-first AI markdown editor (MVP).",
   "scripts": {
@@ -26,6 +26,7 @@
     "test:outline-numbering": "node scripts/test-outline-numbering.mjs",
     "test:tags": "node scripts/test-tags.mjs",
     "test:document-compare": "node scripts/test-document-compare.mjs",
+    "test:compare-panel-render": "node scripts/test-compare-panel-render.mjs",
     "check:docs": "node scripts/check-func-spec-links.mjs"
   },
   "dependencies": {

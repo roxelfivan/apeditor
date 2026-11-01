@@ -31,6 +31,9 @@ import {
   MAX_SIDEBAR_WIDTH,
   MIN_CHAT_WIDTH,
   MAX_CHAT_WIDTH,
+  MIN_COMPARE_WIDTH,
+  MAX_COMPARE_WIDTH,
+  DEFAULT_COMPARE_WIDTH,
   MIN_EDITOR_SPLIT_PCT,
   MAX_EDITOR_SPLIT_PCT,
   DEFAULT_EDITOR_SPLIT_PCT,
@@ -96,6 +99,7 @@ export const useStore = create<StoreState>()(
       layout: {
         sidebarWidth: 240,
         chatWidth: 384,
+        compareWidth: DEFAULT_COMPARE_WIDTH,
         editorSplitPct: DEFAULT_EDITOR_SPLIT_PCT,
         splitLeftMode: 'write',
         previewSizes: {},
@@ -673,6 +677,7 @@ export const useStore = create<StoreState>()(
         if (state) {
           const sw = state.layout?.sidebarWidth;
           const cw = state.layout?.chatWidth;
+          const cmpw = state.layout?.compareWidth;
           const esp = state.layout?.editorSplitPct;
           const slm = state.layout?.splitLeftMode;
           const api0 = state.api;
@@ -683,6 +688,19 @@ export const useStore = create<StoreState>()(
           }
           if (typeof cw === 'number' && (cw < MIN_CHAT_WIDTH || cw > MAX_CHAT_WIDTH)) {
             layoutPatch.chatWidth = clamp(cw, MIN_CHAT_WIDTH, MAX_CHAT_WIDTH);
+          }
+          // Pre-compare snapshots have no compareWidth — fall back to the
+          // default rather than leaving it undefined.
+          if (
+            typeof cmpw !== 'number' ||
+            Number.isNaN(cmpw) ||
+            cmpw < MIN_COMPARE_WIDTH ||
+            cmpw > MAX_COMPARE_WIDTH
+          ) {
+            layoutPatch.compareWidth =
+              typeof cmpw === 'number' && !Number.isNaN(cmpw)
+                ? clamp(cmpw, MIN_COMPARE_WIDTH, MAX_COMPARE_WIDTH)
+                : DEFAULT_COMPARE_WIDTH;
           }
           if (typeof esp !== 'number' || Number.isNaN(esp)) {
             layoutPatch.editorSplitPct = DEFAULT_EDITOR_SPLIT_PCT;

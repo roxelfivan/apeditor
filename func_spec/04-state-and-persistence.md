@@ -111,6 +111,7 @@ All three are `Record<documentId, …>`. They are deleted with the document.
 |---|---|---|:-:|---|
 | `layout.sidebarWidth` | `number` | `240` | ✅ | `160`–`480` px |
 | `layout.chatWidth` | `number` | `384` | ✅ | `280`–`max(720, innerWidth × 2/3)` |
+| `layout.compareWidth` | `number` | `560` | ✅ | `360`–`900` px (Compare overlay; missing values rehydrate to `560`) |
 | `layout.editorSplitPct` | `number` | `50` | ✅ | `20`–`80` % (left pane of Split; Graph takes the rest) |
 | `layout.splitLeftMode` | `'write' \| 'preview'` | `'write'` | ✅ | Left pane content in Split; missing values rehydrate to `'write'` |
 | `layout.previewSizes` | `Record<string, {w,h}>` | `{}` | ✅ | Per ProposedEditCard, keyed `${messageId}:${editId}` |
@@ -127,7 +128,7 @@ All three are `Record<documentId, …>`. They are deleted with the document.
 | `editorFocus` | `Record<documentId, { focused, selectionStart, selectionEnd }>` | Lets ProposedEditCard decide whether Highlight Apply is available. `-1` offsets until the user has clicked in the editor. |
 | `proposedEditHighlights` | `Record<documentId, ProposedEditHighlight[]>` | Temporary editor highlight of a card's matched span, keyed `${messageId}:${editId}`. |
 | `commentUndoStack` | `CommentOp[]` | Session-only undo. A fresh reload starts empty **by design**. |
-| `compareSession` | `{ sourceLabel, edits, skippedHunks } \| null` | In-session document compare. Not persisted. |
+| `compareSession` | `{ sourceLabel, edits, segments, skippedHunks } \| null` | In-session document compare. `segments` is the ordered document skeleton for the overlay. Not persisted. |
 
 ## 4. `localStorage` schema
 

@@ -14,10 +14,22 @@
 > functional specification). See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.6.10](https://img.shields.io/badge/version-0.6.10-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.10)
+[![v0.6.11](https://img.shields.io/badge/version-0.6.11-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.11)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
+
+---
+
+## What's new in v0.6.11
+
+> Compare shows the whole document side-by-side, and the panel is resizable. Patch on top of [v0.6.10](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.10).
+
+1. **Document view.** Original \| Revised with unchanged text among the change cards.
+2. **Resize.** Drag the left edge; width is remembered (`layout.compareWidth`).
+3. **Apply sync.** Per-card Apply updates the remaining count and resolved rows.
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.11 entry and prior changelogs.
 
 ---
 
@@ -633,7 +645,7 @@ A longer, task-oriented walkthrough of every screen lives under
 `⌘/Ctrl + /`) to open the same pages as a themed Help site — Light /
 Dark matches the editor. Start at the [table of contents](docs/README.md):
 
-- [What's new](docs/whats-new.md) — current release (v0.6.10)
+- [What's new](docs/whats-new.md) — current release (v0.6.11)
 - [Getting started](docs/getting-started.md) — first launch, connect AI, first document
 - [Your workspace](docs/workspace.md) — layout, theme, panels, Help
 - [Documents](docs/documents.md) — create, rename, switch, delete
@@ -767,6 +779,7 @@ per-release notes also ship on the GitHub release pages.
 
 | Version | Highlights |
 | --- | --- |
+| [v0.6.11](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.11) | **Compare overlay.** Side-by-side Original \| Revised with unchanged text; left-edge resize; per-card Apply syncs remaining. |
 | [v0.6.10](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.10) | **Security.** `npm audit` 4 → **0** (Vite 6, patched `uuid` / `postcss-selector-parser`); install-script approvals recorded; Functional Specification refreshed. |
 | [v0.6.9](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.9) | **Sidebar tags, Preview numbering, document compare.** Nested `#tags`, star/pin, Recent; numbered-list dropdown for line gutter and heading outline; **File → Compare…** redlines another `.md` / `.json` / `.docx` into proposed edits. |
 | [v0.6.8](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.8) | **Toolbar polish, compact Mindmap, Preview default.** Quieter editor/Graph controls; parent-relative Mindmap packing; fresh installs open in Preview. |

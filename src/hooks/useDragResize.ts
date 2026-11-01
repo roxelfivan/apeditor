@@ -180,6 +180,14 @@ export const MIN_SIDEBAR_WIDTH = 160;
 export const MAX_SIDEBAR_WIDTH = 480;
 export const MIN_CHAT_WIDTH = 280;
 export const MAX_CHAT_WIDTH = 720;
+// Compare overlay bounds. The panel is right-docked and holds a
+// side-by-side Original | Revised view, so it needs more room than the
+// chat panel to keep both columns legible. The lower bound is above the
+// old fixed `max-w-md` (28rem = 448px) so the two columns stay readable.
+export const MIN_COMPARE_WIDTH = 360;
+export const MAX_COMPARE_WIDTH = 900;
+/** Default Compare overlay width — wide enough for both columns. */
+export const DEFAULT_COMPARE_WIDTH = 560;
 /** Write-pane share of the editor Split row (percent of row width). */
 export const MIN_EDITOR_SPLIT_PCT = 20;
 export const MAX_EDITOR_SPLIT_PCT = 80;

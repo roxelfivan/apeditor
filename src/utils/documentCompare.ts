@@ -2,6 +2,10 @@
  * Turn a two-document line diff into a `ProposedEdit[]` that the
  * existing Apply waterfall can consume. Current document = Original;
  * the imported / other document = Revised (Word Compare).
+ *
+ * The result also carries `segments` — the whole document in document
+ * order — so the Compare popup can render the unchanged text that the
+ * edit list alone omits.
  */
 
 import { diffLines } from 'diff';
@@ -10,7 +14,38 @@ import type { ProposedEdit } from '@/types';
 export interface CompareResult {
   edits: ProposedEdit[];
   skippedHunks: number;
+  /**
+   * The compared document in document order, interleaving unchanged
+   * text with the changes.
+   */
+  segments: CompareSegment[];
 }
+
+/**
+ * One contiguous piece of the compared document.
+ *
+ * - `unchanged` — text present identically in both documents. It is
+ *   rendered in both columns of the side-by-side view.
+ * - `change` — a hunk that became an applyable edit. `editId` matches
+ *   an entry in `CompareResult.edits`. `originalText` / `revisedText`
+ *   hold the raw diff text for this hunk (before the anchor expansion
+ *   that `ProposedEdit.original` / `.replacement` need), so rendering a
+ *   segment never repeats text that already lives in an unchanged
+ *   segment.
+ * - `skipped` — a hunk that could not be turned into a unique anchor
+ *   and therefore has no applyable edit. It is still shown (muted, no
+ *   Apply button) so the document view stays continuous and the
+ *   difference is not hidden.
+ */
+export type CompareSegment =
+  | { kind: 'unchanged'; text: string }
+  | {
+      kind: 'change';
+      editId: string;
+      originalText: string;
+      revisedText: string;
+    }
+  | { kind: 'skipped'; originalText: string; revisedText: string };
 
 function occurrenceCount(haystack: string, needle: string): number {
   if (!needle) return 0;
@@ -106,12 +141,28 @@ function expandUntilUnique(
 /**
  * Diff `original` (the open document) against `revised` (the imported
  * file) and emit applyable proposed edits.
+ *
+ * The result carries two parallel views of the same diff:
+ *
+ * - `edits` — applyable `ProposedEdit`s. Their `original` is expanded
+ *   with surrounding context until the span is unique in the document,
+ *   so the Apply waterfall can anchor on it.
+ * - `segments` — the document skeleton. Unchanged text is preserved
+ *   verbatim, and each change segment carries only the hunk's own raw
+ *   diff text, so the popup can render the whole document without
+ *   repeating the context that the expansion added to the edit.
  */
 export function compareToProposedEdits(
   original: string,
   revised: string
 ): CompareResult {
-  if (original === revised) return { edits: [], skippedHunks: 0 };
+  if (original === revised) {
+    return {
+      edits: [],
+      skippedHunks: 0,
+      segments: original ? [{ kind: 'unchanged', text: original }] : [],
+    };
+  }
   if (!original) {
     return {
       edits: [
@@ -124,6 +175,14 @@ export function compareToProposedEdits(
         },
       ],
       skippedHunks: 0,
+      segments: [
+        {
+          kind: 'change',
+          editId: 'compare-1',
+          originalText: '',
+          revisedText: revised,
+        },
+      ],
     };
   }
 
@@ -134,17 +193,39 @@ export function compareToProposedEdits(
     original: string;
     replacement: string;
   };
-  const hunks: Hunk[] = [];
+  // The diff walk emits parts in document order: equal text, then the
+  // removed/added text of a hunk, then equal text again. Collapse that
+  // into one ordered list of items so the document view can be rebuilt
+  // without guessing which unchanged run belongs before which hunk.
+  type Item =
+    | { kind: 'equal'; text: string }
+    | { kind: 'hunk'; hunk: Hunk };
+  const items: Item[] = [];
   let origPos = 0;
   let pending: Hunk | null = null;
-  const flush = () => {
-    if (pending) hunks.push(pending);
-    pending = null;
+  // Accumulates equal text for the current unchanged run.
+  let pendingEqual = '';
+  const flushHunk = () => {
+    if (pending) {
+      items.push({ kind: 'hunk', hunk: pending });
+      pending = null;
+    }
+  };
+  const flushEqual = () => {
+    if (!pendingEqual) return;
+    // Merge with a preceding equal item so consecutive equal parts do
+    // not fragment the document into many tiny segments.
+    const last = items[items.length - 1];
+    if (last && last.kind === 'equal') last.text += pendingEqual;
+    else items.push({ kind: 'equal', text: pendingEqual });
+    pendingEqual = '';
   };
 
   for (const part of parts) {
     const len = part.value.length;
     if (part.added) {
+      // A change starts, so any equal text collected so far comes first.
+      flushEqual();
       if (!pending) {
         pending = {
           origStart: origPos,
@@ -155,6 +236,7 @@ export function compareToProposedEdits(
       }
       pending.replacement += part.value;
     } else if (part.removed) {
+      flushEqual();
       if (!pending) {
         pending = {
           origStart: origPos,
@@ -167,16 +249,26 @@ export function compareToProposedEdits(
       pending.origEnd = origPos + len;
       origPos += len;
     } else {
-      flush();
+      // Equal text closes the hunk that precedes it.
+      flushHunk();
+      pendingEqual += part.value;
       origPos += len;
     }
   }
-  flush();
+  flushHunk();
+  flushEqual();
 
   const edits: ProposedEdit[] = [];
+  const segments: CompareSegment[] = [];
   let skippedHunks = 0;
   let n = 0;
-  for (const hunk of hunks) {
+  for (const item of items) {
+    if (item.kind === 'equal') {
+      segments.push({ kind: 'unchanged', text: item.text });
+      continue;
+    }
+
+    const hunk = item.hunk;
     n += 1;
     let coreOriginal = hunk.original;
     let coreReplacement = hunk.replacement;
@@ -187,6 +279,11 @@ export function compareToProposedEdits(
       const ctx = pickInsertContext(original, hunk.origStart);
       if (!ctx) {
         skippedHunks += 1;
+        segments.push({
+          kind: 'skipped',
+          originalText: hunk.original,
+          revisedText: hunk.replacement,
+        });
         continue;
       }
       start = ctx.start;
@@ -207,17 +304,32 @@ export function compareToProposedEdits(
     );
     if (!expanded) {
       skippedHunks += 1;
+      segments.push({
+        kind: 'skipped',
+        originalText: hunk.original,
+        revisedText: hunk.replacement,
+      });
       continue;
     }
 
+    const editId = `compare-${n}`;
     edits.push({
-      id: `compare-${n}`,
+      id: editId,
       summary: summarizeHunk(hunk.original, hunk.replacement),
       rationale: 'Produced by document compare (not an AI suggestion).',
       original: expanded.original,
       replacement: expanded.replacement,
     });
+    segments.push({
+      kind: 'change',
+      editId,
+      // The raw hunk text — NOT the expanded anchor. The expansion adds
+      // neighbouring lines that are also present in the unchanged runs,
+      // so rendering it here would duplicate that text.
+      originalText: hunk.original,
+      revisedText: hunk.replacement,
+    });
   }
 
-  return { edits, skippedHunks };
+  return { edits, skippedHunks, segments };
 }
