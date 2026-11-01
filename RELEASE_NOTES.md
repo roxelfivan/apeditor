@@ -1,3 +1,19 @@
+## v0.6.10 — Dependency security fixes and spec refresh
+
+Patch on top of [v0.6.9](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.9). No user-visible behaviour changes — this release clears the outstanding `npm audit` findings, records install-script approvals, and brings the Functional Specification back in line with the code.
+
+### Highlights
+
+- **Security.** `npm audit` went from 4 vulnerabilities (3 moderate, 1 high) to **0**. `vite` 5.4 → 6.4.5 (path traversal + `launch-editor` command injection), `esbuild` 0.21.5 → 0.25.12 (dev server readable by any site), `uuid` 9 → 11.1.1 (buffer bounds check), `postcss-selector-parser` 6.1.4 → 6.1.5 (quadratic selector parsing).
+- **Install scripts.** `esbuild`, `fsevents`, and `protobufjs` are approved in `package.json` — by name, so the approvals survive future upgrades instead of going stale.
+- **Spec refresh.** Toolchain and size tables corrected; both release checklists now list all 14 `test:*` scripts; three stale README pointers fixed.
+
+### Notes
+
+- See [`.release-notes-v0.6.10.md`](.release-notes-v0.6.10.md) for the full surface list.
+- `package.json` version bumped to `0.6.10`.
+- The `uuid` bump keeps the `v4` API; the `@types/uuid` stub was removed (`uuid@11` ships its own types).
+
 ## v0.6.9 — Sidebar tags, Preview numbering, document compare
 
 Patch on top of [v0.6.8](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.8). Nested tags, pin, and Recent keep a large workspace scannable; Preview/print can number lines and headings; **File → Compare…** produces a full suggested-edit set from another file.

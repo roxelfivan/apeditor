@@ -2,6 +2,18 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## v0.6.10 — Dependency security fixes and spec refresh
+
+**No user-visible changes.** A maintenance release that clears the outstanding `npm audit` findings and refreshes the Functional Specification.
+
+- **Security.** `npm audit` now reports **0 vulnerabilities** (was 3 moderate + 1 high). The build toolchain moves to Vite 6, and `uuid` / `postcss-selector-parser` are patched.
+- **Install scripts.** The three pending npm lifecycle-script approvals (`esbuild`, `fsevents`, `protobufjs`) are recorded in `package.json`.
+- **Docs.** The Functional Specification's toolchain and size tables, and both release checklists, are back in sync with the code.
+
+Nothing changes in the app itself — same features, same behaviour.
+
+---
+
 ## v0.6.9 — Sidebar tags, Preview numbering, document compare
 
 **Nested tags, pin/recent, legal Preview, and Word-style compare.**

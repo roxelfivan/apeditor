@@ -155,6 +155,7 @@ Full changelogs are in [`RELEASE_NOTES.md`](../RELEASE_NOTES.md). The shape of t
 
 | Version | What changed |
 |---|---|
+| v0.6.10 | **Dependency security fixes and spec refresh.** `npm audit` 4 → 0 (Vite 6, patched `uuid` / `postcss-selector-parser`); install-script approvals recorded in `package.json`; Functional Specification toolchain + size tables and release checklists corrected. No user-visible change. |
 | v0.6.9 | **Sidebar tags, Preview numbering, document compare.** Nested `#path` tags, pin, Recent, search; Preview line numbers + heading outline + print; **File → Compare…** → proposed-edit set. |
 | v0.6.8 | **Toolbar polish, compact Mindmap, Preview default.** Predict icon-only; Preview Size ±; Mindmap parent-relative packing + label pad to 96px; magnifier zoom; default `viewMode` Preview; propose-edit Reject/mismatch tidy; Local Model token counters. |
 | v0.6.7 | **Chat composer follows the divider.** Vertical split resizes composer height (drag up grows input; include selection sticks to the handle); messages fill leftover space; same `apeditor:chat-messages-height` key, now composer height. |

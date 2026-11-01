@@ -2,7 +2,7 @@
 
 > The developer-facing manual for this repository. It describes **what ApEditor does, how it is built, and the contracts you must respect when you change it.**
 
-**Applies to:** `v0.6.9` · package version **0.6.9** · MIT licensed
+**Applies to:** `v0.6.10` · package version **0.6.10** · MIT licensed
 **Audience:** engineers new to the repo, and anyone returning to it after a few months.
 
 ---
@@ -140,4 +140,4 @@ npm run test:heading-sections
 npm run build        # type-check + production build to dist/
 ```
 
-There is no test framework and no CI suite. The three `test:*` scripts are hand-rolled Node harnesses that bundle the real source with `esbuild` and assert against `node:assert/strict`. See [Testing & security](14-testing-and-security.md).
+There is no test framework and no CI suite. The `test:*` scripts are hand-rolled Node harnesses that bundle the real source with `esbuild` and assert against `node:assert/strict`. See [Testing & security](14-testing-and-security.md).

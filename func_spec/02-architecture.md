@@ -10,11 +10,11 @@
 |---|---|---|
 | UI runtime | React + React DOM | 18.3.1 |
 | Language | TypeScript (strict) | 5.5.x |
-| Build / dev server | Vite | 5.4.x |
+| Build / dev server | Vite | 6.4.x |
 | State | Zustand with `persist` middleware | 4.5.x |
 | Markdown | `react-markdown` + `remark-gfm` + `rehype-raw` + `rehype-sanitize` | 9 / 4 / 7 / 6 |
 | Diffing | `diff` | 5.x |
-| IDs | `uuid` (v4 only) | 9.x |
+| IDs | `uuid` (v4 only) | 11.x |
 | Styling | Tailwind CSS + PostCSS + autoprefixer | 3.4.x |
 | Fonts | `@fontsource/source-sans-3`, `@fontsource/newsreader`, `@fontsource/ibm-plex-mono` | 5.x |
 | OCR | `@paddleocr/paddleocr-js` (PP-OCRv6_tiny) | 0.4.2 |
@@ -25,14 +25,14 @@
 
 | Metric | Value |
 |---|---|
-| TypeScript / TSX files under `src/` | 55 |
-| Total lines under `src/` (`.ts` + `.tsx`) | ~19,400 |
-| `src/index.css` | 2,090 lines |
-| Components | 22 files (17 top-level + 5 under `components/mentions/`) |
-| Largest file | `Editor.tsx` — 2,009 lines |
-| Second largest | `ChatPanel.tsx` — 1,381 lines |
-| Largest pure module | `utils/proposedEdit.ts` — 1,292 lines |
-| Tests | 3 Node scripts, 0 test-framework dependencies |
+| TypeScript / TSX files under `src/` | 83 |
+| Total lines under `src/` (`.ts` + `.tsx`) | ~31,800 |
+| `src/index.css` | 2,254 lines |
+| Components | 33 files (29 top-level + 4 under `components/mentions/`) |
+| Largest file | `Editor.tsx` — 2,464 lines |
+| Second largest | `ChatPanel.tsx` — 1,707 lines |
+| Largest pure module | `utils/proposedEdit.ts` — 1,379 lines |
+| Tests | 14 Node scripts, 0 test-framework dependencies |
 
 Three files dominate: `Editor.tsx`, `ChatPanel.tsx`, and `utils/proposedEdit.ts`. The first two were deliberately *not* merged — see [the event bus](#6-the-event-bus).
 

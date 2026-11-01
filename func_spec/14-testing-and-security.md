@@ -253,9 +253,18 @@ npm run typecheck
 npm run test:heading-sections
 npm run test:proposed-edit
 npm run test:graph
+npm run test:backup-roundtrip
+npm run test:chat-archive
+npm run test:chat-attachments
+npm run test:send-comments-tdz
 npm run test:send-comments-dup
+npm run test:local-prompt-compact
 npm run test:token-estimate
 npm run test:token-counter-render
+npm run test:outline-numbering
+npm run test:tags
+npm run test:document-compare
+npm run check:docs
 npm run build
 ```
 

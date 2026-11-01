@@ -1,7 +1,7 @@
 {
   "name": "apeditor",
   "private": true,
-  "version": "0.6.9",
+  "version": "0.6.10",
   "type": "module",
   "description": "Minimal local-first AI markdown editor (MVP).",
   "scripts": {
@@ -45,7 +45,7 @@
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.0",
     "three": "^0.160.1",
-    "uuid": "^9.0.1",
+    "uuid": "^11.1.1",
     "zustand": "^4.5.4"
   },
   "devDependencies": {
@@ -54,12 +54,17 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@types/three": "^0.160.0",
-    "@types/uuid": "^9.0.8",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.41",
+    "postcss-selector-parser": "^6.1.5",
     "tailwindcss": "^3.4.10",
     "typescript": "^5.5.4",
-    "vite": "^5.4.0"
+    "vite": "^6.4.5"
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "fsevents": true,
+    "protobufjs": true
   }
 }

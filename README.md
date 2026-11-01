@@ -14,10 +14,22 @@
 > functional specification). See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.6.9](https://img.shields.io/badge/version-0.6.9-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.9)
+[![v0.6.10](https://img.shields.io/badge/version-0.6.10-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.10)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
+
+---
+
+## What's new in v0.6.10
+
+> Dependency security fixes and a spec refresh — no user-visible changes. Patch on top of [v0.6.9](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.9).
+
+1. **Security.** `npm audit` goes from 4 vulnerabilities (3 moderate, 1 high) to **0**. Vite 6, patched `uuid` and `postcss-selector-parser`.
+2. **Install scripts.** `esbuild`, `fsevents`, and `protobufjs` are approved by name, so the approvals survive future upgrades.
+3. **Spec refresh.** Toolchain and size tables corrected; both release checklists now cover all 14 `test:*` scripts.
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.10 entry and prior changelogs.
 
 ---
 
@@ -621,7 +633,7 @@ A longer, task-oriented walkthrough of every screen lives under
 `⌘/Ctrl + /`) to open the same pages as a themed Help site — Light /
 Dark matches the editor. Start at the [table of contents](docs/README.md):
 
-- [What's new](docs/whats-new.md) — current release (Mindmap labels in v0.6.6)
+- [What's new](docs/whats-new.md) — current release (v0.6.10)
 - [Getting started](docs/getting-started.md) — first launch, connect AI, first document
 - [Your workspace](docs/workspace.md) — layout, theme, panels, Help
 - [Documents](docs/documents.md) — create, rename, switch, delete
@@ -755,6 +767,10 @@ per-release notes also ship on the GitHub release pages.
 
 | Version | Highlights |
 | --- | --- |
+| [v0.6.10](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.10) | **Security.** `npm audit` 4 → **0** (Vite 6, patched `uuid` / `postcss-selector-parser`); install-script approvals recorded; Functional Specification refreshed. |
+| [v0.6.9](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.9) | **Sidebar tags, Preview numbering, document compare.** Nested `#tags`, star/pin, Recent; numbered-list dropdown for line gutter and heading outline; **File → Compare…** redlines another `.md` / `.json` / `.docx` into proposed edits. |
+| [v0.6.8](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.8) | **Toolbar polish, compact Mindmap, Preview default.** Quieter editor/Graph controls; parent-relative Mindmap packing; fresh installs open in Preview. |
+| [v0.6.7](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.7) | **Chat composer follows the divider** — the typing area grows upward with the split. |
 | [v0.6.6](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.6) | **Mindmap labels** wrap without overlapping, sit above connectors; **−** / **+** resize text; Flat rename; Globe math removed. |
 | [v0.6.5](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.5) | **Debug token counter** next to Chat **Send** and comment **Send to AI**, with the Local Model budget. Comment batches sent once, not twice. |
 | [v0.6.4](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.4) | **Local Model default**, Chat **+** attachments, Debug-gated System/Rationale/Temperature, **selection only** removed. Replaces Google AI Mode. |
