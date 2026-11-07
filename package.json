@@ -1,7 +1,7 @@
 {
   "name": "apeditor",
   "private": true,
-  "version": "0.6.11",
+  "version": "0.6.13",
   "type": "module",
   "description": "Minimal local-first AI markdown editor (MVP).",
   "scripts": {
@@ -27,6 +27,10 @@
     "test:tags": "node scripts/test-tags.mjs",
     "test:document-compare": "node scripts/test-document-compare.mjs",
     "test:compare-panel-render": "node scripts/test-compare-panel-render.mjs",
+    "test:csv-to-markdown": "node scripts/test-csv-to-markdown.mjs",
+    "test:preview-markdown-render": "node scripts/test-preview-markdown-render.mjs",
+    "test:table-model": "node scripts/test-table-model.mjs",
+    "test:table-edits": "node scripts/test-table-edits.mjs",
     "check:docs": "node scripts/check-func-spec-links.mjs"
   },
   "dependencies": {

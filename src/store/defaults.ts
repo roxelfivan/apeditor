@@ -12,15 +12,18 @@ import { getProvider } from '@/config/providers';
 
 // Resolve the build-time default provider, then derive endpoint/model
 // defaults from the matching preset. First-run default is Local Model
-// (`local-gemma`). VITE_DEFAULT_PROVIDER can still force minimax or
-// openai for keyed production deploys. The settings modal still needs
-// a one-time download / load of the on-device model.
+// (`local-gemma`). VITE_DEFAULT_PROVIDER can force minimax, openai,
+// ollama, or lm-studio instead. Local Gemma still needs a one-time
+// download / load of the on-device model in Settings.
+const envProvider = import.meta.env.VITE_DEFAULT_PROVIDER;
 export const initialProvider: ApiProvider =
-  import.meta.env.VITE_DEFAULT_PROVIDER === 'openai'
-    ? 'openai'
-    : import.meta.env.VITE_DEFAULT_PROVIDER === 'minimax'
-      ? 'minimax'
-      : 'local-gemma';
+  envProvider === 'openai' ||
+  envProvider === 'minimax' ||
+  envProvider === 'ollama' ||
+  envProvider === 'lm-studio' ||
+  envProvider === 'local-gemma'
+    ? envProvider
+    : 'local-gemma';
 
 const initialPreset = getProvider(initialProvider);
 
@@ -105,8 +108,9 @@ from Hugging Face once (or **Load from disk** / **Save to Disk**), wait
 until status shows **Ready**, then use Chat. Needs WebGPU (recent
 Chrome / Edge / Safari).
 
-Prefer a cloud model? Switch **Provider** to **Minimax** or **OpenAI**
-and paste an API key. The whole app also works with no AI at all.
+Prefer a cloud or local server? Switch **Provider** to **Minimax** or
+**OpenAI** (API key), or **Ollama** / **LM Studio** (local endpoint, no
+key). The whole app also works with no AI at all.
 
 ## 2. ✍️ Write, Preview, Graph, or Split
 
@@ -185,10 +189,11 @@ text sent along with your message.
 
 ## 9. ✨ Get sentence suggestions while writing
 
-**Predict starts off** and needs **Minimax** or **OpenAI** (not Local
-Model). Click **Predict** (or \`⌘/Ctrl + \\\`) to turn it on and request
-a suggestion at the cursor. Press \`Tab\` to insert it, \`Esc\` to
-dismiss it. Click the same button again to turn it back off.
+**Predict starts off** and needs an HTTP provider — **Minimax**,
+**OpenAI**, **Ollama**, or **LM Studio** (not Local Model). Click
+**Predict** (or \`⌘/Ctrl + \\\`) to turn it on and request a suggestion
+at the cursor. Press \`Tab\` to insert it, \`Esc\` to dismiss it. Click
+the same button again to turn it back off.
 
 ## 10. 💾 Save a snapshot
 
@@ -200,10 +205,11 @@ any two revisions and restore one.
 
 **File → Import photos / PDFs** in the Documents sidebar. Pick an
 image or a PDF. Recognition runs in your browser; the extracted text
-is rewritten as readable Markdown by your configured Minimax/OpenAI
-model and inserted at your caret. (OCR→Markdown rewrite needs a keyed
-provider.) You can also click **+** in Chat to attach the same file
-types to a question without inserting into the document.
+is rewritten as readable Markdown by your configured Minimax, OpenAI,
+Ollama, or LM Studio model and inserted at your caret. (OCR→Markdown
+rewrite needs an HTTP chat provider, not Local Gemma.) You can also
+click **+** in Chat to attach the same file types to a question
+without inserting into the document.
 
 ## 12. 💾 Keep a copy outside the browser
 

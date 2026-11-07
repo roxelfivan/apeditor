@@ -12,16 +12,16 @@ This guide is for people using the app. It covers every screen and everyday task
 - See [What's new](whats-new.md) for the current release
 - Keep many documents in the sidebar (search, nested tags, pin, recent)
 - Comment on a passage, then **Send to AI** in one batch
-- Chat with MiniMax, OpenAI, or **Local Model (require around 2gb disk space)**
+- Chat with MiniMax, OpenAI, Ollama, LM Studio, or **Local Model (require around 2gb disk space)**
 - Review proposed edits as cards — **Apply**, **Reject**, or apply several at once
 - Save and restore **revisions**
-- Import text from photos or PDFs; compare another `.md` / `.json` / `.docx` as suggested edits
+- Import text from photos or PDFs; import a spreadsheet table from CSV or TSV as a Markdown table; compare another `.md` / `.json` / `.docx` as suggested edits
 - Get optional inline **Predict** suggestions while you type
 - Reference other documents with `@` — attach another doc or its headings (`§…`) in chat, comments, or rejection feedback. See [Reference other documents (`@`)](reference-other-documents.md).
 
 ## Start here
 
-1. [What's new](whats-new.md) — current release (v0.6.11: Compare side-by-side document view + resize)
+1. [What's new](whats-new.md) — current release (v0.6.13: Chat edits tables as cells)
 2. [Getting started](getting-started.md) — first launch, connect AI, first document
 3. [Your workspace](workspace.md) — layout, theme, panels, Help
 4. [Documents](documents.md) — create, rename, switch, delete
@@ -31,7 +31,7 @@ This guide is for people using the app. It covers every screen and everyday task
 8. [Proposed edits](proposed-edits.md) — Apply, Reject, Highlight Apply
 9. [Prompt library](prompt-library.md) — saved prompts
 10. [Revision history](revisions.md) — snapshots and restore
-11. [Import from photos or PDFs](import.md)
+11. [Import photos, PDFs, and tables](import.md)
 12. [Reference other documents (`@`)](reference-other-documents.md) — attach a doc or heading sections
 13. [Settings](settings.md)
 14. [Keyboard shortcuts](keyboard-shortcuts.md)

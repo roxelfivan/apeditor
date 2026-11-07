@@ -120,7 +120,7 @@ Empty content renders `*Nothing to preview yet.*`. Write mode is unchanged — i
 
 This only works because `rehype-raw` is enabled and the shared sanitize schema allows `span` / `mark` with `className`. Styled by `.wiki-link` in [`index.css`](../src/index.css) (purple in light and dark).
 
-Preview is rendered by [`PreviewMarkdown.tsx`](../src/components/PreviewMarkdown.tsx). Optional **source line numbers** (`layout.previewLineNumbers`) stamp `data-line` via `rehypeSourceLines`. Optional **outline numbering** (`layout.outlineNumbering`) prepends labels from [`outlineNumbering.ts`](../src/utils/outlineNumbering.ts) onto `h1`–`h6` without rewriting stored markdown. Both flags are set from the compact numbering icon in [`PreviewNumberingMenu.tsx`](../src/components/PreviewNumberingMenu.tsx). `@media print` hides `[data-print-hide]` chrome and keeps `[data-print-root]`.
+Preview is rendered by [`PreviewMarkdown.tsx`](../src/components/PreviewMarkdown.tsx). Optional **source line numbers** (`layout.previewLineNumbers`) stamp `data-line` via `rehypeSourceLines`. Optional **outline numbering** (`layout.outlineNumbering`) prepends labels from [`outlineNumbering.ts`](../src/utils/outlineNumbering.ts) onto `h1`–`h6` without rewriting stored markdown. Both flags are set from the compact numbering icon in [`PreviewNumberingMenu.tsx`](../src/components/PreviewNumberingMenu.tsx). GFM tables use [`ResizablePreviewTable.tsx`](../src/components/ResizablePreviewTable.tsx): drag a header’s right edge to resize; cell text wraps; widths persist in `layout.previewTableColWidths` (not in Markdown). The `components` map must stay referentially stable so resize state is not wiped on every Preview re-render. Wide tables scroll inside `.preview-scroll` / `.table-scroll` rather than stretching the pane. `@media print` hides `[data-print-hide]` chrome and keeps `[data-print-root]`.
 
 ## 3. Formatting
 
@@ -221,7 +221,7 @@ Body shows `ghost` text in `whitespace-pre-wrap`, or three pulsing dots at `anim
 
 | Gate | Condition |
 |---|---|
-| Button enabled | `apiConfigured = requiresApiKey(provider) && Boolean(apiKey && apiEndpoint)` |
+| Button enabled | `apiConfigured = isHttpChatConfigured(api)` |
 | Hook enabled | `apiConfigured && inlineOn` |
 | `attemptFire` | `enabled` |
 | Ghost guard | Returns if a ghost is already showing — **even for the manual trigger** |

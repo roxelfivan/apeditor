@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from 'react';
 import { v4 as uuid } from 'uuid';
 import ReactMarkdown from 'react-markdown';
 import { useStore } from '@/store/useStore';
@@ -18,9 +25,10 @@ import { LocalGemmaControls } from '@/components/LocalGemmaControls';
 import { ResizeHandle } from '@/components/ResizeHandle';
 import { useDragResize, clamp, MIN_CHAT_WIDTH, MAX_CHAT_WIDTH } from '@/hooks/useDragResize';
 import { parseProposedEdits, formatRejectionBatch, applyAllEdits } from '@/utils/proposedEdit';
+import { applyTableEdit } from '@/utils/tableEdits';
 import { formatCommentBatch } from '@/utils/comments';
 import { remarkPlugins, rehypePlugins } from '@/utils/markdown';
-import { requiresApiKey } from '@/config/providers';
+import { usesLocalGemmaEngine } from '@/config/providers';
 import { MentionInput } from '@/components/mentions/MentionInput';
 import { parseMentions } from '@/utils/mentions/parseMentions';
 import {
@@ -59,15 +67,16 @@ const useChatWidth = () => {
 // `Cannot access '…' before initialization` (minified as `ve` in
 // production) the moment Send to AI runs from Write mode.
 /**
- * Stream an assistant reply for the active provider. Keyed providers
- * use OpenAI-compatible SSE; Local Gemma uses in-browser LiteRT-LM.
+ * Stream an assistant reply for the active provider. OpenAI-compatible
+ * HTTP providers (Minimax, OpenAI, Ollama, LM Studio) use SSE; Local
+ * Gemma uses in-browser LiteRT-LM.
  */
 async function streamAssistantReply(
   messages: ChatMessage[],
   api: ReturnType<typeof useStore.getState>['api'],
   options: { signal?: AbortSignal; onDelta: (delta: string) => void }
 ): Promise<void> {
-  if (!requiresApiKey(api.provider)) {
+  if (usesLocalGemmaEngine(api.provider)) {
     if (!isLocalGemmaEngineReady()) {
       const loaded = await tryLoadLocalGemmaFromCache(options.signal);
       if (!loaded) {
@@ -101,8 +110,8 @@ export function ChatPanel() {
   const api = useStore((s) => s.api);
   const includeSelection = useStore((s) => s.includeSelection);
   const setIncludeSelection = useStore((s) => s.setIncludeSelection);
-  // The token counter next to Send is gated on the Local Model, not on
-  // Debug Mode — `isKeyless` below is the single source of truth.
+  // The token counter next to Send is gated on in-browser Local Gemma,
+  // not on Debug Mode — `isLocalGemma` below is the single source of truth.
 
   const [input, setInput] = useState('');
   // Document mentions attached to the current chat input. Populated by
@@ -153,7 +162,7 @@ export function ChatPanel() {
   const chatWidth = useChatWidth();
   const setLayout = useStore((s) => s.setLayout);
   const containerRef = useRef<HTMLDivElement>(null);
-  const isKeyless = !requiresApiKey(api.provider);
+  const isLocalGemma = usesLocalGemmaEngine(api.provider);
   const [localGemmaReady, setLocalGemmaReady] = useState(() =>
     isLocalGemmaEngineReady()
   );
@@ -210,7 +219,7 @@ export function ChatPanel() {
   }, [input, mentions, pendingAttachments, selection, includeSelection]);
 
   useEffect(() => {
-    if (!isKeyless) {
+    if (!isLocalGemma) {
       setPreviewTokens(0);
       return;
     }
@@ -247,13 +256,13 @@ export function ChatPanel() {
         previewInput.mentions,
         lookupDocumentById,
         undefined,
-        api.provider === 'local-gemma' ? 'on-demand' : 'eager'
+        usesLocalGemmaEngine(api.provider) ? 'on-demand' : 'eager'
       );
       setPreviewTokens(preview.tokens);
     }, 250);
     return () => window.clearTimeout(timer);
   }, [
-    isKeyless,
+    isLocalGemma,
     messages,
     api.systemMessage,
     api.rationaleRulesOverride,
@@ -531,7 +540,7 @@ export function ChatPanel() {
             // sync — first-emission wins per mention id).
             payload,
             false,
-            api.provider === 'local-gemma' ? 'on-demand' : 'eager'
+            usesLocalGemmaEngine(api.provider) ? 'on-demand' : 'eager'
           )
         );
         if (packed.count > 0) {
@@ -594,6 +603,14 @@ export function ChatPanel() {
     el.scrollTop = el.scrollHeight;
   }, [messages, streaming]);
 
+  // If the conversation was collapsed (+ Chat) with existing messages
+  // (or new traffic arrives), expand so the panel is not an empty shell.
+  useEffect(() => {
+    if (!messagesCollapsed) return;
+    if (messages.length === 0 && !streaming) return;
+    setMessagesCollapsed(false);
+  }, [messages.length, streaming]); // eslint-disable-line react-hooks/exhaustive-deps -- only expand on traffic / hydrate; don't fight an intentional idle collapse
+
   // The chat's left edge handle: dragging it rightward (toward the chat)
   // shrinks the chat; leftward widens it. The panel's right edge is
   // positioned at the mouse X (clamped to [MIN, dynamic MAX]) so the handle
@@ -655,6 +672,13 @@ export function ChatPanel() {
   };
   const clampComposerHeight = (px: number): number =>
     Math.min(maxComposerHeight(), Math.max(140, px));
+  // Keep the composer from eating the message list when a tall height was
+  // persisted (or the panel got shorter). Leave ≥120px for the scroller.
+  useLayoutEffect(() => {
+    if (messagesCollapsed || composerHeight <= 0) return;
+    const max = maxComposerHeight();
+    if (composerHeight > max) setComposerHeight(max);
+  }, [messagesCollapsed, composerHeight]);
   const currentComposerHeight = (): number => {
     if (composerHeight > 0) return composerHeight;
     return composerRef.current?.getBoundingClientRect().height ?? 140;
@@ -762,7 +786,7 @@ export function ChatPanel() {
           // only) is silently dropped.
           undefined,
           false,
-          api.provider === 'local-gemma' ? 'on-demand' : 'eager'
+          usesLocalGemmaEngine(api.provider) ? 'on-demand' : 'eager'
         )
       );
       if (packed.count > 0) {
@@ -928,16 +952,51 @@ export function ChatPanel() {
       (m) => m.id === messageId && m.role === 'assistant'
     );
     if (!msg) return;
-    const segments = parseProposedEdits(msg.content);
+    const segments = parseProposedEdits(msg.content, doc.content);
     const edits: ProposedEdit[] = [];
     for (const seg of segments) {
       if (seg.kind === 'edit') edits.push(seg.payload);
     }
     if (edits.length === 0) return;
-    const { next, appliedIds, appliedAnchors } = applyAllEdits(
-      doc.content,
-      edits
-    );
+    // Table-edit cards Apply by cell span; prose cards use the Exact /
+    // Best Effort waterfall. Do table splices first so prose anchors
+    // see the post-table document.
+    const tableEdits = edits.filter((e) => e.tableEdit);
+    const proseEdits = edits.filter((e) => !e.tableEdit);
+    let next = doc.content;
+    const appliedIds: string[] = [];
+    const appliedAnchors: Array<{
+      id: string;
+      idx: number;
+      replacement: string;
+    }> = [];
+    if (tableEdits.length > 0) {
+      for (const edit of tableEdits) {
+        const r = applyTableEdit(next, edit);
+        if (!r.ok) continue;
+        next = r.next;
+        appliedIds.push(edit.id);
+        if (r.kind === 'set-cell') {
+          appliedAnchors.push({
+            id: edit.id,
+            idx: r.anchor.idx,
+            replacement: r.replacementRow,
+          });
+        } else {
+          appliedAnchors.push({
+            id: edit.id,
+            idx: r.anchor.idx,
+            replacement: '',
+          });
+        }
+      }
+    }
+    if (proseEdits.length > 0) {
+      const proseResult = applyAllEdits(next, proseEdits);
+      next = proseResult.next;
+      appliedIds.push(...proseResult.appliedIds);
+      appliedAnchors.push(...proseResult.appliedAnchors);
+    }
     if (appliedIds.length === 0) return;
     // Snapshot pre-apply content before the bulk write so Apply All
     // is reversible via Revision history (same path as Snapshot now).
@@ -1071,7 +1130,7 @@ export function ChatPanel() {
           // single user message). Drop the cross-reference map.
           undefined,
           false,
-          api.provider === 'local-gemma' ? 'on-demand' : 'eager'
+          usesLocalGemmaEngine(api.provider) ? 'on-demand' : 'eager'
         )
       );
       if (packed.count > 0) {
@@ -1137,9 +1196,14 @@ export function ChatPanel() {
             {messagesCollapsed ? '+' : '−'}
           </span>
           <span>Chat</span>
+          {messagesCollapsed && messages.length > 0 && (
+            <span className="text-xs font-normal text-paper-inkSoft dark:text-cyber-muted truncate">
+              ({messages.length} hidden — click to show)
+            </span>
+          )}
         </button>
         <span className="text-xs text-paper-inkSoft dark:text-cyber-muted font-mono truncate">
-          {isKeyless ? 'local-gemma' : api.model}
+          {isLocalGemma ? 'local-gemma' : api.model}
         </span>
         <div className="flex-1" />
         {!messagesCollapsed && turns.length > 1 && (
@@ -1242,7 +1306,7 @@ export function ChatPanel() {
             ))}
           </ChatTurnFrame>
         ))}
-        {isKeyless && !localGemmaReady && (
+        {isLocalGemma && !localGemmaReady && (
           <div className="rounded border border-cyber-clay/40 dark:border-cyber-cyan/40 bg-cyber-clay/5 dark:bg-cyber-cyan/10 p-3 space-y-2">
             <p className="text-xs text-paper-ink dark:text-cyber-primary font-medium">
               Local Gemma needs a one-time model download
@@ -1299,15 +1363,21 @@ export function ChatPanel() {
         </div>
       )}
 
-      {/* Composer: height tracks the divider; input grows into leftover space. */}
+      {/* Composer: height tracks the divider; input grows into leftover space.
+          When the conversation is collapsed, ignore the tall saved height so
+          the panel does not look like an empty chat. */}
       <div
         ref={composerRef}
         className={
-          composerHeight > 0
+          !messagesCollapsed && composerHeight > 0
             ? 'shrink-0 border-t border-paper-hairline dark:border-cyber-border p-3 space-y-2 bg-paper-panel dark:bg-ape-panel flex flex-col min-h-0'
             : 'shrink-0 border-t border-paper-hairline dark:border-cyber-border p-3 space-y-2 bg-paper-panel dark:bg-ape-panel'
         }
-        style={composerHeight > 0 ? { height: `${composerHeight}px` } : undefined}
+        style={
+          !messagesCollapsed && composerHeight > 0
+            ? { height: `${composerHeight}px` }
+            : undefined
+        }
       >
         <div className="flex items-center gap-2 text-xs text-paper-inkSoft dark:text-cyber-muted flex-wrap shrink-0">
           <label className="flex items-center gap-1 cursor-pointer select-none">
@@ -1338,11 +1408,11 @@ export function ChatPanel() {
           onChange={(e) => void onAttachFiles(e)}
         />
         <div
-          className={
-            composerHeight > 0
-              ? 'rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-base focus-within:border-cyber-clay dark:focus-within:border-cyber-cyan flex flex-col min-w-0 flex-1 min-h-0'
-              : 'rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-base focus-within:border-cyber-clay dark:focus-within:border-cyber-cyan flex flex-col min-w-0'
-          }
+            className={
+              !messagesCollapsed && composerHeight > 0
+                ? 'rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-base focus-within:border-cyber-clay dark:focus-within:border-cyber-cyan flex flex-col min-w-0 flex-1 min-h-0'
+                : 'rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-base focus-within:border-cyber-clay dark:focus-within:border-cyber-cyan flex flex-col min-w-0'
+            }
         >
           {pendingAttachments.length > 0 && (
             <div className="px-2 pt-2 shrink-0">
@@ -1361,15 +1431,17 @@ export function ChatPanel() {
             onSubmit={() => void handleSend()}
             ariaLabel="Chat message"
             placeholder={
-              isKeyless
+              isLocalGemma
                 ? 'Ask Local Gemma, or ⌘/Ctrl+Enter to send… type @ to reference a document'
                 : 'Ask, or ⌘/Ctrl+Enter to send… type @ to reference a document'
             }
             containerClassName={
-              composerHeight > 0 ? 'flex-1 min-h-0 min-w-0' : 'min-w-0'
+              !messagesCollapsed && composerHeight > 0
+                ? 'flex-1 min-h-0 min-w-0'
+                : 'min-w-0'
             }
             className={
-              composerHeight > 0
+              !messagesCollapsed && composerHeight > 0
                 ? 'w-full flex-1 min-h-[3rem] h-auto px-2.5 py-2 text-sm resize-none font-sans bg-transparent border-0 outline-none shadow-none focus:outline-none focus:ring-0 text-paper-ink dark:text-paper-base placeholder:text-paper-inkSoft dark:placeholder:text-cyber-muted'
                 : 'w-full h-24 px-2.5 py-2 text-sm resize-none font-sans bg-transparent border-0 outline-none shadow-none focus:outline-none focus:ring-0 text-paper-ink dark:text-paper-base placeholder:text-paper-inkSoft dark:placeholder:text-cyber-muted'
             }
@@ -1424,7 +1496,7 @@ export function ChatPanel() {
                       ))
                   }
                   title={
-                    isKeyless
+                    isLocalGemma
                       ? 'Runs Gemma locally in this browser (WebGPU)'
                       : undefined
                   }
@@ -1435,7 +1507,7 @@ export function ChatPanel() {
               {/* Local Model only: estimated tokens for the next send,
                   measured against the on-device budget so the user can
                   tell whether a full reply will fit. */}
-              {isKeyless && (
+              {isLocalGemma && (
                 <>
                   <TokenCounter
                     tokens={previewTokens}
@@ -1523,9 +1595,18 @@ function MessageBubble({
   // of them are still unapplied (i.e. not already in the `committed`
   // map). The footer shows the "Apply N change(s)" button only when
   // there is at least one unapplied edit.
+  const currentDocContent = useStore(
+    (s) =>
+      currentDocumentId
+        ? s.documents.find((d) => d.id === currentDocumentId)?.content
+        : undefined
+  );
   const { totalEdits, unappliedEdits } = useMemo(() => {
     if (isUser) return { totalEdits: 0, unappliedEdits: 0 };
-    const segments = parseProposedEdits(message.content);
+    const segments = parseProposedEdits(
+      message.content,
+      currentDocContent
+    );
     let total = 0;
     let unapplied = 0;
     for (const seg of segments) {
@@ -1534,7 +1615,7 @@ function MessageBubble({
       if (!committed[seg.payload.id]) unapplied++;
     }
     return { totalEdits: total, unappliedEdits: unapplied };
-  }, [isUser, message.content, committed]);
+  }, [isUser, message.content, committed, currentDocContent]);
 
   // Auto-clear the "Applied X of Y" summary after a short delay so it
   // fades out without the user having to dismiss it. The effect is
@@ -1573,6 +1654,7 @@ function MessageBubble({
             <AssistantContent
               content={message.content}
               docId={currentDocumentId}
+              docContent={currentDocContent}
               messageId={message.id}
               staged={staged}
               committed={committed}
@@ -1653,6 +1735,7 @@ function MessageBubble({
 function AssistantContent({
   content,
   docId,
+  docContent,
   messageId,
   staged,
   committed,
@@ -1660,6 +1743,7 @@ function AssistantContent({
 }: {
   content: string;
   docId: string | null;
+  docContent: string | undefined;
   messageId: string;
   staged: Array<{ editId: string; comment: string; mentions: MentionToken[] }>;
   committed: Record<string, true>;
@@ -1672,7 +1756,7 @@ function AssistantContent({
   if (!content) {
     return <span className="opacity-60">thinking…</span>;
   }
-  const segments = parseProposedEdits(content);
+  const segments = parseProposedEdits(content, docContent);
   const docIdForCard = docId ?? '';
   return (
     <div className="space-y-2">

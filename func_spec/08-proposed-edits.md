@@ -13,14 +13,17 @@ interface ProposedEdit {
   rationale?: string;   // defaults to ''
   original: string;     // MUST be a verbatim substring of the document
   replacement: string;  // the new text
+  tableEdit?: TableEditMeta; // set only for ```table-edit fences
 }
 ```
 
-The model emits one ```` ```proposed-edit ```` fence per change. The schema is **always** sent in the `sys-proposed-edit-rules` system message and cannot be overridden. Only the *rationale formatting* is user-overridable. See [AI chat & prompts §4.5](07-ai-chat.md#45-sys-proposed-edit-rules-the-fence-schema).
+The model emits one ```` ```proposed-edit ```` fence per prose change. The schema is **always** sent in the `sys-proposed-edit-rules` system message and cannot be overridden. Only the *rationale formatting* is user-overridable. See [AI chat & prompts §4.5](07-ai-chat.md#45-sys-proposed-edit-rules-the-fence-schema).
+
+When the open document has a GFM table, Chat also teaches a sibling ```` ```table-edit ```` fence (via `sys-table-context`). Cell Apply never runs short values through `findEditAnchor` — it uses span metadata instead. See §2.1.
 
 ## 2. Parsing
 
-### `parseProposedEdits(content)`
+### `parseProposedEdits(content, docContent?)`
 
 Returns `ProposedEditSegment[]` where a segment is either plain text or an edit.
 
@@ -29,8 +32,30 @@ Returns `ProposedEditSegment[]` where a segment is either plain text or an edit.
 ```
 
 - The regex tolerates an **unterminated** trailing fence (`(?:```|$)`), so a truncated stream still parses.
-- A fence becomes an `edit` segment only when `infoString.trim() === 'proposed-edit'` **and** `tryParseEdit(body)` succeeds.
+- A fence becomes an `edit` segment when `infoString.trim() === 'proposed-edit'` **and** `tryParseEdit(body)` succeeds.
+- A fence becomes an `edit` segment when `infoString.trim() === 'table-edit'`, `tryParseTableEdit(body)` succeeds, **and** `docContent` resolves the cell via `resolveTableEditOp`. When `docContent` is omitted or resolution fails, the fence stays `text` (safe fallback).
 - Everything else — other info strings, malformed bodies — stays a `text` segment so the reply remains readable.
+- The rescue pass for bare JSON deliberately **does not** promote table-edit shapes (no `original` / `replacement`), so they cannot collide with the prose path.
+
+### 2.1 `table-edit` fences
+
+Exact info-string gate: `table-edit` only (not `proposed-edit-table`, not a widened `tryParseEdit`).
+
+Body JSON requires `id`, `summary`, `table` (0-based index), `row` (1-based data row), `column` (header name), `value`. Optional `rationale`.
+
+`resolveTableEditOp` fills `original` / `replacement` with the decoded cell values for the card preview, and attaches:
+
+```ts
+tableEdit: {
+  tableIndex, row, column,
+  expectedOriginal, expectedRowText,
+  rowStart, rowEnd,
+}
+```
+
+**Apply** on a card with `tableEdit` calls `applyCellEdit` (re-parse live doc, refuse on stale row/cell). **Apply N changes** runs table splices first, then the prose Exact → Best Effort waterfall on the post-table document.
+
+**Best Effort safety:** `expandToBlockBoundaries` clamps holes that already sit inside a data row to that single row, and stops a prose hole at a detected table edge. Documents with no tables keep the historical blank-line / heading behaviour.
 
 ### `tryParseEdit(body)`
 

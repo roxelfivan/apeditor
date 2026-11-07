@@ -131,6 +131,12 @@ export interface StoreState {
      */
     splitLeftMode: 'write' | 'preview';
     previewSizes: Record<string, { w: number; h: number }>;
+    /**
+     * Preview table column widths (px), keyed by
+     * `${docId}:${tableIndex}:${headerKey}`. UI-only — does not rewrite
+     * Markdown. Empty / missing → auto layout until the user drags.
+     */
+    previewTableColWidths: Record<string, number[]>;
     /** Source-line gutter in Preview / print. */
     previewLineNumbers: boolean;
     /** Heading numbering painted in Preview / print only. */
@@ -277,6 +283,8 @@ export interface StoreState {
     key: string,
     patch: Partial<{ w: number; h: number }>
   ) => void;
+  /** Replace stored Preview column widths for one table key. */
+  setPreviewTableColWidths: (key: string, widths: number[]) => void;
   setEditorFocus: (
     documentId: string,
     info: { focused: boolean; selectionStart: number; selectionEnd: number }

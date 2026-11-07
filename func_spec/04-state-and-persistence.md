@@ -115,11 +115,12 @@ All three are `Record<documentId, …>`. They are deleted with the document.
 | `layout.editorSplitPct` | `number` | `50` | ✅ | `20`–`80` % (left pane of Split; Graph takes the rest) |
 | `layout.splitLeftMode` | `'write' \| 'preview'` | `'write'` | ✅ | Left pane content in Split; missing values rehydrate to `'write'` |
 | `layout.previewSizes` | `Record<string, {w,h}>` | `{}` | ✅ | Per ProposedEditCard, keyed `${messageId}:${editId}` |
+| `layout.previewTableColWidths` | `Record<string, number[]>` | `{}` | ✅ | Preview GFM table column widths (px); keyed `${docId}:${tableIndex}:${headerFingerprint}` |
 | `layout.previewLineNumbers` | `boolean` | `false` | ✅ | Source-line gutter in Preview / print |
 | `layout.outlineNumbering` | `'off' \| 'decimal' \| 'legal'` | `'off'` | ✅ | Heading labels in Preview / print only |
 | `layout.sidebarExpandedTags` | `string[]` | `[]` | ✅ | Open nested-tag paths |
 
-> `previewSizes` is persisted but is **not** part of `setLayout`'s signature. It has its own `setPreviewSize(key, patch)` action.
+> `previewSizes` and `previewTableColWidths` are persisted but are **not** part of `setLayout`'s signature. They have `setPreviewSize(key, patch)` and `setPreviewTableColWidths(key, widths)`.
 
 ### 3.9 Ephemeral (never persisted)
 
@@ -209,7 +210,7 @@ Steps, in execution order:
 | 3 | `api` patch | Adds `provider: 'local-gemma'` if the key is missing; runs `normalizeRationaleRulesOverride` and `normalizeSystemMessage` |
 | 4 | Microtask queued | Later steps below keep mutating the same `repairs` object |
 | 5 | `comments` | Drops any `comments[docId]` that is not an array. For each comment, `ensureRoundsShape` wraps flat legacy comments in a single `CommentRound` built from the top-level fields, with a fresh `uuid()` and `applied: []` |
-| 6 | Provider coercion | `google-ai-mode` → `local-gemma`; any value outside `'minimax' \| 'openai' \| 'local-gemma'` → `'local-gemma'` |
+| 6 | Provider coercion | `google-ai-mode` → `local-gemma`; any value outside `'minimax' \| 'openai' \| 'local-gemma' \| 'ollama' \| 'lm-studio'` → `'minimax'` |
 | 7 | `debugMode` | Non-boolean → `false` |
 | 8 | `uiFontSize` | Non-number → `14`; then clamp to `12`–`20` |
 | 9 | `persistApiKey` | Non-boolean → `true` |
@@ -381,9 +382,8 @@ For the field-by-field interface and for every persisted type, see [Data types &
 
 ```ts
 initialProvider =
-  VITE_DEFAULT_PROVIDER === 'openai'  ? 'openai'  :
-  VITE_DEFAULT_PROVIDER === 'minimax' ? 'minimax' :
-                                     'local-gemma'; // default, also for unknown values
+  // accepts minimax | openai | ollama | lm-studio | local-gemma;
+  // otherwise defaults to local-gemma
 ```
 
 `defaultApiConfig` = `{ provider: initialProvider, apiKey: '', apiEndpoint: VITE_DEFAULT_API_ENDPOINT || preset.defaultEndpoint, model: VITE_DEFAULT_MODEL || preset.defaultModel, systemMessage: undefined, temperature: 0.7, rationaleRulesOverride: undefined }`.

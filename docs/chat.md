@@ -26,7 +26,9 @@ If you have never sent a message, Chat shows: *Ask anything, or highlight text i
 
 JSON backup export/import includes archived chats. Older backup files without that field import with an empty archive list.
 
-## Send a message (Minimax or OpenAI)
+## Send a message (HTTP providers)
+
+Works for **Minimax**, **OpenAI**, **Ollama**, and **LM Studio** (OpenAI-compatible `/chat/completions`).
 
 1. Type in the box (*Ask, or ⌘/Ctrl+Enter to send… type @ to reference a document*).
    - Type `@` to attach another document (or selected headings / sections) — see [Reference other documents](reference-other-documents.md).
@@ -37,15 +39,15 @@ JSON backup export/import includes archived chats. Older backup files without th
 
 While a reply is streaming, **Send** becomes **Stop**. The assistant may show **thinking…** until text arrives.
 
-On the Local Model, a **token counter** sits immediately to the left of **Send** — see [Token counter](#token-counter-local-model).
+On the Local Model (in-browser Gemma), a **token counter** sits immediately to the left of **Send** — see [Token counter](#token-counter-local-model).
 
 Before each send, ApEditor stores a revision labeled **Before AI send**.
 
-If the request fails, a red error appears (or **Unknown error**). Check your key, endpoint, and network, then try again. See [Troubleshooting](troubleshooting.md).
+If the request fails, a red error appears (or **Unknown error**). Check your key (cloud), endpoint, CORS (Ollama / LM Studio), and network, then try again. See [Troubleshooting](troubleshooting.md).
 
 ## Include selection
 
-**include selection** is on by default. It attaches the highlight *in addition to* the usual document context (outline for Minimax/OpenAI, full body for Local Model when size allows). User messages that included a highlight can show **▸ selection (n chars)** on the bubble.
+**include selection** is on by default. It attaches the highlight *in addition to* the usual document context (outline for HTTP providers, full body for Local Model when size allows). User messages that included a highlight can show **▸ selection (n chars)** on the bubble.
 
 Highlights are wrapped in `BEGIN EDITOR SELECTION` / `END EDITOR SELECTION` markers so the model can see the bounds.
 
@@ -61,11 +63,23 @@ If Settings → **Provider** is **Local Model (require around 2gb disk space)**:
 2. Wait until status shows **Ready**, then send chat as usual — replies stream in the panel.
 3. Comment **Send to AI** uses the same local engine.
 
-Local Gemma answers in normal prose for questions and explanations. **Proposed Edit** cards appear only when you ask for document changes, or when you use Comment **Send to AI**. The open document is attached on the user turn (full body, capped) so “the paragraph” / “each point” resolve to that text. (Minimax and OpenAI keep their usual edit-oriented outline prompt.)
+Local Gemma answers in normal prose for questions and explanations. **Proposed Edit** cards appear only when you ask for document changes, or when you use Comment **Send to AI**. The open document is attached on the user turn (full body, capped) so “the paragraph” / “each point” resolve to that text. (HTTP providers keep their usual edit-oriented outline prompt.)
 
 The model is stored in this browser’s Cache API; it is never uploaded to ApEditor servers and is not part of the GitHub / Vercel deploy.
 
-**Predict** and OCR→Markdown rewrite still need Minimax or OpenAI with an API key.
+**Predict** and OCR→Markdown rewrite still need an HTTP provider (Minimax, OpenAI, Ollama, or LM Studio).
+
+## Ollama and LM Studio
+
+If Settings → **Provider** is **Ollama (local)** or **LM Studio (local)**:
+
+1. Start Ollama or LM Studio’s local server on your machine.
+2. Keep the default endpoint (`http://localhost:11434/v1` or `http://localhost:1234/v1`) unless you changed the port.
+3. Set **Model** to a pulled Ollama tag or the LM Studio loaded model id.
+4. Allow CORS (`OLLAMA_ORIGINS` for Ollama; LM Studio’s developer CORS toggle).
+5. Save and chat as usual — same OpenAI-compatible streaming path as Minimax/OpenAI, with no API key.
+
+Predict and OCR→Markdown rewrite work on these providers.
 
 ## Prompt library
 
@@ -77,7 +91,7 @@ If you **Reject with feedback** on a proposed-edit card, Chat shows how many rej
 
 ## Token counter (Local Model)
 
-When the **Local Model** is the active provider, a token pill sits left of **Send** in the composer: the estimated size of the message you are about to send, plus `sent ~N` for the previous send. It is a rough estimate and turns amber or red as the prompt approaches the on-device budget. Keyed providers (Minimax, OpenAI) have no local budget, so no counter is shown.
+When the **Local Model** is the active provider, a token pill sits left of **Send** in the composer: the estimated size of the message you are about to send, plus `sent ~N` for the previous send. It is a rough estimate and turns amber or red as the prompt approaches the on-device budget. HTTP providers (Minimax, OpenAI, Ollama, LM Studio) have no in-browser budget, so no counter is shown.
 
 ## Reference other documents with `@`
 

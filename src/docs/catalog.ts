@@ -47,7 +47,7 @@ export const HELP_PAGES: HelpPageMeta[] = [
   { id: 'proposed-edits', title: 'Proposed edits', file: 'proposed-edits.md' },
   { id: 'prompt-library', title: 'Prompt library', file: 'prompt-library.md' },
   { id: 'revisions', title: 'Revision history', file: 'revisions.md' },
-  { id: 'import', title: 'Import photos / PDFs', file: 'import.md' },
+  { id: 'import', title: 'Import photos / PDFs / CSV', file: 'import.md' },
   {
     id: 'reference-other-documents',
     title: 'Reference other documents (@)',

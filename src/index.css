@@ -306,9 +306,118 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 .prose-md table {
   @apply border-collapse my-2;
 }
+/*
+ * Wide tables must NOT use a nested `overflow-x: auto` wrapper.
+ * With hundreds of rows the inner scrollbar sits at the bottom of
+ * the table (off-screen), and trackpad gestures get trapped by the
+ * outer vertical scroller — so the user cannot scroll right.
+ *
+ * Instead: let the table keep its natural width and let the Preview
+ * pane (`.preview-scroll`) be the single horizontal + vertical
+ * scroll container. The wrapper stays for the line-number gutter.
+ */
+.prose-md .table-scroll {
+  @apply my-2;
+  overflow: visible;
+  max-width: none;
+}
+.prose-md .table-scroll > table {
+  width: max-content;
+  max-width: none;
+}
+/* Auto-sized tables keep a single-line sheet until the user resizes
+   a column; sized tables wrap so drag-narrowed columns reflow. */
+.prose-md .table-scroll .preview-resizable-table:not(.is-sized) th,
+.prose-md .table-scroll .preview-resizable-table:not(.is-sized) td {
+  white-space: nowrap;
+}
+.prose-md .table-scroll .preview-resizable-table.is-sized {
+  table-layout: fixed;
+  width: max-content;
+  max-width: none;
+}
+.prose-md .table-scroll .preview-resizable-table.is-sized th,
+.prose-md .table-scroll .preview-resizable-table.is-sized td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  vertical-align: top;
+}
 .prose-md th,
 .prose-md td {
   @apply border border-paper-hairline px-2 py-1;
+}
+
+.preview-th-inner {
+  position: relative;
+  display: block;
+  min-width: 0;
+  /* Room for the in-cell resize hit target on the right. */
+  padding-right: 8px;
+}
+.preview-th-label {
+  min-width: 0;
+}
+/*
+ * Hit target stays INSIDE the header cell. A handle that overhangs
+ * (`right: -Npx`) is painted under the next column and never receives
+ * hover — which is why the col-resize cursor never appeared.
+ */
+.preview-col-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: col-resize;
+  z-index: 3;
+  touch-action: none;
+  user-select: none;
+}
+.preview-col-handle::after {
+  content: '';
+  position: absolute;
+  top: 15%;
+  bottom: 15%;
+  left: 4px;
+  width: 2px;
+  border-radius: 1px;
+  background: rgba(120, 90, 50, 0.25);
+  transition: background 0.12s ease, width 0.12s ease, left 0.12s ease;
+}
+.preview-col-handle:hover::after,
+.preview-col-handle:focus-visible::after,
+body.preview-col-resizing .preview-col-handle:active::after {
+  left: 3px;
+  width: 3px;
+  background: rgba(120, 90, 50, 0.85);
+}
+html.dark .preview-col-handle::after {
+  background: rgba(0, 229, 255, 0.25);
+}
+html.dark .preview-col-handle:hover::after,
+html.dark .preview-col-handle:focus-visible::after,
+html.dark body.preview-col-resizing .preview-col-handle:active::after {
+  background: rgba(0, 229, 255, 0.9);
+}
+body.preview-col-resizing {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+body.preview-col-resizing * {
+  cursor: col-resize !important;
+}
+
+/* Editor Preview / Split-Preview scroller — both axes, always. */
+.preview-scroll {
+  overflow: auto;
+  overscroll-behavior: contain;
+  /* Prefer a visible thin scrollbar so left/right affordance is obvious. */
+  scrollbar-width: thin;
 }
 .prose-md hr {
   @apply border-paper-hairline my-4;
@@ -396,6 +505,16 @@ html.dark .prose-md .outline-num {
   color: #8a847c;
   user-select: none;
   pointer-events: none;
+}
+/* `rehypeSourceLines` stamps `data-line` on every element it can
+   reach, so a table would otherwise paint one gutter number per cell.
+   Only the block-level wrapper carries the number. */
+.prose-md.preview-linenumbers .table-scroll th[data-line]::before,
+.prose-md.preview-linenumbers .table-scroll td[data-line]::before,
+.prose-md.preview-linenumbers .table-scroll thead[data-line]::before,
+.prose-md.preview-linenumbers .table-scroll tbody[data-line]::before,
+.prose-md.preview-linenumbers .table-scroll tr[data-line]::before {
+  content: none;
 }
 html.dark .prose-md.preview-linenumbers [data-line]::before {
   color: #6b7280;

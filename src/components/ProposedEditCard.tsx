@@ -14,6 +14,7 @@ import {
   prepareBestEffortReplace,
   type BestEffortAnchor,
 } from '@/utils/proposedEdit';
+import { applyTableEdit } from '@/utils/tableEdits';
 import { ResizeHandle } from '@/components/ResizeHandle';
 import { MentionInput } from '@/components/mentions/MentionInput';
 import {
@@ -185,10 +186,47 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
     storedSize ?? { w: DEFAULT_WIDTH, h: DEFAULT_HEIGHT }
   );
 
+  // Table-edit cards never use findEditAnchor — short cell values like
+  // "12" would hit the wrong span. Live freshness is checked by
+  // re-running applyTableEdit's stale guards.
+  const isTableEdit = !!edit.tableEdit;
+  const tableApplyPreview = useMemo(() => {
+    if (!isTableEdit || !content) return null;
+    const r = applyTableEdit(content, edit);
+    if (!r.ok) return r;
+    return r;
+  }, [isTableEdit, content, edit]);
+
   // Anchor lookup + multiple-match detection. We use a shared helper that
   // also drives `applyEdit` so the disabled-state and Apply click are
-  // always looking for the same span.
+  // always looking for the same span. Skipped for table-edit cards.
   const anchorInfo = useMemo(() => {
+    if (isTableEdit) {
+      if (tableApplyPreview?.ok) {
+        const meta = edit.tableEdit;
+        if (
+          meta?.kind === 'delete-rows' ||
+          meta?.kind === 'delete-columns' ||
+          meta?.kind === 'add-column'
+        ) {
+          return {
+            found: true,
+            idx: meta.rangeStart,
+            length: Math.max(0, meta.rangeEnd - meta.rangeStart),
+            multiple: false,
+          };
+        }
+        if (tableApplyPreview.kind === 'set-cell') {
+          return {
+            found: true,
+            idx: tableApplyPreview.anchor.idx,
+            length: tableApplyPreview.originalRow.length,
+            multiple: false,
+          };
+        }
+      }
+      return { found: false, idx: -1, length: 0, multiple: false };
+    }
     if (!content) return { found: false, idx: -1, length: 0, multiple: false };
     const anchor = findEditAnchor(content, edit.original);
     if (!anchor) return { found: false, idx: -1, length: 0, multiple: false };
@@ -205,15 +243,15 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
       length: anchor.length,
       multiple: second !== null,
     };
-  }, [content, edit.original]);
+  }, [content, edit.original, isTableEdit, tableApplyPreview]);
 
   // Best-effort match is deferred off the render path so a long document
   // + many proposed-edit cards cannot freeze first paint. Exact-anchor
-  // lookup above stays synchronous (cheap).
+  // lookup above stays synchronous (cheap). Never run for table-edits.
   const [bestEffortAnchor, setBestEffortAnchor] =
     useState<BestEffortAnchor | null>(null);
   useEffect(() => {
-    if (anchorInfo.found || !content || !edit.original) {
+    if (isTableEdit || anchorInfo.found || !content || !edit.original) {
       setBestEffortAnchor(null);
       return;
     }
@@ -250,7 +288,7 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
       }
       if (timeoutId !== undefined) clearTimeout(timeoutId);
     };
-  }, [anchorInfo.found, content, edit.original, edit.replacement]);
+  }, [anchorInfo.found, content, edit.original, edit.replacement, isTableEdit]);
 
   // Track whether user has a text selection in the editor (required for
   // Highlight Apply). Re-renders when the user selects text.
@@ -265,11 +303,14 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
 
   /** Best Effort is only applyable when the match has no duplication block. */
   const bestEffortUsable =
-    !!bestEffortAnchor && !bestEffortAnchor.duplicationReason;
+    !isTableEdit &&
+    !!bestEffortAnchor &&
+    !bestEffortAnchor.duplicationReason;
 
-  /** Primary Apply is available via Exact or usable Best Effort. */
-  const canApply =
-    anchorInfo.found || bestEffortUsable;
+  /** Primary Apply: Exact / Best Effort for prose; span Apply for tables. */
+  const canApply = isTableEdit
+    ? !!tableApplyPreview && tableApplyPreview.ok
+    : anchorInfo.found || bestEffortUsable;
 
   // Publish the matched Original span into the editor (Write/Preview/Split)
   // so the user can see where Apply would land. Cleared on unmount / when
@@ -490,10 +531,55 @@ export function ProposedEditCard({ edit, docId, messageId, staged, committed, on
 
   /**
    * Primary Apply: Exact if anchored, else usable Best Effort.
+   * Table-edit cards use applyTableEdit (span + stale check) instead —
+   * never findEditAnchor on the short cell value.
    * Status is set before the mutation so the button disables immediately.
    */
   const handleApply = () => {
     if (!doc) return;
+    if (isTableEdit) {
+      setStatus({ kind: 'applied' });
+      const r = applyTableEdit(doc.content, edit);
+      if (r.ok && r.kind === 'set-cell') {
+        // Splice the whole rebuilt row (not just the cell display text)
+        // so neighbouring cells keep their exact source formatting.
+        performReplace(
+          { idx: r.anchor.idx, length: r.originalRow.length },
+          r.replacementRow
+        );
+        onApplied?.(edit.id);
+      } else if (
+        r.ok &&
+        (r.kind === 'delete-rows' ||
+          r.kind === 'delete-columns' ||
+          r.kind === 'add-column')
+      ) {
+        // Structural table rewrite — one document write, not a span splice.
+        useStore.getState().saveRevision(doc.id, 'Before table-edit Apply');
+        useStore.getState().updateDocumentContent(doc.id, r.next);
+        const caret = r.anchor.idx;
+        useStore.getState().recordAppliedEdit({
+          documentId: doc.id,
+          messageId,
+          editId: edit.id,
+          summary: edit.summary,
+          rationale: edit.rationale ?? '',
+          original: edit.original,
+          replacement: edit.replacement,
+          appliedAt: Date.now(),
+          newAnchor: { start: caret, end: caret },
+        });
+        window.dispatchEvent(
+          new CustomEvent('mvp:select-range', {
+            detail: { start: caret, end: caret },
+          })
+        );
+        onApplied?.(edit.id);
+      } else {
+        setStatus({ kind: 'idle' });
+      }
+      return;
+    }
     if (anchorInfo.found) {
       setStatus({ kind: 'applied' });
       const r = applyEdit(doc.content, edit.original, edit.replacement);

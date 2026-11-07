@@ -14,10 +14,34 @@
 > functional specification). See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.6.11](https://img.shields.io/badge/version-0.6.11-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.11)
+[![v0.6.13](https://img.shields.io/badge/version-0.6.13-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.13)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
+
+---
+
+## What's new in v0.6.13
+
+> Chat edits imported Markdown tables as cells (not prose quotes). Patch on top of [v0.6.12](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.12).
+
+1. **table-edit cards** — set-cell, delete/keep rows, remove/add column; stale cells refuse.
+2. **Safer Best Effort** next to tables — neighbouring rows stay put.
+3. **Preview column resize** — drag a header edge; widths remembered in this browser.
+4. **Local Model** keeps a compact table schema so the sheet is not paid for twice.
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.13 entry and prior changelogs.
+
+## What's new in v0.6.12
+
+> Spreadsheet tables now import straight into the editor. Patch on top of [v0.6.11](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.11).
+
+1. **Import .csv / .tsv.** File → Import .csv / .tsv turns an Excel export into a Markdown table at your caret. The separator is detected from the file, so CSV and TSV share one button.
+2. **No AI key needed.** The conversion is deterministic and runs entirely in the browser — it works offline.
+3. **Reads what spreadsheets write.** UTF-8 and UTF-16, European (`;`) exports, and quoted fields containing the separator.
+4. **Wide tables scroll** inside their own box instead of pushing the preview pane sideways.
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.12 entry and prior changelogs.
 
 ---
 
@@ -312,20 +336,24 @@ npm run preview    # serve the production build locally
 
 ### Providers
 
-The Settings modal's **Provider** dropdown offers three options. The
-first two use the OpenAI-compatible `/chat/completions` streaming
-protocol; the third runs Gemma locally in the browser (no API key).
+The Settings modal's **Provider** dropdown offers five options.
+MiniMax, OpenAI, Ollama, and LM Studio use the OpenAI-compatible
+`/chat/completions` streaming protocol. Local Model runs Gemma in
+the browser (no API key, no HTTP chat).
 
 | Provider | API key | Endpoint (default) | Model presets | Notes |
 | --- | --- | --- | --- | --- |
 | **Local Model (require around 2gb disk space)** | None | Hugging Face (model download) | `gemma-4-E2B-it-web` | **Default on first launch.** Downloads ~2 GB from Hugging Face into this browser (or load a `.litertlm` from disk). Runs via WebGPU / LiteRT-LM. Chat + Comment Send to AI only in v1; **Predict** disabled. |
 | **MiniMax** | Required | `https://api.minimax.io/v1` | `MiniMax-M3`, `MiniMax-M3-fast`, `MiniMax-M2.7`, `MiniMax-M2.7-highspeed` | Base URL is fine — the client appends `/chat/completions` automatically. |
 | **OpenAI** | Required | `https://api.openai.com/v1` | `gpt-4o-mini`, `gpt-4o`, `gpt-4-turbo`, `o1-mini`, `o1`, `gpt-3.5-turbo` | Same wire format as MiniMax. |
+| **Ollama (local)** | None | `http://localhost:11434/v1` | `llama3.2`, `mistral`, `qwen2.5`, `gemma2`, `phi3` | OpenAI-compatible local server. Set `OLLAMA_ORIGINS` for CORS. Model must be pulled in Ollama. |
+| **LM Studio (local)** | None | `http://localhost:1234/v1` | *(type the loaded model id)* | OpenAI-compatible local server. Enable CORS in LM Studio. |
 
-API keys are stored only in this browser's `localStorage` by default
-and sent as `Authorization: Bearer <key>` directly to your chosen
-endpoint. Check **Forget API key when this tab closes** in Settings
-to keep the key for this tab only.
+API keys (MiniMax / OpenAI) are stored only in this browser's
+`localStorage` by default and sent as `Authorization: Bearer <key>`
+directly to your chosen endpoint. Check **Forget API key when this
+tab closes** in Settings to keep the key for this tab only. Ollama
+and LM Studio hide the key field.
 
 ### Environment overrides
 
@@ -334,7 +362,7 @@ time by setting the following variables in `.env` (see
 [`.env.example`](./.env.example)):
 
 ```bash
-VITE_DEFAULT_PROVIDER=local-gemma    # one of: local-gemma (default), minimax, openai
+VITE_DEFAULT_PROVIDER=local-gemma    # local-gemma (default), minimax, openai, ollama, lm-studio
 VITE_DEFAULT_API_ENDPOINT=https://api.minimax.io/v1
 VITE_DEFAULT_MODEL=MiniMax-M2.7
 ```
@@ -645,7 +673,7 @@ A longer, task-oriented walkthrough of every screen lives under
 `⌘/Ctrl + /`) to open the same pages as a themed Help site — Light /
 Dark matches the editor. Start at the [table of contents](docs/README.md):
 
-- [What's new](docs/whats-new.md) — current release (v0.6.11)
+- [What's new](docs/whats-new.md) — current release (v0.6.13)
 - [Getting started](docs/getting-started.md) — first launch, connect AI, first document
 - [Your workspace](docs/workspace.md) — layout, theme, panels, Help
 - [Documents](docs/documents.md) — create, rename, switch, delete
@@ -656,7 +684,7 @@ Dark matches the editor. Start at the [table of contents](docs/README.md):
 - [Reference other documents (`@`)](docs/reference-other-documents.md) — attach a doc or heading sections *(v0.4.7 / v0.4.8)*
 - [Prompt library](docs/prompt-library.md) — saved prompts
 - [Revision history](docs/revisions.md) — snapshots and restore
-- [Import from photos or PDFs](docs/import.md)
+- [Import photos, PDFs, and tables](docs/import.md)
 - [Settings](docs/settings.md)
 - [Keyboard shortcuts](docs/keyboard-shortcuts.md)
 - [Privacy and your data](docs/privacy.md)
@@ -779,6 +807,8 @@ per-release notes also ship on the GitHub release pages.
 
 | Version | Highlights |
 | --- | --- |
+| [v0.6.13](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.13) | **Chat table edits.** `table-edit` cards (cell / rows / columns); stale-safe Apply; Preview column resize; Best Effort stops at table edges; Local Model compact table context. |
+| [v0.6.12](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.12) | **CSV / TSV import.** **File → Import .csv / .tsv** turns an Excel export into a Markdown table at the caret — separator auto-detected, offline, no AI key needed. Wide tables scroll in place. |
 | [v0.6.11](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.11) | **Compare overlay.** Side-by-side Original \| Revised with unchanged text; left-edge resize; per-card Apply syncs remaining. |
 | [v0.6.10](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.10) | **Security.** `npm audit` 4 → **0** (Vite 6, patched `uuid` / `postcss-selector-parser`); install-script approvals recorded; Functional Specification refreshed. |
 | [v0.6.9](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.9) | **Sidebar tags, Preview numbering, document compare.** Nested `#tags`, star/pin, Recent; numbered-list dropdown for line gutter and heading outline; **File → Compare…** redlines another `.md` / `.json` / `.docx` into proposed edits. |

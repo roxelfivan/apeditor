@@ -1,5 +1,14 @@
 import type { MentionToken, ProposedEdit } from '@/types';
 import { parseMentions as parseMentionsFromSentinels } from '@/utils/mentions/parseMentions';
+import {
+  findTableRowContaining,
+  offsetInsideTable,
+  parseMarkdownTables,
+} from '@/utils/tableModel';
+import {
+  resolveTableEditOp,
+  tryParseTableEdit,
+} from '@/utils/tableEdits';
 
 export type ProposedEditSegment =
   | { kind: 'text'; payload: string }
@@ -8,14 +17,23 @@ export type ProposedEditSegment =
 /**
  * Split an assistant reply into segments. Fenced code blocks whose
  * info-string is exactly `proposed-edit` and whose body parses as a valid
- * `ProposedEdit` JSON object become `kind: 'edit'` segments. Everything
- * else (regular prose, malformed fences, normal code fences) becomes
- * `kind: 'text'` so it falls through to the markdown renderer.
+ * `ProposedEdit` JSON object become `kind: 'edit'` segments. Fences
+ * whose info-string is exactly `table-edit` are resolved against
+ * `docContent` (when provided) into `kind: 'edit'` segments that carry
+ * `tableEdit` span metadata. Everything else (regular prose, malformed
+ * fences, normal code fences) becomes `kind: 'text'`.
  *
  * The regex matches the smallest possible opening fence so a fence inside
  * another fence isn't accidentally consumed.
+ *
+ * @param docContent  current document text — required to resolve
+ *                    `table-edit` fences to cell spans. When omitted,
+ *                    `table-edit` fences stay as text (safe fallback).
  */
-export function parseProposedEdits(content: string): ProposedEditSegment[] {
+export function parseProposedEdits(
+  content: string,
+  docContent?: string
+): ProposedEditSegment[] {
   let segments: ProposedEditSegment[] = [];
   const fenceRe = /```([^\n`]*)\n([\s\S]*?)(?:```|$)/g;
   let lastIndex = 0;
@@ -28,12 +46,44 @@ export function parseProposedEdits(content: string): ProposedEditSegment[] {
       segments.push({ kind: 'text', payload: content.slice(lastIndex, start) });
     }
 
-    if (infoString.trim() === 'proposed-edit') {
+    const info = infoString.trim();
+    if (info === 'proposed-edit') {
       const edit = tryParseEdit(body);
       if (edit) {
         segments.push({ kind: 'edit', payload: edit });
       } else {
         segments.push({ kind: 'text', payload: full });
+      }
+    } else if (info === 'table-edit') {
+      // Sibling gate — do not widen tryParseEdit. Resolve against the
+      // live document so Apply can use spans, not short cell strings.
+      const op = tryParseTableEdit(body);
+      const resolved =
+        op && docContent != null
+          ? resolveTableEditOp(docContent, op)
+          : null;
+      if (resolved) {
+        segments.push({ kind: 'edit', payload: resolved });
+      } else {
+        segments.push({ kind: 'text', payload: full });
+      }
+    } else if (
+      // Models often wrap table-edit JSON in ```json or a bare fence.
+      (info === 'json' || info === '') &&
+      docContent != null
+    ) {
+      const op = tryParseTableEdit(body);
+      const resolved = op ? resolveTableEditOp(docContent, op) : null;
+      if (resolved) {
+        segments.push({ kind: 'edit', payload: resolved });
+      } else {
+        // Fall through: may still be a prose proposed-edit in ```json.
+        const prose = tryParseEdit(body);
+        if (prose) {
+          segments.push({ kind: 'edit', payload: prose });
+        } else {
+          segments.push({ kind: 'text', payload: full });
+        }
       }
     } else {
       segments.push({ kind: 'text', payload: full });
@@ -51,7 +101,107 @@ export function parseProposedEdits(content: string): ProposedEditSegment[] {
   // without the `proposed-edit` fence, and we want to show a card
   // anyway rather than dumping the raw JSON to the user.
   segments = rescueRawJsonEdits(segments);
+  if (docContent != null) {
+    segments = rescueRawTableEdits(segments, docContent);
+  }
   return normalizeParsedEdits(segments);
+}
+
+/**
+ * Rescue bare / mis-fenced table-edit JSON (set-cell or delete-rows)
+ * from text segments. Only runs when docContent is available so we
+ * can resolve spans. Skips objects that already look like prose
+ * proposed-edits (have original + replacement).
+ */
+function rescueRawTableEdits(
+  segments: ProposedEditSegment[],
+  docContent: string
+): ProposedEditSegment[] {
+  const out: ProposedEditSegment[] = [];
+  for (const seg of segments) {
+    if (seg.kind !== 'text') {
+      out.push(seg);
+      continue;
+    }
+    const text = seg.payload;
+    let cursor = 0;
+    let i = 0;
+    while (i < text.length) {
+      if (text[i] !== '{') {
+        i += 1;
+        continue;
+      }
+      const extracted = extractBalancedJsonObject(text, i);
+      if (!extracted) {
+        i += 1;
+        continue;
+      }
+      const { json, end } = extracted;
+      // Prefer prose proposed-edit when both shapes could match.
+      if (
+        /"original"\s*:/.test(json) &&
+        /"replacement"\s*:/.test(json) &&
+        !/"operation"\s*:/.test(json)
+      ) {
+        i = end;
+        continue;
+      }
+      const op = tryParseTableEdit(json);
+      const resolved = op ? resolveTableEditOp(docContent, op) : null;
+      if (!resolved) {
+        i = end;
+        continue;
+      }
+      if (i > cursor) {
+        out.push({ kind: 'text', payload: text.slice(cursor, i) });
+      }
+      out.push({ kind: 'edit', payload: resolved });
+      cursor = end;
+      i = end;
+    }
+    if (cursor < text.length) {
+      out.push({ kind: 'text', payload: text.slice(cursor) });
+    }
+  }
+  return out;
+}
+
+/** Extract a balanced `{ ... }` starting at `start` (must be `{`). */
+function extractBalancedJsonObject(
+  text: string,
+  start: number
+): { json: string; end: number } | null {
+  if (text[start] !== '{') return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (c === '\\') {
+        escape = true;
+        continue;
+      }
+      if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') {
+      inString = true;
+      continue;
+    }
+    if (c === '{') depth += 1;
+    else if (c === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return { json: text.slice(start, i + 1), end: i + 1 };
+      }
+    }
+  }
+  return null;
 }
 
 /** Ids / summaries Local Gemma often echoes from the fence name. */
@@ -683,17 +833,33 @@ function firstNonEmptyLine(s: string): string {
  * Expand start/end to the nearest markdown block boundaries that contain
  * the match: previous blank line (or after a heading), next blank line
  * or next ATX heading of any level.
+ *
+ * Table-aware: when the match already sits inside a GFM data row, clamp
+ * to that single row so Best Effort cannot swallow neighbouring rows
+ * (tables have no blank lines between rows). When walking from prose,
+ * stop at a detected table boundary so a prose hole does not expand
+ * into the sheet. Documents with no tables keep the historical
+ * blank-line / heading behaviour bit-for-bit.
  */
 function expandToBlockBoundaries(
   content: string,
   start: number,
   end: number
 ): { start: number; end: number } {
+  const tables = parseMarkdownTables(content);
+  const containing = findTableRowContaining(tables, start, end);
+  if (containing) {
+    return {
+      start: containing.row.lineStart,
+      end: containing.row.lineEnd,
+    };
+  }
+
   let s = start;
   let e = end;
   // Walk start back to the previous blank line, but stop after a heading
   // line so we don't pull the heading into the hole when the next step
-  // will leave it in place.
+  // will leave it in place. Also stop before entering a GFM table.
   while (s > 0) {
     const prevNl = content.lastIndexOf('\n', s - 1);
     const lineStart = prevNl < 0 ? 0 : prevNl + 1;
@@ -706,10 +872,14 @@ function expandToBlockBoundaries(
       // Leave heading outside the hole.
       break;
     }
+    if (offsetInsideTable(tables, lineStart)) {
+      // Do not pull table rows into a prose hole.
+      break;
+    }
     s = lineStart;
     if (prevNl < 0) break;
   }
-  // Walk end forward to next blank line or next heading.
+  // Walk end forward to next blank line, next heading, or table edge.
   while (e < content.length) {
     const nextNl = content.indexOf('\n', e);
     if (nextNl < 0) {
@@ -721,6 +891,10 @@ function expandToBlockBoundaries(
     const lineEnd = nextNext < 0 ? content.length : nextNext;
     const line = content.slice(lineStart, lineEnd);
     if (line.trim() === '' || /^#{1,6}\s+\S/.test(line.trim())) {
+      e = nextNl;
+      break;
+    }
+    if (offsetInsideTable(tables, lineStart)) {
       e = nextNl;
       break;
     }

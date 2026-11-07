@@ -133,7 +133,7 @@ Key files:
 
 | File | Purpose |
 |---|---|
-| [`config/providers.tsx`](config/providers.tsx) | Per-provider preset (`PROVIDERS[]`): endpoint, model presets, default model, help text, key placeholder. Exports `getProvider`, `requiresApiKey`. |
+| [`config/providers.tsx`](config/providers.tsx) | Per-provider preset (`PROVIDERS[]`): endpoint, model presets, default model, help text, key placeholder. Exports `getProvider`, `requiresApiKey`, `usesLocalGemmaEngine`, `isHttpChatConfigured`. |
 
 ### `src/docs/` (1 file, 93 LoC)
 

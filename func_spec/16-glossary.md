@@ -89,8 +89,20 @@ type Role = 'system' | 'user' | 'assistant';
 | `id` | `string` | Model-chosen; the app only requires it to be a string |
 | `summary` | `string` | One-line description shown on the card |
 | `rationale` | `string?` | The Markdown explanation. Optional for backward compatibility with older replies; an empty string is treated the same as missing. |
-| `original` | `string` | **Must** be a verbatim substring. No paraphrase. |
+| `original` | `string` | **Must** be a verbatim substring. No paraphrase. For `table-edit` cards this is a display quote, not the Apply path. |
 | `replacement` | `string` | The new text |
+| `tableEdit` | `TableEditMeta?` | Present for ```` ```table-edit ```` fences. Apply uses span / structural ops — never `findEditAnchor` on short cell values. |
+
+### `TableEditMeta`
+
+Discriminated union (`kind`):
+
+| `kind` | Apply |
+|---|---|
+| `set-cell` (default when omitted) | One cell by table / row / column; stale check on expected value |
+| `delete-rows` | Drop a row range (also from `keep-rows` inversion) |
+| `remove-column` | Drop a column by header or 1-based index |
+| `add-column` | Insert a named column at a 1-based position with optional fill |
 
 ### `ProposedEditRationale`
 
@@ -160,13 +172,21 @@ Each captures both `before` and `after` so undo is a clean apply/reverse rather 
 ### `ApiProvider` and `KeyedApiProvider`
 
 ```ts
-type ApiProvider = 'minimax' | 'openai' | 'local-gemma';
-type KeyedApiProvider = Exclude<ApiProvider, 'local-gemma'>;
+type ApiProvider =
+  | 'minimax'
+  | 'openai'
+  | 'local-gemma'
+  | 'ollama'
+  | 'lm-studio';
+type KeyedApiProvider = Exclude<
+  ApiProvider,
+  'local-gemma' | 'ollama' | 'lm-studio'
+>;
 ```
 
-`minimax` and `openai` speak the OpenAI Chat Completions wire format, so the request layer does **not** branch on provider for them — the id is a UI/defaults concern. `local-gemma` runs in-browser via LiteRT-LM / WebGPU and does not need a key; `ChatPanel` streams through `streamLocalGemma`.
+`minimax`, `openai`, `ollama`, and `lm-studio` speak the OpenAI Chat Completions wire format, so the request layer does **not** branch on provider for them — the id is a UI/defaults concern. `local-gemma` runs in-browser via LiteRT-LM / WebGPU and does not need a key; `ChatPanel` streams through `streamLocalGemma`.
 
-`requiresApiKey(id) => id !== 'local-gemma'` is the single source of truth.
+`requiresApiKey(id) => id === 'minimax' || id === 'openai'` is the source of truth for key gating. `usesLocalGemmaEngine(id)` selects the LiteRT path. `isHttpChatConfigured(api)` gates Predict / OCR rewrite.
 
 ### `ApiConfig`
 

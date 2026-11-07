@@ -2,18 +2,26 @@
 
 ## Settings keeps asking for a key
 
-Minimax and OpenAI need an API key. Paste it in **Settings** and click **Save**. Or switch **Provider** to **Local Model (require around 2gb disk space)** and download the on-device model if you do not want a key.
+Minimax and OpenAI need an API key. Paste it in **Settings** and click **Save**. Or switch **Provider** to **Local Model**, **Ollama**, or **LM Studio** if you do not want a cloud key.
 
-The amber dot on the gear means no key is stored yet.
+The amber dot on the gear means no key is stored yet (keyed providers only).
 
 ## Chat shows an error
 
 - Confirm **Save** in Settings (unsaved key/endpoint will not be used)
-- Check that the key is valid for that provider
-- Confirm you are online
+- Check that the key is valid for Minimax / OpenAI
+- For Ollama / LM Studio: confirm the local server is running, the model name matches, and CORS is allowed (`OLLAMA_ORIGINS` / LM Studio CORS)
+- Confirm you are online (cloud providers) or that `localhost` is reachable (local servers)
 - Try **Stop** if a reply is stuck, then send again
 
 The red box shows the provider message, or **Unknown error**.
+
+## Ollama or LM Studio connection failed
+
+- Defaults: Ollama `http://localhost:11434/v1`, LM Studio `http://localhost:1234/v1`
+- Browser calls go directly to that host — enable CORS on the local server for this app’s origin (dev is often `http://localhost:5174`)
+- Connection refused usually means the app is not running or the port is wrong
+- Wrong model id returns an API error — use a pulled Ollama tag or the LM Studio loaded model name
 
 ## Proposed edits will not Apply
 
@@ -27,11 +35,11 @@ The highlighted sentence changed too much to find. Edit or delete the comment fr
 
 ## Predict is greyed out
 
-Turn on Minimax or OpenAI and save a key. Predict is off by default; click the sparkle icon to start. It does not run under Local Gemma in v1.
+Use Minimax or OpenAI with a saved key, or Ollama / LM Studio with a local endpoint. Predict is off by default; click the sparkle icon to start. It does not run under Local Gemma in v1.
 
 ## Import will not format Markdown
 
-OCR can read the file in the browser, but rewriting as Markdown needs a keyed provider. Add a key in Settings. Also select at least one OCR language.
+OCR can read the file in the browser, but rewriting as Markdown needs an HTTP chat provider (Minimax, OpenAI, Ollama, or LM Studio). Configure one in Settings. Also select at least one OCR language.
 
 ## Chat + found no text
 

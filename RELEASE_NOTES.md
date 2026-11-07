@@ -1,3 +1,28 @@
+## v0.6.13 — Chat edits imported tables as cells
+
+Patch on top of [v0.6.12](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.12). Chat can propose **table-edit** cards for Markdown tables (set-cell, delete/keep rows, remove/add column). Apply uses span / structural ops with stale checks; Best Effort no longer expands into neighbouring table rows. Preview columns are drag-resizable with remembered widths. Local Gemma keeps a compact table schema so the sheet is not tokenised twice.
+
+### Notes
+
+- See [`.release-notes-v0.6.13.md`](.release-notes-v0.6.13.md) for the full surface list.
+- `package.json` version bumped to `0.6.13`.
+
+## v0.6.12 — CSV / TSV import: spreadsheet tables as Markdown
+
+Patch on top of [v0.6.11](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.11). The **File** menu gains a third import path: drop an Excel export into the editor and get a Markdown table.
+
+### Highlights
+
+- **File → Import .csv / .tsv.** One button for both formats; separator auto-detected from the file.
+- **Offline / no AI key.** Deterministic browser conversion; never sends the sheet anywhere.
+- **Reads what spreadsheets write.** UTF-8 and UTF-16, European (`;`) exports, quoted fields containing the separator.
+- **Wide tables scroll** inside their own Preview box instead of pushing the pane sideways.
+
+### Notes
+
+- See [`.release-notes-v0.6.12.md`](.release-notes-v0.6.12.md) for the full surface list.
+- `package.json` version bumped to `0.6.12`.
+
 ## v0.6.11 — Compare overlay: side-by-side document view + resize
 
 Patch on top of [v0.6.10](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.10). The Compare popup shows the whole document in order — unchanged text among the changes — and is resizable from its left edge.

@@ -36,6 +36,10 @@ npm run test:outline-numbering
 npm run test:tags
 npm run test:document-compare
 npm run test:compare-panel-render
+npm run test:csv-to-markdown
+npm run test:preview-markdown-render
+npm run test:table-model
+npm run test:table-edits
 ```
 
 ---
@@ -266,6 +270,10 @@ npm run test:outline-numbering
 npm run test:tags
 npm run test:document-compare
 npm run test:compare-panel-render
+npm run test:csv-to-markdown
+npm run test:preview-markdown-render
+npm run test:table-model
+npm run test:table-edits
 npm run check:docs
 npm run build
 ```

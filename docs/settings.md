@@ -11,6 +11,8 @@ Drag the edges of the window to resize it. **Cancel** discards unsaved edits; **
 | **Local Model (require around 2gb disk space)** | None | Default on first launch. In-browser Gemma via WebGPU; download once from Hugging Face |
 | **Minimax** | Required | Streaming Chat in the panel |
 | **OpenAI** | Required | Streaming Chat with OpenAI models |
+| **Ollama (local)** | None | Local OpenAI-compatible server at `http://localhost:11434/v1` |
+| **LM Studio (local)** | None | Local OpenAI-compatible server at `http://localhost:1234/v1` |
 
 Changing provider updates the default endpoint and model list. You can still type a custom model name.
 
@@ -20,18 +22,22 @@ Paste the key from your provider. **Show** / **Hide** toggles visibility.
 
 The key is stored only in this browser’s local storage by default. Check **Forget API key when this tab closes** to keep it in session storage instead — closing the tab forgets the key; documents and chat stay. It is sent as a Bearer token to the HTTPS endpoint you set — not to an ApEditor backend. Do not leave a key on a shared computer; clear site data when you are done.
 
-For Local Gemma the field is unused — use the download / load controls instead.
+For **Local Gemma**, **Ollama**, and **LM Studio** the field is hidden — those paths do not need a key. Local Gemma uses the download / load controls instead.
 
 ## API endpoint and model
 
-**API endpoint** is the base URL for Minimax or OpenAI. You usually keep the preset (`https://api.minimax.io/v1` or `https://api.openai.com/v1`).
+**API endpoint** is the base URL for Minimax, OpenAI, Ollama, or LM Studio. You usually keep the preset (`https://api.minimax.io/v1`, `https://api.openai.com/v1`, `http://localhost:11434/v1`, or `http://localhost:1234/v1`).
 
 **Model** offers presets you can pick or type over:
 
 - Minimax: `MiniMax-M3`, `MiniMax-M3-fast`, `MiniMax-M2.7`, `MiniMax-M2.7-highspeed` (default `MiniMax-M2.7`)
 - OpenAI: `gpt-4o-mini`, `gpt-4o`, `gpt-4-turbo`, `o1-mini`, `o1`, `gpt-3.5-turbo` (default `gpt-4o-mini`)
+- Ollama: `llama3.2`, `mistral`, `qwen2.5`, `gemma2`, `phi3` (default `llama3.2`) — must match a model you have pulled
+- LM Studio: type the model id shown in LM Studio for the loaded server (default placeholder `local-model`)
 
 Local Gemma does not use these fields for requests. Download **gemma-4-E2B-it-web** (~2 GB) from Hugging Face (cached in this browser), or **Load from disk** a `.litertlm` file. After it is cached, **Save to Disk** exports a copy you choose (or downloads to your Downloads folder). The box shows **Last saved** as the filename and time — browsers do not expose the full folder path. Clear the cached model from Settings when you want to free browser storage. While downloading, short ApEditor tips appear every 5%.
+
+For Ollama, allow this app’s origin in `OLLAMA_ORIGINS` (CORS). For LM Studio, enable CORS in the local server / developer settings.
 
 ## Debug Mode
 
@@ -42,7 +48,7 @@ The **token counter** next to both send buttons is not part of Debug Mode — it
 - **Chat** — left of **Send**, the estimated size of the message you are about to send, plus `sent ~N` for the previous send.
 - **Comments** — next to **Send to AI**, the estimated size of the comment batch.
 
-It appears when the **Local Model** is the active provider, because the on-device memory limit is what it warns about. Keyed providers (Minimax, OpenAI) have no local budget, so no counter is shown there.
+It appears when the **Local Model** (in-browser Gemma) is the active provider, because the on-device memory limit is what it warns about. HTTP providers (Minimax, OpenAI, Ollama, LM Studio) have no comparable in-browser budget, so no counter is shown there.
 
 The number is a rough estimate (about 4 characters per token), not an exact count. On the Local Model the pill turns amber when the prompt is close to the budget and red when it does not fit — a red pill means the reply will be cut short. See [Troubleshooting](troubleshooting.md#local-model-reply-is-cut-short).
 

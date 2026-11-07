@@ -23,6 +23,19 @@ If the model quoted text that is not in the current document, you may see **Pote
 
 A muted label next to Apply shows **Exact match** or **Best effort · N%**.
 
+### Table cells
+
+When the document has a Markdown table, Chat may propose a **table-edit** card instead of a prose quote:
+
+- **Cell change** — Apply replaces that one cell by row/column and refuses if the cell went stale.
+- **Delete / keep rows** — Apply removes a row range (for example keep `r1–r50` by deleting the rest) in one step.
+- **Remove column** — Apply drops a column by header name or 1-based index (for example `Column 6` / `6`).
+- **Add column** — Apply inserts a named column at a 1-based position (for example blank `summary` at column 6); existing cells stay put and new cells start empty unless a fill value is given.
+
+Short values like `12` are never matched as the first `12` elsewhere in the file.
+
+**Apply n change(s)** applies table cards first, then prose cards with the usual waterfall.
+
 After a successful apply:
 
 - The document updates

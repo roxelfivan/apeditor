@@ -19,13 +19,15 @@ Read **Welcome** in the editor for a short in-app tour. This guide goes into mor
 
 Click the **gear** in the top bar (**Settings**), or press `Ctrl+.` (Windows/Linux) / `⌘.` (Mac).
 
-You have three choices:
+You have five choices:
 
 | Provider | API key | What happens when you send a message |
 | --- | --- | --- |
-| **Minimax** (default) | Required | The reply streams in the Chat panel |
+| **Local Model (require around 2gb disk space)** | None | Default on first launch. Runs Gemma in the browser (WebGPU); download the model once in Settings |
+| **Minimax** | Required | The reply streams in the Chat panel |
 | **OpenAI** | Required | Same as Minimax |
-| **Local Model (require around 2gb disk space)** | None | Runs Gemma in the browser (WebGPU); download the model once in Settings (default on first launch) |
+| **Ollama (local)** | None | Talks to Ollama at `http://localhost:11434/v1` (CORS required) |
+| **LM Studio (local)** | None | Talks to LM Studio at `http://localhost:1234/v1` (CORS required) |
 
 If you use Minimax or OpenAI:
 
@@ -36,7 +38,9 @@ If you use Minimax or OpenAI:
 
 If you use Local Model (the first-launch default): open Settings → Local Model, download or load the model, wait until status shows **Ready**, then chat as usual.
 
-If the gear shows a small amber dot, no API key is saved yet. That is expected until you add a Minimax/OpenAI key (or finish downloading Local Model).
+If you use Ollama or LM Studio: start the local server, pick the provider, keep the default endpoint (or fix the port), set the model name to a pulled / loaded model, enable CORS, then **Save**.
+
+If the gear shows a small amber dot, no API key is saved yet. That is expected until you add a Minimax/OpenAI key (or you are on a keyless provider).
 
 Keys stay in this browser only. See [Privacy and your data](privacy.md).
 

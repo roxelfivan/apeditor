@@ -13,7 +13,10 @@ import {
   DEFAULT_EDITOR_SPLIT_PCT,
 } from '@/hooks/useDragResize';
 import { formatWikilinksForPreview } from '@/utils/graph/parseWikilinks';
-import { requiresApiKey } from '@/config/providers';
+import {
+  isHttpChatConfigured,
+  usesLocalGemmaEngine,
+} from '@/config/providers';
 import {
   getSelectionRect,
   reanchorAll,
@@ -400,12 +403,11 @@ export function Editor() {
     return Math.min(max, Math.max(80, px));
   };
 
-  // Inline sentence completion. Auto-disabled when no API key is configured.
-  // The keyless `local-gemma` provider is also treated as "not
-  // configured" for inline completion in v1 — Local Gemma powers
-  // Chat / Comment Send to AI only (Predict stays keyed-provider).
-  const apiConfigured =
-    requiresApiKey(api.provider) && Boolean(api.apiKey && api.apiEndpoint);
+  // Inline sentence completion. Requires an OpenAI-compatible HTTP
+  // provider (Minimax, OpenAI, Ollama, LM Studio). In-browser Local
+  // Gemma is treated as not configured — it powers Chat / Comment
+  // Send to AI only in v1.
+  const apiConfigured = isHttpChatConfigured(api);
   // User-controlled on/off toggle for the inline-completion feature.
   // Defaults to OFF so predictions never fire until the user
   // explicitly enables them via the Predict button.
@@ -1099,10 +1101,10 @@ export function Editor() {
   // wasteful on a long draft.
   // ---------------------------------------------------------------------------
   const [commentBatchTokens, setCommentBatchTokens] = useState(0);
-  // The token counter is a Local Model affordance (the on-device KV
-  // cache is the hard limit it warns about), so it follows the
-  // provider — not Debug Mode.
-  const isLocalModel = !requiresApiKey(api.provider);
+  // The token counter is an in-browser Local Gemma affordance (the
+  // on-device KV cache is the hard limit it warns about), so it
+  // follows that engine — not Debug Mode or other keyless providers.
+  const isLocalModel = usesLocalGemmaEngine(api.provider);
   useEffect(() => {
     if (!isLocalModel) {
       setCommentBatchTokens(0);
@@ -1161,7 +1163,7 @@ export function Editor() {
         mergedMentions,
         (id) => useStore.getState().documents.find((d) => d.id === id) ?? null,
         mentionsByCommentId,
-        api.provider === 'local-gemma' ? 'on-demand' : 'eager'
+        usesLocalGemmaEngine(api.provider) ? 'on-demand' : 'eager'
       );
       setCommentBatchTokens(preview.tokens);
     }, 250);
@@ -1816,9 +1818,9 @@ export function Editor() {
           aria-label={`Predict ${inlineOn ? 'on' : 'off'}. Click to ${inlineOn ? 'turn off' : 'turn on'}.`}
           title={
             !apiConfigured
-              ? !requiresApiKey(api.provider)
-                ? 'Predict is not available with Local Gemma — type your prompt in the Chat panel instead (or use Minimax / OpenAI).'
-                : 'Configure an API key in Settings to enable prediction'
+              ? usesLocalGemmaEngine(api.provider)
+                ? 'Predict is not available with Local Gemma — type your prompt in the Chat panel instead (or use Minimax, OpenAI, Ollama, or LM Studio).'
+                : 'Configure an API endpoint in Settings to enable prediction'
               : inlineOn
                 ? 'Click to stop inline predictions'
                 : 'Click to start inline predictions'
@@ -2412,10 +2414,11 @@ export function Editor() {
             {showPreview && isSplit && (
               <div
                 data-print-root
-                className="flex-1 min-w-0 overflow-y-auto p-4 bg-paper-base dark:bg-ape-base"
+                className="preview-scroll flex-1 min-h-0 min-w-0 p-4 bg-paper-base dark:bg-ape-base"
               >
                 <PreviewMarkdown
                   source={previewMarkdown}
+                  docId={doc?.id}
                   lineNumbers={previewLineNumbers}
                   outlineScheme={outlineNumbering}
                   style={{ fontSize: `${editorFontSize}px`, lineHeight: 1.55 }}
@@ -2435,10 +2438,11 @@ export function Editor() {
         {showPreview && !isSplit && (
           <div
               data-print-root
-              className="flex-1 min-w-0 overflow-y-auto p-4 bg-paper-base dark:bg-ape-base"
+              className="preview-scroll flex-1 min-h-0 min-w-0 p-4 bg-paper-base dark:bg-ape-base"
             >
             <PreviewMarkdown
               source={previewMarkdown}
+              docId={doc?.id}
               lineNumbers={previewLineNumbers}
               outlineScheme={outlineNumbering}
               style={{ fontSize: `${editorFontSize}px`, lineHeight: 1.55 }}

@@ -9,7 +9,7 @@ Use the dropdown on the left of the editor toolbar (order: Write → Preview →
 | Mode | What you see |
 | --- | --- |
 | **Write** | Editable text. Placeholder: *Start writing in Markdown…* |
-| **Preview** | Rendered Markdown (headings, lists, links, tables, and so on). `[[wikilinks]]` appear as purple labels without brackets. |
+| **Preview** | Rendered Markdown (headings, lists, links, tables, and so on). `[[wikilinks]]` appear as purple labels without brackets. Drag a table column’s right edge to resize it; cell text wraps to the new width (sizes are remembered in this browser, not written into the Markdown). |
 | **Graph** | A full-pane map of your documents, headings, `[[wikilinks]]`, and `@` mentions. Format, Comment, and Predict hide — there is no textarea. |
 | **Split** | Left pane is Write or Preview (tabs at the top of that pane); right pane is Graph. Drag the divider. |
 
@@ -83,7 +83,7 @@ Open the **Format** menu on the toolbar and pick **Size +** or **Size −**. Ran
 
 ## Predict (optional sentence completion)
 
-**Predict** is **off** until you turn it on. It needs a Minimax or OpenAI key. It is not available with **Local Model**.
+**Predict** is **off** until you turn it on. It needs Minimax or OpenAI (with a key), or Ollama / LM Studio (local endpoint). It is not available with **Local Model** (in-browser Gemma).
 
 1. Click the sparkle **Predict** icon on the toolbar, or press `Ctrl+\` / `⌘\` (when the control is enabled).
 2. A suggestion panel appears under the write pane: **Suggestion · Tab to accept · Esc to dismiss**.

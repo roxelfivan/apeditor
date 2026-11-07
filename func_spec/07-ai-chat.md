@@ -75,11 +75,19 @@ An unparseable URL throws `'API endpoint must be an absolute URL (e.g. https://a
 | `minimax` | Minimax | `https://api.minimax.io/v1` | `MiniMax-M3`, `MiniMax-M3-fast`, `MiniMax-M2.7`, `MiniMax-M2.7-highspeed` | `MiniMax-M2.7` |
 | `openai` | OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini`, `gpt-4o`, `gpt-4-turbo`, `o1-mini`, `o1`, `gpt-3.5-turbo` | `gpt-4o-mini` |
 | `local-gemma` | Local Model (require around 2gb disk space) | Hugging Face model page (display only) | *(none)* | `gemma-4-E2B-it-web` |
+| `ollama` | Ollama (local) | `http://localhost:11434/v1` | `llama3.2`, `mistral`, `qwen2.5`, `gemma2`, `phi3` | `llama3.2` |
+| `lm-studio` | LM Studio (local) | `http://localhost:1234/v1` | *(none — type loaded model id)* | `local-model` |
 
 ```ts
 export function requiresApiKey(id: ApiProvider | undefined | null): boolean {
-  return id !== 'local-gemma';
+  return id === 'minimax' || id === 'openai';
 }
+
+export function usesLocalGemmaEngine(id: ApiProvider | undefined | null): boolean {
+  return id === 'local-gemma';
+}
+
+export function isHttpChatConfigured(api): boolean { /* endpoint; key only if required */ }
 
 export function getProvider(id): ProviderPreset {
   if (!id) return PROVIDERS[0];
@@ -87,11 +95,11 @@ export function getProvider(id): ProviderPreset {
 }
 ```
 
-`requiresApiKey` is the **single source of truth** for key gating. It is consulted by first-run onboarding, the Predict button, the Settings API-key field, and `ChatPanel`'s Local Model branch. Never re-derive "does this provider need a key" anywhere else.
+`requiresApiKey` is the **single source of truth** for key gating (Settings key field, first-run onboarding). `usesLocalGemmaEngine` is the **single source of truth** for the in-browser LiteRT path (ChatPanel routing, token counters, Predict disable). `isHttpChatConfigured` gates Predict / OCR rewrite readiness. Never re-derive these elsewhere.
 
-First-run default is `local-gemma` (override with `VITE_DEFAULT_PROVIDER=minimax|openai`). Persisted `google-ai-mode` migrates to `local-gemma` on rehydrate.
+First-run default is `local-gemma` (override with `VITE_DEFAULT_PROVIDER=minimax|openai|ollama|lm-studio`). Persisted `google-ai-mode` migrates to `local-gemma` on rehydrate.
 
-> **The request layer does not branch on `provider`** for `minimax` and `openai` — both speak the same OpenAI Chat Completions wire format. Only `local-gemma` takes a different runtime path (`streamLocalGemma` in [`localGemma.ts`](../src/api/localGemma.ts)).
+> **The request layer does not branch on `provider`** for `minimax`, `openai`, `ollama`, and `lm-studio` — they speak the same OpenAI Chat Completions wire format (Bearer optional when no key). Only `local-gemma` takes a different runtime path (`streamLocalGemma` in [`localGemma.ts`](../src/api/localGemma.ts)).
 
 ## 4. The request-message contract
 
@@ -112,12 +120,13 @@ buildRequestMessages(
 | Order | `id` | Emitted when | Content |
 |---:|---|---|---|
 | 1 | `sys` | Always (unless the effective system message is empty) | Built-in or override; Local Gemma may use a shorter on-demand contract |
-| 2 | `sys-current-doc` | Keyed path + document content | Compact outline (`buildDocOutline`) |
-| 3 | `sys-proposed-edit-rules` | Always (shape depends on policy) | Fence schema + rationale rules (eager) or short Local Gemma rationale (on-demand) |
-| 4 | `${lastUser.id}-comments-xref` | Comment-batch turn **and** `mentionsByCommentId` has ≥2 entries with refs | The `[comment → referenced docs]` map |
-| 5 | `sys-referenced-doc-1..N` | Per ordered mention | One per reference, deduped, budgeted |
-| 6 | *(history)* | Per non-system message | The message, plus `${m.id}-sel` when it carried a selection; Local Gemma may fold a `<<<DOCUMENT>>>` envelope into the last user turn |
-| 7 | `${lastUser.id}-comments-batch` | Comment-batch turn | Comment-batch instructions |
+| 2 | `sys-current-doc` | Keyed path + document content | Compact outline (`buildDocOutline`); Local Gemma uses the full-body envelope instead |
+| 3 | `sys-proposed-edit-rules` | Always (shape depends on policy) | Fence schema + rationale rules (eager) or short Local Gemma rationale (on-demand). **Unchanged** when tables are present |
+| 4 | `sys-table-context` | Open document contains ≥1 strict GFM pipe table | Cell/schema hint for `table-edit` fences (`buildTableContextMessage`). Omitted on prose-only docs |
+| 5 | `${lastUser.id}-comments-xref` | Comment-batch turn **and** `mentionsByCommentId` has ≥2 entries with refs | The `[comment → referenced docs]` map |
+| 6 | `sys-referenced-doc-1..N` | Per ordered mention | One per reference, deduped, budgeted |
+| 7 | *(history)* | Per non-system message | The message, plus `${m.id}-sel` when it carried a selection; Local Gemma may fold a `<<<DOCUMENT>>>` envelope into the last user turn |
+| 8 | `${lastUser.id}-comments-batch` | Comment-batch turn | Comment-batch instructions |
 
 All system blocks get `createdAt: 0` — they are not ordered by creation time.
 
@@ -151,8 +160,18 @@ Output:
 - Paragraph boundaries are **every `\n`** (char code 10), via `splitParagraphs` in [`paragraphs.ts`](../src/utils/paragraphs.ts). Chat outlines, @-mention pickers, comment batches, and the re-anchor fallback share that helper.
 - Each preview has whitespace collapsed to single spaces, is trimmed, then truncated at `OUTLINE_PREVIEW_CHARS = 60` on a word boundary, else ellipsised with `…` (`previewParagraph`).
 - `trimOnWordBoundary` prefers a tail space within the last `max / 2` characters.
+- **GFM tables collapse** to one outline line per table (`[table N]@offset: C cols × R rows (headers) — see sys-table-context for cell values`). Individual pipe rows are **not** truncated to 60 characters — that waste was both useless for editing and token-heavy. Cell values live in `sys-table-context` (or in `<<<DOCUMENT>>>` on Local Gemma).
 
 **This outline replaces the full document.** That single change cut comment-batch prompts by roughly 70% versus v0.4.0.
+
+### 4.3.1 `sys-table-context` — table-aware chat
+
+Emitted only when [`parseMarkdownTables`](../src/utils/tableModel.ts) finds ≥1 strict GFM table (header + delimiter, ≥2 columns, skip fenced code). Body from `buildTableContextMessage(content, { compact: isLocalPack })`:
+
+- **Cloud / eager:** inlines `rN: Col=value, …` rows up to `TABLE_CONTEXT_CHARS_CAP = 6000`, then truncates with a note.
+- **Local Gemma (`compact: true`):** schema + row count only — points at `<<<DOCUMENT>>>` so the table is not paid for twice inside the 8192-token budget.
+
+Instructs the model to prefer a ```` ```table-edit ```` fence (not `proposed-edit`) for cell changes. Prose-only documents never see this block, so `PROPOSED_EDIT_SCHEMA_RULES` stays bit-for-bit identical.
 
 ### 4.4 Local Gemma document envelope
 
@@ -331,7 +350,7 @@ Regression test: `npm run test:send-comments-dup` parses `ChatPanel.tsx` and ass
 
 ## 6a. Local Model token counter
 
-A rough estimate of what the **next** request will cost, shown only when the **Local Model** is the active provider (`!requiresApiKey(api.provider)`). The counter is a local-budget affordance, not a debug readout, so it is **decoupled from `debugMode`** — a keyed provider has no comparable budget to warn about and shows no counter at all.
+A rough estimate of what the **next** request will cost, shown only when the **Local Model** is the active provider (`usesLocalGemmaEngine(api.provider)`). The counter is a local-budget affordance, not a debug readout, so it is **decoupled from `debugMode`** — HTTP providers have no comparable in-browser budget and show no counter.
 
 | Surface | Shows |
 |---|---|
@@ -370,7 +389,7 @@ Tests: `npm run test:token-estimate`, `npm run test:token-counter-render`.
 
 ## 7. Local Model (`local-gemma`)
 
-When `!requiresApiKey(api.provider)` the send path streams via LiteRT-LM instead of SSE:
+When `usesLocalGemmaEngine(api.provider)` the send path streams via LiteRT-LM instead of SSE:
 
 1. Ensure the model is loaded (`ensureLocalGemmaReady` — Cache API, or prior disk load).
 2. `buildRequestMessages(..., proposedEditPolicy: 'on-demand')`.

@@ -10,7 +10,7 @@
 
 1. **New** / **Save** / **Save As**
 2. **Export .md** / **Export .json**
-3. **Import photos / PDFs** (OCR sub-panel) / **Import .json**
+3. **Import photos / PDFs** (OCR sub-panel) / **Import .csv / .tsv** / **Import .json**
 4. **Compare…** (file or workspace document → proposed-edit set)
 
 The editor toolbar keeps only the floppy **Save** (revision snapshot).
@@ -161,6 +161,141 @@ window.dispatchEvent(new CustomEvent('mvp:insert-text', { detail: { text: markdo
 
 `Editor.tsx` listens and splices the Markdown **at the caret**, or appends to the end if the textarea was never interacted with, then restores the caret past the inserted text.
 
+### 2.10 The CSV / TSV path
+
+The third import path. Unlike OCR, it makes **zero network calls** and needs no API key: a table conversion is deterministic, so it runs entirely in the browser and cannot be mangled by a model.
+
+Implemented in [`utils/csvToMarkdown.ts`](../src/utils/csvToMarkdown.ts). The module is pure — no DOM, no store, no network.
+
+#### Entry point
+
+| Item | Value |
+|---|---|
+| Menu item | **Import .csv / .tsv**, in the import group between **Import photos / PDFs** and **Import .json** |
+| Menu attribute | `data-import-csv-toggle` |
+| File input | `accept={CSV_FILE_ACCEPT}`, `multiple` **off** |
+| `CSV_FILE_ACCEPT` | `'.csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain'` |
+| Insertion | `mvp:insert-text` — the same event the OCR path uses |
+
+`.txt` is accepted because spreadsheet programs export tab-delimited files under a `.txt` name. The extension is only a hint; the separator comes from the content.
+
+#### Limits
+
+| Constant | Value | Scope |
+|---|---:|---|
+| `CSV_MAX_FILE_BYTES` | `10 * 1024 * 1024` | One file |
+| `CSV_MAX_ROWS` | `20000` | Data rows (excluding the header) |
+
+`validateCsvFile(file)` returns a user-facing message or `null`. The size check runs **before** `file.arrayBuffer()`, so an oversized file is rejected without materialising its bytes.
+
+#### The pipeline
+
+```
+hidden <input type="file" accept={CSV_FILE_ACCEPT}>
+  → FileActionsButton.onCsvFile:
+      1. No open document → 'Open a document first, then import.' and return.
+      2. validateCsvFile(file) → error, input cleared.
+      3. await file.arrayBuffer()
+      4. buildCsvMarkdownTable(buffer, { filename })
+      5. window.dispatchEvent(new CustomEvent('mvp:insert-text', { detail: { text: markdown } }))
+      6. finally: busy = false; csvInputRef.current.value = ''
+```
+
+> **Step 1 is mandatory, not defensive.** The `mvp:insert-text` listener in `Editor.tsx` returns early when `doc` is null, so without this guard the user would click, wait, and see nothing happen.
+
+#### Decoding
+
+`decodeCsvBytes(buffer)` inspects the byte-order mark before decoding:
+
+| BOM | Decoder | Notes |
+|---|---|---|
+| `FF FE` | `utf-16le` | What spreadsheet programs on Windows still emit |
+| `FE FF` | `utf-16be` | |
+| `EF BB BF` | `utf-8` (BOM stripped) | |
+| none | `utf-8` | |
+
+`File.text()` would decode UTF-16 as UTF-8 and produce mojibake, which is why the file is read as an `ArrayBuffer`.
+
+#### Delimiter detection
+
+`detectDelimiter(text, filenameHint?)` is **quote-aware parse-and-score**, not character counting.
+
+For each candidate in `[',', ';', '\t']`:
+
+1. Parse the whole file with that delimiter.
+2. Drop rows whose cells are all blank.
+3. Take the **modal column count** across rows.
+4. Reject the candidate if the modal count is `1` — a real table has at least two columns.
+5. Score `modal × (rows matching the modal / total rows)`.
+
+The highest score wins. If no candidate qualifies, the result is `,` — or `'\t'` when the filename ends in `.tsv`.
+
+> **Why not count characters.** In a `de-DE` export (`Name;Preis` with `3,50` as the decimal) the comma is both the decimal separator and a candidate delimiter, so naive counting picks the wrong one. Quoted cells containing the delimiter break naive counting too.
+
+The filename hint only breaks ties. Content always wins, so a `.csv` file that actually contains tabs still imports correctly.
+
+#### Row and column normalisation
+
+`trimRows(rows)` runs before the header is chosen:
+
+- **Blank rows are dropped.** Spreadsheet exports often begin with one.
+- **Trailing all-empty columns are dropped.** A stray `,` on every row is a common artefact; left alone it adds an empty column plus a spurious `---`.
+
+#### Cell escaping
+
+`escapeTableCell(raw)` applies **four replacements in a fixed order**. The order is load-bearing:
+
+| # | Replace | Why it must be in this position |
+|---|---|---|
+| 1 | `\` → `\\` | Must precede the pipe rule. Otherwise a cell containing the literal text `a\|b` renders as `a\`. |
+| 2 | `&` → `&amp;` | Must precede the angle-bracket rules. Otherwise source data containing `&lt;` is double-decoded into `<`. |
+| 3 | `\|` → `\\|` | Structural — a raw pipe splits the cell into two. |
+| 4 | `<` → `&lt;`, `>` → `&gt;` | `rehype-raw` parses raw tags and `rehype-sanitize` allows `b`, `i`, `em` by default, so an unescaped `<b>` in a cell renders as real bold markup. |
+
+Cells are trimmed. An embedded newline becomes `<br>` (`br` is in the default sanitize schema).
+
+#### Table shape
+
+- The **first row is the header**. An empty header cell becomes `Column N`.
+- The column count is the **maximum across all rows**, and every row is padded to it. GFM silently drops extra cells and mis-renders missing ones, so padding is required.
+- The delimiter row is `| --- | --- |`.
+
+#### Numeric alignment
+
+**Off by default.** `isIntegerColumn` only accepts values matching `^-?(0|[1-9]\d*)$`:
+
+| Value | Aligned? | Why |
+|---|---|---|
+| `12`, `-5` | Yes | Unambiguous integer quantities |
+| `007` | **No** | A leading zero means an identifier, not a quantity. Right-aligning an ID column is a visible data error. |
+| `3.50` | **No** | Ambiguous — a US decimal, or `350` with a stray dot |
+| `3,50` | **No** | Ambiguous — an EU decimal, or `3` and `50` |
+| `$45.50`, `45,50 €`, `45%` | **No** | Currency and percentages are not numbers |
+
+The option exists as `CsvToMarkdownOptions.alignNumericColumns` but is not wired to any UI.
+
+#### The trailing blank line
+
+`csvToMarkdown` returns the table **terminated by a blank line** (`'\n\n'`).
+
+This is not cosmetic. GFM keeps consuming lines that look like table rows, so a table that is not closed by a blank line swallows whatever follows it in the document:
+
+| Inserted text | Rendered result |
+|---|---|
+| `\| x \|**Welcome**` | The last cell reads "Welcome"; the text is **gone** |
+| `\| x \|\n**Welcome**` | An extra table row; the text is **gone** |
+| `\| x \|\n\n**Welcome**` | The text stays a paragraph — **correct** |
+
+Verified against the app's own plugin chain. One trailing newline is not enough; it needs a real blank line.
+
+#### Accuracy limit
+
+A CSV carries no type information. Currency, percentages, dates, and leading-zero IDs are all just text, so the conversion is **literal**: the converter reproduces the bytes it was given and cannot recover formatting intent. A sheet that mixes `1,234` as a thousands separator in one column and as a decimal comma in another is not resolvable by any delimiter heuristic. The user guide states this plainly.
+
+#### Chat editing after import
+
+The imported table stays ordinary Markdown (no parallel JSON store). Chat edits cells via a sibling ```` ```table-edit ```` fence and span Apply — see [Proposed edits §2.1](08-proposed-edits.md#21-table-edit-fences) and [AI chat §4.3.1](07-ai-chat.md#431-sys-table-context-table-aware-chat). `escapeTableCell` / `unescapeTableCell` are shared with [`tableModel.ts`](../src/utils/tableModel.ts) so round-trips keep pipes and HTML escapes honest.
+
 ## 3. Assets
 
 | Path | Size | Source |
@@ -255,7 +390,7 @@ The backup round-trip counterpart to §4.2 — a v1 `DocumentBackup` produced by
 
 1. **New** / **Save** / **Save As**
 2. **Export .md** / **Export .json**
-3. **Import photos / PDFs** / **Import .json**
+3. **Import photos / PDFs** / **Import .csv / .tsv** / **Import .json**
 
 ### 5.1 Detection + limits
 
@@ -377,6 +512,11 @@ The import action itself is gated: without a key it raises `'Open Settings and a
 | 10 | `DocumentBackup` v1 is **bidirectional**. The `version` field must remain a single source of truth; future versions bump it and refuse any non-matching payload. |
 | 11 | Backup imports **never silently overwrite**. Every collision is resolved through the per-row modal before any `applyImportPlan` runs. |
 | 12 | `buildKeepBothDocument` reserves 11 chars for the `(imported)` suffix so the marker is always visible regardless of source title length. |
+| 13 | The CSV path makes **no network calls** and needs no API key. Do not gate it on a configured provider. |
+| 14 | `csvToMarkdown` must keep the cell-escape order (`\` → `&` → `\|` → `<`/`>`). Reordering it silently corrupts data. |
+| 15 | `csvToMarkdown` must keep the **trailing blank line**. Without it, GFM absorbs the following document content into the table and that content disappears from the rendered page. |
+| 16 | The CSV import must **require an open document** before reading the file. `mvp:insert-text` no-ops silently when no document is open. |
+| 17 | Delimiter detection must stay quote-aware. Character counting mis-detects `de-DE` exports and quoted fields. |
 
 ## 8. Next
 

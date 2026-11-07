@@ -56,11 +56,15 @@ This codebase explains *why*, not *what*. Existing comments document the bug tha
 
 | I want to… | Touch | Also check |
 |---|---|---|
-| Add a new AI provider | [`config/providers.tsx`](../src/config/providers.tsx) (preset) + the `ApiProvider` union in [`types.ts`](../src/types.ts) | Only add to `requiresApiKey` if it is genuinely keyless |
+| Add a new AI provider | [`config/providers.tsx`](../src/config/providers.tsx) (preset) + the `ApiProvider` union in [`types.ts`](../src/types.ts) | Keep `requiresApiKey` for cloud keys only; use `usesLocalGemmaEngine` only for in-browser LiteRT; HTTP OpenAI-compatible locals reuse `streamChatCompletion` |
 | Change the system prompt | `DEFAULT_SYSTEM_MESSAGE` in [`api/chat.ts`](../src/api/chat.ts) | Update `isStaleDefaultSystemMessage` so old copies normalise away |
 | Change the rationale rules | `PROPOSED_EDIT_RULES_DEFAULT` | Update `isStaleRationaleRulesOverride` |
 | Change the fence schema | `PROPOSED_EDIT_SCHEMA_RULES` in `api/chat.ts` + [`proposedEdit.ts`](../src/utils/proposedEdit.ts) | The parser and the schema reminder are two halves of one contract |
-| Change what the model sees about the current document | `buildDocOutline` | Paragraph boundaries live in [`paragraphs.ts`](../src/utils/paragraphs.ts); do not fork `splitParagraphs` |
+| Change table-edit ops / Apply | [`tableModel.ts`](../src/utils/tableModel.ts) + [`tableEdits.ts`](../src/utils/tableEdits.ts) + `TableEditMeta` in [`types.ts`](../src/types.ts) | Run `npm run test:table-model` and `npm run test:table-edits`; keep prose `proposed-edit` path untouched |
+| Change CSV / TSV import | [`csvToMarkdown.ts`](../src/utils/csvToMarkdown.ts) + [`FileActionsButton.tsx`](../src/components/FileActionsButton.tsx) | Run `npm run test:csv-to-markdown` |
+| Change Preview table column resize | [`ResizablePreviewTable.tsx`](../src/components/ResizablePreviewTable.tsx) + `layout.previewTableColWidths` | Widths are UI chrome — never rewrite Markdown |
+| Change what the model sees about the current document | `buildDocOutline` / `buildTableContextMessage` | Paragraph boundaries live in [`paragraphs.ts`](../src/utils/paragraphs.ts); do not fork `splitParagraphs` |
+
 | Change the comment-batch format | `formatCommentBatch` in [`comments.ts`](../src/utils/comments.ts) | **Three** places agree: the formatter, the instruction block in `api/chat.ts`, and the `looksLikeCommentBatch` regex |
 | Add a store field | [`store/types.ts`](../src/store/types.ts) + `store.ts` (init, action, `partialize`, `onRehydrateStorage`) | See the checklist in [State & persistence §10](04-state-and-persistence.md#10-adding-a-store-field-the-checklist) |
 | Add a comment action | [`store/actions.ts`](../src/store/actions.ts) + possibly a new `CommentOp` variant in [`types.ts`](../src/types.ts) | Update the popover and the badge |
@@ -160,7 +164,7 @@ The things that will bite you. Each has caused a real bug at some point.
 |---|---|
 | 14 | The model never writes the document. Every write goes through `applyEdit`, `applyAllEdits`, `applyEditAtCaret`, or a keystroke. |
 | 15 | `applyAllEdits` threads the accumulator — a later edit may target text an earlier edit produced. |
-| 16 | `requiresApiKey` is the single source of truth for key gating. Do not re-derive it. |
+| 16 | `requiresApiKey` is the source of truth for key gating; `usesLocalGemmaEngine` for the LiteRT path; `isHttpChatConfigured` for HTTP readiness. Do not re-derive them. |
 | 17 | `stripParagraphReferences` on `original` / `replacement` is load-bearing: models echo `[p10]@354` markers and the exact match fails without it. |
 | 18 | The Best Effort probe is deferred to `requestIdleCallback`. Making it synchronous janks the chat scroll on large replies. |
 | 19 | A blocked splice must never be silently dropped — the user must be pointed at Highlight Apply. |
@@ -248,6 +252,10 @@ npm run test:outline-numbering
 npm run test:tags
 npm run test:document-compare
 npm run test:compare-panel-render
+npm run test:csv-to-markdown
+npm run test:preview-markdown-render
+npm run test:table-model
+npm run test:table-edits
 npm run check:docs
 npm run build
 ```

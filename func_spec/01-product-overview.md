@@ -67,7 +67,7 @@ ApEditor is built for a single, narrow audience:
 | Capability | Where it lives |
 |---|---|
 | Streaming chat with OpenAI-compatible wire format | [`api/chat.ts`](../src/api/chat.ts) |
-| Three providers: **Local Model (default, no key)**, MiniMax, OpenAI | [`config/providers.tsx`](../src/config/providers.tsx) |
+| Five providers: **Local Model (default, no key)**, MiniMax, OpenAI, Ollama, LM Studio | [`config/providers.tsx`](../src/config/providers.tsx) |
 | In-browser Local Gemma (LiteRT-LM / WebGPU) | [`api/localGemma.ts`](../src/api/localGemma.ts), [`LocalGemmaControls.tsx`](../src/components/LocalGemmaControls.tsx) |
 | Chat **+** photo/PDF attachments (OCR extract only) | [`utils/chatAttachments.ts`](../src/utils/chatAttachments.ts), [`ChatPanel.tsx`](../src/components/ChatPanel.tsx) |
 | **include selection** context mode | [`ChatPanel.tsx`](../src/components/ChatPanel.tsx) |
@@ -94,6 +94,8 @@ ApEditor is built for a single, narrow audience:
 |---|---|
 | Import text from photos and PDFs, fully in-browser | [`utils/ocr.ts`](../src/utils/ocr.ts), [`utils/pdf.ts`](../src/utils/pdf.ts) |
 | Markdown rewrite of recognised text via the configured model | [`utils/ocrMarkdown.ts`](../src/utils/ocrMarkdown.ts) |
+| Import a CSV / TSV spreadsheet export as a Markdown table, fully in-browser and offline | [`utils/csvToMarkdown.ts`](../src/utils/csvToMarkdown.ts) |
+| Chat cell edits on Markdown tables (`table-edit` fence + span Apply) | [`utils/tableModel.ts`](../src/utils/tableModel.ts), [`utils/tableEdits.ts`](../src/utils/tableEdits.ts) |
 | Export the document as `.md` | [`FileActionsButton.tsx`](../src/components/FileActionsButton.tsx) |
 | Export a versioned `.json` backup (document + comments + chat + revisions) | [`utils/backup.ts`](../src/utils/backup.ts) |
 
@@ -155,6 +157,8 @@ Full changelogs are in [`RELEASE_NOTES.md`](../RELEASE_NOTES.md). The shape of t
 
 | Version | What changed |
 |---|---|
+| v0.6.13 | **Chat edits imported tables as cells.** `sys-table-context` + `table-edit` fences (cell / rows / columns); stale-safe Apply; Preview column resize; Best Effort stops at table edges; Local Gemma compact table schema. |
+| v0.6.12 | **CSV / TSV import.** Spreadsheet → Markdown table at the caret; wide Preview tables scroll in place. |
 | v0.6.11 | **Compare overlay: side-by-side document view + resize.** Unchanged text among change cards; left-edge resize (`layout.compareWidth`); per-card Apply syncs remaining count. |
 | v0.6.10 | **Dependency security fixes and spec refresh.** `npm audit` 4 → 0 (Vite 6, patched `uuid` / `postcss-selector-parser`); install-script approvals recorded in `package.json`; Functional Specification toolchain + size tables and release checklists corrected. No user-visible change. |
 | v0.6.9 | **Sidebar tags, Preview numbering, document compare.** Nested `#path` tags, pin, Recent, search; Preview line numbers + heading outline + print; **File → Compare…** → proposed-edit set. |

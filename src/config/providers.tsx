@@ -4,16 +4,17 @@
 // show: the default endpoint, the model presets for the datalist,
 // the default model, helper text, and the API-key placeholder.
 //
-// The two keyed providers (minimax, openai) speak the same OpenAI
-// Chat Completions wire format (see src/api/chat.ts), so the request
-// layer does NOT branch on `provider` for them — this config is purely
-// UI / defaults metadata for that path.
+// Keyed cloud providers (minimax, openai) and local OpenAI-compatible
+// HTTP servers (ollama, lm-studio) speak the same OpenAI Chat
+// Completions wire format (see src/api/chat.ts), so the request layer
+// does NOT branch on `provider` for them — this config is purely UI /
+// defaults metadata for that path. Ollama / LM Studio hide the API key
+// field (`requiresApiKey` is false) but still use HTTP streaming.
 //
-// The third entry (local-gemma) does NOT use the OpenAI wire format
-// and does NOT need an API key. ChatPanel streams via in-browser
-// LiteRT-LM (WebGPU). It still appears here so it can be selected
-// from the same Settings dropdown.
-import type { ApiProvider } from '@/types';
+// Local Gemma does NOT use the OpenAI wire format and does NOT need an
+// API key. ChatPanel streams via in-browser LiteRT-LM (WebGPU). Use
+// `usesLocalGemmaEngine` — not `!requiresApiKey` — to select that path.
+import type { ApiConfig, ApiProvider } from '@/types';
 import {
   LOCAL_GEMMA_MODEL_LABEL,
   LOCAL_GEMMA_SIZE_LABEL,
@@ -88,7 +89,50 @@ export const PROVIDERS: ProviderPreset[] = [
         Hugging Face, or load a <code>.litertlm</code> file from disk. Prompts
         stay on your device. Requires a recent Chrome, Edge, or Safari with
         enough GPU memory (~1.8 GB). Predict and OCR→Markdown rewrite still
-        need a keyed provider.
+        need a keyed provider or a local HTTP server (Ollama / LM Studio).
+      </>
+    ),
+    apiKeyPlaceholder: '(not used — no API key required)',
+  },
+  {
+    id: 'ollama',
+    label: 'Ollama (local)',
+    defaultEndpoint: 'http://localhost:11434/v1',
+    modelPresets: [
+      'llama3.2',
+      'mistral',
+      'qwen2.5',
+      'gemma2',
+      'phi3',
+    ],
+    defaultModel: 'llama3.2',
+    helpText: (
+      <>
+        OpenAI-compatible local server. Default base{' '}
+        <code>http://localhost:11434/v1</code> —{' '}
+        <code>/chat/completions</code> is appended automatically. Model name
+        must match a model you have pulled in Ollama (e.g.{' '}
+        <code>ollama pull llama3.2</code>). No API key. Allow this app&apos;s
+        origin in <code>OLLAMA_ORIGINS</code> so the browser can reach Ollama
+        (CORS).
+      </>
+    ),
+    apiKeyPlaceholder: '(not used — no API key required)',
+  },
+  {
+    id: 'lm-studio',
+    label: 'LM Studio (local)',
+    defaultEndpoint: 'http://localhost:1234/v1',
+    modelPresets: [],
+    defaultModel: 'local-model',
+    helpText: (
+      <>
+        OpenAI-compatible local server. Default base{' '}
+        <code>http://localhost:1234/v1</code> —{' '}
+        <code>/chat/completions</code> is appended automatically. Type the
+        model id shown in LM Studio for the loaded server model. No API key.
+        Enable CORS in LM Studio&apos;s local server / developer settings so
+        the browser can reach it.
       </>
     ),
     apiKeyPlaceholder: '(not used — no API key required)',
@@ -101,14 +145,36 @@ export function getProvider(id: ApiProvider | undefined | null): ProviderPreset 
 }
 
 /**
- * Whether the given provider requires an API key in Settings. Currently
- * only `local-gemma` returns false; the two keyed providers keep
- * the existing behaviour. Callers that need to gate on this (the
- * Settings modal's API-key field, the chat panel's "needs a key" affordance,
- * the first-run onboarding auto-pop, the inline-completion hook) all
- * branch on this single source of truth instead of hard-coding the
- * keyless provider id.
+ * Whether the given provider requires an API key in Settings. Only the
+ * cloud keyed providers return true. Keyless Local Gemma and local HTTP
+ * servers (Ollama, LM Studio) return false — callers must not treat
+ * "no key" as "use the in-browser Gemma engine"; use
+ * `usesLocalGemmaEngine` for that branch.
  */
 export function requiresApiKey(id: ApiProvider | undefined | null): boolean {
-  return id !== 'local-gemma';
+  return id === 'minimax' || id === 'openai';
+}
+
+/**
+ * Whether Chat / Comment streaming should use in-browser LiteRT Local
+ * Gemma instead of the OpenAI-compatible HTTP client.
+ */
+export function usesLocalGemmaEngine(
+  id: ApiProvider | undefined | null
+): boolean {
+  return id === 'local-gemma';
+}
+
+/**
+ * Whether the HTTP OpenAI-compatible chat path is ready: non-empty
+ * endpoint, plus a key when the provider requires one. Ollama / LM
+ * Studio need only an endpoint (and a model name for the request body).
+ */
+export function isHttpChatConfigured(
+  api: Pick<ApiConfig, 'provider' | 'apiKey' | 'apiEndpoint'> | null | undefined
+): boolean {
+  if (!api || usesLocalGemmaEngine(api.provider)) return false;
+  if (!api.apiEndpoint?.trim()) return false;
+  if (requiresApiKey(api.provider) && !api.apiKey?.trim()) return false;
+  return true;
 }

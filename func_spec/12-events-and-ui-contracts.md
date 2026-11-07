@@ -43,7 +43,7 @@ rg "mvp:" src/ -n
 | `mvp:get-selection` | *(none — a plain `Event`)* | `PromptLibrary.tsx` `readSelection()` | `Editor.tsx` |
 | `mvp:editor-selection` | `{ text: string }` | `Editor.tsx` (only in response to `mvp:get-selection`) | `ChatPanel.tsx`, `PromptLibrary.tsx` |
 | `mvp:fill-chat` | `string` — the raw prompt body, **not** wrapped in an object | `App.tsx` (PromptLibrary `onApply`) | `ChatPanel.tsx` |
-| `mvp:insert-text` | `{ text: string }` | `FileActionsButton.tsx` (after OCR + Markdown) | `Editor.tsx` |
+| `mvp:insert-text` | `{ text: string }` | `FileActionsButton.tsx` (after OCR + Markdown, and after CSV → Markdown) | `Editor.tsx` |
 | `mvp:select-range` | `{ start: number; end: number }` | `GraphView.tsx`, `ProposedEditCard.tsx` (×2), `ChatPanel.tsx` | `Editor.tsx` |
 | `mvp:accept-completion` | `{ text: string; caret: number }` — `text` is the **entire new document** | `useInlineCompletion.ts` `accept()` | `Editor.tsx` |
 | `mvp:send-comments` | `{ commentIds: string[]; mentionsByCommentId: Record<string, MentionToken[]> }` | `Editor.tsx` `handleSendToAi` | `ChatPanel.tsx` |
@@ -112,7 +112,7 @@ rg "mvp:" src/ -n
 | `PromptLibrary` | [`PromptLibrary.tsx`](../src/components/PromptLibrary.tsx) | Saved prompt CRUD plus `{{selection}}` substitution. |
 | `SettingsModal` | [`SettingsModal.tsx`](../src/components/SettingsModal.tsx) | Every setting. See the field table in [Build & configuration §7](13-build-and-config.md#7-settings-modal-fields). |
 | `RevisionHistory` | [`RevisionHistory.tsx`](../src/components/RevisionHistory.tsx) | Snapshot list, Preview / Diff tabs, restore, delete. |
-| `FileActionsButton` | [`FileActionsButton.tsx`](../src/components/FileActionsButton.tsx) | Sidebar **File** menu: New / Save / Save As, Export `.md` / `.json`, Import photos / PDFs (OCR panel), Import `.json`. Dynamic-imports the heavy OCR deps. |
+| `FileActionsButton` | [`FileActionsButton.tsx`](../src/components/FileActionsButton.tsx) | Sidebar **File** menu: New / Save / Save As, Export `.md` / `.json`, Import photos / PDFs (OCR panel), Import `.csv` / `.tsv`, Import `.json`. Dynamic-imports the heavy OCR deps. |
 
 ### 3.5 Mentions
 

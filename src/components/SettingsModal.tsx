@@ -10,7 +10,12 @@ import {
   normalizeRationaleRulesOverride,
   normalizeSystemMessage,
 } from '@/api/chat';
-import { PROVIDERS, getProvider, requiresApiKey } from '@/config/providers';
+import {
+  PROVIDERS,
+  getProvider,
+  requiresApiKey,
+  usesLocalGemmaEngine,
+} from '@/config/providers';
 import type { ApiProvider } from '@/types';
 import { LocalGemmaControls } from '@/components/LocalGemmaControls';
 import { disposeLocalGemma } from '@/api/localGemma';
@@ -436,8 +441,8 @@ export function SettingsModal({ open, onClose }: Props) {
       temperature,
     });
     setUiFontSize(uiFontSizeDraft);
-    // Free GPU memory when leaving Local Gemma for a keyed provider.
-    if (requiresApiKey(provider)) {
+    // Free GPU memory when leaving Local Gemma for any HTTP provider.
+    if (!usesLocalGemmaEngine(provider)) {
       void disposeLocalGemma();
     }
     onClose();
@@ -509,53 +514,64 @@ export function SettingsModal({ open, onClose }: Props) {
             </select>
           </div>
 
-          {requiresApiKey(provider) ? (
+          {usesLocalGemmaEngine(provider) ? (
+            // In-browser Local Gemma: download / load LiteRT weights
+            // instead of HTTP endpoint fields.
+            <div className="space-y-2">
+              <p className="text-xs text-paper-inkSoft dark:text-cyber-muted">
+                {preset.helpText}
+              </p>
+              <LocalGemmaControls />
+            </div>
+          ) : (
             <>
-              <div>
-                <label className="block text-xs font-medium text-cyber-clay dark:text-cyber-cyan mb-1 uppercase tracking-wide">
-                  API key
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type={showKey ? 'text' : 'password'}
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder={preset.apiKeyPlaceholder}
-                    className="flex-1 ape-field font-mono"
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                  <button
-                    className="btn-cyan-sm"
-                    onClick={() => setShowKey((v) => !v)}
-                  >
-                    {showKey ? 'Hide' : 'Show'}
-                  </button>
+              {requiresApiKey(provider) && (
+                <div>
+                  <label className="block text-xs font-medium text-cyber-clay dark:text-cyber-cyan mb-1 uppercase tracking-wide">
+                    API key
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type={showKey ? 'text' : 'password'}
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder={preset.apiKeyPlaceholder}
+                      className="flex-1 ape-field font-mono"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    <button
+                      className="btn-cyan-sm"
+                      onClick={() => setShowKey((v) => !v)}
+                    >
+                      {showKey ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-paper-inkSoft dark:text-cyber-muted">
+                    {persistApiKeyDraft
+                      ? "Stored only in this browser's localStorage (never uploaded to this app's servers — there are none)."
+                      : 'Kept for this tab only (sessionStorage). Closing the tab forgets the key; documents stay in localStorage.'}{' '}
+                    Sent as
+                    <code className="mx-1 px-1 rounded bg-paper-elevated dark:bg-ape-elevated text-cyber-clay dark:text-cyber-cyan font-mono text-[11px]">
+                      Authorization: Bearer …
+                    </code>
+                    to the HTTPS endpoint below. Do not use a shared computer
+                    without clearing site data afterward.
+                  </p>
+                  <label className="mt-2 flex items-start gap-2 cursor-pointer select-none text-xs text-paper-inkSoft dark:text-cyber-muted">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 accent-cyber-clay dark:accent-cyber-cyan"
+                      checked={!persistApiKeyDraft}
+                      onChange={(e) => setPersistApiKeyDraft(!e.target.checked)}
+                    />
+                    <span>
+                      Forget API key when this tab closes. Use on a shared
+                      computer. Documents and chat still persist.
+                    </span>
+                  </label>
                 </div>
-                <p className="mt-1 text-xs text-paper-inkSoft dark:text-cyber-muted">
-                  {persistApiKeyDraft
-                    ? "Stored only in this browser's localStorage (never uploaded to this app's servers — there are none)."
-                    : 'Kept for this tab only (sessionStorage). Closing the tab forgets the key; documents stay in localStorage.'}{' '}
-                  Sent as
-                  <code className="mx-1 px-1 rounded bg-paper-elevated dark:bg-ape-elevated text-cyber-clay dark:text-cyber-cyan font-mono text-[11px]">
-                    Authorization: Bearer …
-                  </code>
-                  to the HTTPS endpoint below. Do not use a shared computer
-                  without clearing site data afterward.
-                </p>
-                <label className="mt-2 flex items-start gap-2 cursor-pointer select-none text-xs text-paper-inkSoft dark:text-cyber-muted">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 accent-cyber-clay dark:accent-cyber-cyan"
-                    checked={!persistApiKeyDraft}
-                    onChange={(e) => setPersistApiKeyDraft(!e.target.checked)}
-                  />
-                  <span>
-                    Forget API key when this tab closes. Use on a shared
-                    computer. Documents and chat still persist.
-                  </span>
-                </label>
-              </div>
+              )}
 
               <div>
                 <label className="block text-xs font-medium text-cyber-clay dark:text-cyber-cyan mb-1 uppercase tracking-wide">
@@ -568,7 +584,9 @@ export function SettingsModal({ open, onClose }: Props) {
                   className="ape-field font-mono text-xs"
                   spellCheck={false}
                 />
-                <p className="mt-1 text-xs text-paper-inkSoft dark:text-cyber-muted">{preset.helpText}</p>
+                <p className="mt-1 text-xs text-paper-inkSoft dark:text-cyber-muted">
+                  {preset.helpText}
+                </p>
               </div>
 
               <div>
@@ -591,15 +609,6 @@ export function SettingsModal({ open, onClose }: Props) {
                 </div>
               </div>
             </>
-          ) : (
-            // Keyless provider (local-gemma): download / load the
-            // in-browser LiteRT model instead of API key fields.
-            <div className="space-y-2">
-              <p className="text-xs text-paper-inkSoft dark:text-cyber-muted">
-                {preset.helpText}
-              </p>
-              <LocalGemmaControls />
-            </div>
           )}
 
           {/* Debug Mode + UI font size on a single row. Both

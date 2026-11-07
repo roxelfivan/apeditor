@@ -84,6 +84,71 @@ export interface Prompt {
   createdAt: number;
 }
 
+/**
+ * Span metadata for a `table-edit` fence. Apply uses these offsets /
+ * expected values — never `findEditAnchor` on the short cell text —
+ * so a value like `12` cannot hit the wrong cell or prose.
+ *
+ * `kind` defaults to `set-cell` when omitted (older in-memory cards).
+ */
+export type TableEditMeta =
+  | {
+      kind?: 'set-cell';
+      tableIndex: number;
+      /** 1-based data-row number. */
+      row: number;
+      /** Resolved column header name. */
+      column: string;
+      /** Decoded cell value at suggestion time. */
+      expectedOriginal: string;
+      /** Exact source line of the row at suggestion time. */
+      expectedRowText: string;
+      /** Absolute start of the row line when the suggestion was built. */
+      rowStart: number;
+      /** Absolute end of the row line when the suggestion was built. */
+      rowEnd: number;
+    }
+  | {
+      kind: 'delete-rows';
+      tableIndex: number;
+      /** 1-based data rows to remove (sorted unique). */
+      rows: number[];
+      /** Data-row count when the suggestion was built. */
+      expectedRowCount: number;
+      expectedFirstDeletedRowText: string;
+      expectedLastDeletedRowText: string;
+      /** Highlight span covering the first→last deleted row lines. */
+      rangeStart: number;
+      rangeEnd: number;
+    }
+  | {
+      kind: 'delete-columns';
+      tableIndex: number;
+      /** 0-based column indexes to remove (sorted unique). */
+      columnIndexes: number[];
+      /** Header labels removed (for card preview). */
+      removedHeaders: string[];
+      /** Full header list at suggestion time (stale check). */
+      expectedHeaders: string[];
+      expectedHeaderLineText: string;
+      rangeStart: number;
+      rangeEnd: number;
+    }
+  | {
+      kind: 'add-column';
+      tableIndex: number;
+      /** New header label. */
+      header: string;
+      /** 0-based insert index (append = headers.length). */
+      insertIndex: number;
+      /** Fill value for every existing data row. */
+      fill: string;
+      expectedHeaders: string[];
+      expectedHeaderLineText: string;
+      rangeStart: number;
+      rangeEnd: number;
+    };
+
 export interface ProposedEdit {
   id: string;
   summary: string;
@@ -97,23 +162,38 @@ export interface ProposedEdit {
   rationale?: string;
   original: string;
   replacement: string;
+  /**
+   * When set, this edit came from a `table-edit` fence. Apply must
+   * use `applyCellEdit` with this metadata rather than the prose
+   * Exact / Best Effort waterfall.
+   */
+  tableEdit?: TableEditMeta;
 }
 
 export type Theme = 'light' | 'dark';
 
-// AI provider identifier. Backends that need a key (minimax, openai) speak
-// the OpenAI Chat Completions wire format, so the request layer does not
-// branch on `provider` for them — it's a UI / defaults concern (which
-// endpoint, model list, and help text to show). The third option
-// (`local-gemma`) does NOT speak that wire format and does NOT need an
-// API key; ChatPanel streams via in-browser LiteRT-LM + WebGPU instead.
-export type ApiProvider = 'minimax' | 'openai' | 'local-gemma';
+// AI provider identifier. Keyed cloud backends (minimax, openai) and
+// local OpenAI-compatible servers (ollama, lm-studio) speak the OpenAI
+// Chat Completions wire format, so the request layer does not branch on
+// `provider` for them — it's a UI / defaults concern (which endpoint,
+// model list, help text, and whether a key is required). The in-browser
+// option (`local-gemma`) does NOT speak that wire format and does NOT
+// need an API key; ChatPanel streams via LiteRT-LM + WebGPU instead.
+export type ApiProvider =
+  | 'minimax'
+  | 'openai'
+  | 'local-gemma'
+  | 'ollama'
+  | 'lm-studio';
 
-// Union of providers that require an API key in Settings. The
-// keyless `local-gemma` provider is intentionally excluded so the
-// first-run onboarding, inline-completion gating, and the Settings
-// "no key required" affordance can branch on a single source of truth.
-export type KeyedApiProvider = Exclude<ApiProvider, 'local-gemma'>;
+// Union of providers that require an API key in Settings. Keyless
+// providers (Local Gemma + local HTTP servers) are excluded so first-run
+// onboarding, Settings key fields, and related gating can branch on a
+// single source of truth via `requiresApiKey`.
+export type KeyedApiProvider = Exclude<
+  ApiProvider,
+  'local-gemma' | 'ollama' | 'lm-studio'
+>;
 
 export interface ApiConfig {
   provider: ApiProvider;

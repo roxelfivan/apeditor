@@ -3,6 +3,10 @@
 import type { ApiConfig, ChatMessage, DocumentRecord, MentionToken } from '@/types';
 import { previewParagraph, splitParagraphs } from '@/utils/paragraphs';
 import { estimateMessageTokens } from '@/utils/tokenEstimate';
+import {
+  buildTableContextMessage,
+  parseMarkdownTables,
+} from '@/utils/tableModel';
 
 /**
  * Built-in default system message. Single source of truth for the
@@ -82,9 +86,6 @@ export async function streamChatCompletion(
   if (!endpoint) {
     throw new ApiError('No API endpoint configured. Open Settings to set one.');
   }
-  if (!config.apiKey) {
-    throw new ApiError('No API key configured. Open Settings to set one.');
-  }
   assertSafeChatEndpoint(endpoint);
 
   const body = {
@@ -96,12 +97,18 @@ export async function streamChatCompletion(
     temperature: config.temperature,
     stream: true,
   };
+  // Local OpenAI-compatible servers (Ollama, LM Studio) typically need
+  // no Bearer token. Cloud keyed providers still send one when present;
+  // Settings requires a key for those providers before Send.
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (config.apiKey?.trim()) {
+    headers.Authorization = `Bearer ${config.apiKey.trim()}`;
+  }
   const res = await fetch(endpoint, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`,
-    },
+    headers,
     body: JSON.stringify(body),
     signal: options.signal,
   });
@@ -365,6 +372,21 @@ export function buildRequestMessages(
         proposedEditPolicy
       ),
     });
+    // Table-aware context: only when the open doc actually contains a
+    // GFM table. Leaves PROPOSED_EDIT_SCHEMA_RULES unchanged so
+    // prose-only docs keep today's prompt. Local Gemma already has
+    // the full body — emit a compact schema/pointer to avoid paying
+    // for the table twice inside the 8192-token budget.
+    const tableCtx = buildTableContextMessage(currentDocument.content, {
+      compact: isLocalPack,
+    });
+    if (tableCtx) {
+      push({
+        id: 'sys-table-context',
+        role: 'system',
+        content: tableCtx,
+      });
+    }
   }
 
   // Append @-referenced documents as separate system messages so the
@@ -1071,6 +1093,12 @@ export function buildDocOutline(
   // stable; the outline itself does not depend on it yet.
   void isCommentBatch;
   const starts = splitParagraphs(content);
+  // Collapse GFM table rows into one summary line so the outline does
+  // not emit 60-char truncated pipe rows (useless for editing and
+  // token-wasteful). Paragraph offsets for prose after the table are
+  // unchanged — we only change what is *printed*.
+  const tables = parseMarkdownTables(content);
+  const emittedTables = new Set<number>();
 
   const lines: string[] = [];
   lines.push(
@@ -1079,6 +1107,21 @@ export function buildDocOutline(
   for (let p = 0; p < starts.length; p++) {
     const start = starts[p];
     const end = p + 1 < starts.length ? starts[p + 1] : content.length;
+    const table = tables.find((t) => start >= t.start && start <= t.end);
+    if (table) {
+      if (!emittedTables.has(table.index)) {
+        emittedTables.add(table.index);
+        lines.push(
+          `[table ${table.index}]@${table.start}: ` +
+            `${table.headers.length} cols × ${table.rows.length} rows ` +
+            `(${table.headers.join(', ')})` +
+            (table.rows.length > 0
+              ? ` — see sys-table-context for cell values`
+              : '')
+        );
+      }
+      continue;
+    }
     lines.push(
       `[p${p + 1}]@${start}: ${previewParagraph(content.slice(start, end))}`
     );

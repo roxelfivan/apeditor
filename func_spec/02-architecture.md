@@ -87,7 +87,7 @@ Three files dominate: `Editor.tsx`, `ChatPanel.tsx`, and `utils/proposedEdit.ts`
 |---|---:|---|
 | [`chat.ts`](../src/api/chat.ts) | 1,104 | `streamChatCompletion`, `buildRequestMessages`, `resolveChatEndpoint`, `assertSafeChatEndpoint`, `ApiError`, `DEFAULT_SYSTEM_MESSAGE`, `PROPOSED_EDIT_RULES_DEFAULT`, `formatSelectionBlock`, `buildDocOutline`, `buildReferencedDocMessage`, `REFERENCED_DOCS_TOTAL_CHARS_CAP`, `CACHE_CONTROL_META`, and the `normalize*` / `isCurrent*` / `isStale*` prompt reconcilers. |
 
-Keyed providers use this HTTP path. Local Model (`local-gemma`) streams via [`localGemma.ts`](../src/api/localGemma.ts) (LiteRT-LM / WebGPU) instead. OCR Markdown rewrite still calls back into `streamChatCompletion`.
+HTTP OpenAI-compatible providers (minimax, openai, ollama, lm-studio) use this path. Local Model (`local-gemma`) streams via [`localGemma.ts`](../src/api/localGemma.ts) (LiteRT-LM / WebGPU) instead. OCR Markdown rewrite still calls back into `streamChatCompletion`.
 
 | File | Lines | Public surface |
 |---|---:|---|
@@ -97,7 +97,7 @@ Keyed providers use this HTTP path. Local Model (`local-gemma`) streams via [`lo
 
 | File | Lines | Public surface |
 |---|---:|---|
-| [`providers.tsx`](../src/config/providers.tsx) | — | `PROVIDERS`, `getProvider`, `requiresApiKey`, `ProviderPreset` (minimax, openai, local-gemma). |
+| [`providers.tsx`](../src/config/providers.tsx) | — | `PROVIDERS`, `getProvider`, `requiresApiKey`, `usesLocalGemmaEngine`, `isHttpChatConfigured`, `ProviderPreset` (minimax, openai, local-gemma, ollama, lm-studio). |
 
 ### `src/store/` — 5 files (split in v0.5.2 from one 1,485-line file)
 
@@ -128,10 +128,12 @@ Keyed providers use this HTTP path. Local Model (`local-gemma`) streams via [`lo
 | [`ChatPanel.tsx`](../src/components/ChatPanel.tsx) | — | Streaming chat (SSE + Local Gemma), Chat **+** attachments, comment-batch send, Apply All, rejection staging, include selection, panel resizing. |
 | [`ChatAttachmentChips.tsx`](../src/components/ChatAttachmentChips.tsx) | — | Filename chips for pending composer files and sent user bubbles. |
 | [`LocalGemmaControls.tsx`](../src/components/LocalGemmaControls.tsx) | — | Settings UI: download / load / save / clear Local Model. |
-| [`ProposedEditCard.tsx`](../src/components/ProposedEditCard.tsx) | 925 | One AI proposal: Split/Inline view, Apply / Highlight Apply / Reject / Reject-with-feedback, editor highlight, resizable. |
+| [`ProposedEditCard.tsx`](../src/components/ProposedEditCard.tsx) | 925 | One AI proposal: Split/Inline view, Apply / Highlight Apply / Reject / Reject-with-feedback, editor highlight, resizable; span Apply for `table-edit` cards. |
+| [`PreviewMarkdown.tsx`](../src/components/PreviewMarkdown.tsx) | 129 | Shared Preview renderer (GFM + line gutters + outline). Stable `components` map; tables → `ResizablePreviewTable`. |
+| [`ResizablePreviewTable.tsx`](../src/components/ResizablePreviewTable.tsx) | 276 | Drag-resizable Preview columns; widths in `layout.previewTableColWidths`. |
 | [`CommentPopover.tsx`](../src/components/CommentPopover.tsx) | 911 | Read/edit one comment, multi-round rationale list, resize, persistence of popover size. |
 | [`SettingsModal.tsx`](../src/components/SettingsModal.tsx) | 834 | Provider, key, endpoint, model, system message, rationale rules, temperature, UI font size, debug mode. |
-| [`FileActionsButton.tsx`](../src/components/FileActionsButton.tsx) | — | Sidebar **File** menu: New / Save / Save As, Export `.md` / `.json`, Import photos / PDFs, Import `.json`. Dynamic-imports the heavy OCR deps. |
+| [`FileActionsButton.tsx`](../src/components/FileActionsButton.tsx) | — | Sidebar **File** menu: New / Save / Save As, Export `.md` / `.json`, Import photos / PDFs / CSV·TSV, Import `.json`, Compare. Dynamic-imports the heavy OCR deps. |
 | [`GraphView.tsx`](../src/components/GraphView.tsx) | — | SVG rendering, node drag, zoom, hover dimming, edge labels, `GraphViewControls`, the flat / sphere / concept projection switch. |
 | [`Concept3DScene.tsx`](../src/components/Concept3DScene.tsx) | — | 3D Concept projection. three.js WebGL scene behind `React.lazy` + `await import('three')`, so it ships as its own chunk. Raycasts for hover/click, then forwards pointer events to `GraphView`. |
 | [`CommentComposer.tsx`](../src/components/CommentComposer.tsx) | 246 | Floating composer for a new comment. |
@@ -171,6 +173,9 @@ Keyed providers use this HTTP path. Local Model (`local-gemma`) streams via [`lo
 | [`backup.ts`](../src/utils/backup.ts) | 86 | `BACKUP_SCHEMA` / `BACKUP_VERSION`, `buildDocumentBackup`, `serialiseDocumentBackup`. |
 | [`pdf.ts`](../src/utils/pdf.ts) | 92 | `pdfjs-dist` wrapper: `loadPdfFromBytes`, `pageHasNativeText`, `pageNativeText`, `renderPageToCanvas`. |
 | [`ocrMarkdown.ts`](../src/utils/ocrMarkdown.ts) | 97 | Streams recognised text through the configured model to produce reader-friendly Markdown. |
+| [`csvToMarkdown.ts`](../src/utils/csvToMarkdown.ts) | 392 | CSV / TSV → GFM pipe table. Pure, offline, no model: BOM decoding, quote-aware delimiter scoring, RFC 4180 parsing, ordered cell escaping (`escapeTableCell` / `unescapeTableCell` shared with the table model). |
+| [`tableModel.ts`](../src/utils/tableModel.ts) | 861 | Strict GFM pipe-table parse, cell byte spans, set-cell / delete-rows / remove-column / add-column Apply, `buildTableContextMessage`. |
+| [`tableEdits.ts`](../src/utils/tableEdits.ts) | 756 | `table-edit` fence parse + resolve to `ProposedEdit.tableEdit` (set-cell, delete/keep rows, remove/add column). |
 | [`chatAttachments.ts`](../src/utils/chatAttachments.ts) | — | Chat **+** format-then-answer prompt (`buildAttachmentTurnPrompt`). |
 | [`graph/parseWikilinks.ts`](../src/utils/graph/parseWikilinks.ts) | 131 | `extractWikilinks`, `normalizeWikiSlug`, `resolveWikilink`. |
 | [`secrets.ts`](../src/utils/secrets.ts) | 52 | Three redaction regexes and `redactSecretsInMessages`. |

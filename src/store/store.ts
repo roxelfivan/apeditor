@@ -103,6 +103,7 @@ export const useStore = create<StoreState>()(
         editorSplitPct: DEFAULT_EDITOR_SPLIT_PCT,
         splitLeftMode: 'write',
         previewSizes: {},
+        previewTableColWidths: {},
         previewLineNumbers: false,
         outlineNumbering: 'off',
         sidebarExpandedTags: [],
@@ -479,6 +480,18 @@ export const useStore = create<StoreState>()(
             },
           },
         })),
+      setPreviewTableColWidths: (key, widths) =>
+        set((s) => ({
+          layout: {
+            ...s.layout,
+            previewTableColWidths: {
+              ...(s.layout.previewTableColWidths ?? {}),
+              [key]: widths.map((w) =>
+                Math.max(48, Math.round(Number(w) || 140))
+              ),
+            },
+          },
+        })),
       setEditorFocus: (documentId, info) =>
         set((s) => ({
           editorFocus: {
@@ -729,6 +742,12 @@ export const useStore = create<StoreState>()(
           if (!Array.isArray(state.layout?.sidebarExpandedTags)) {
             layoutPatch.sidebarExpandedTags = [];
           }
+          if (
+            !state.layout?.previewTableColWidths ||
+            typeof state.layout.previewTableColWidths !== 'object'
+          ) {
+            layoutPatch.previewTableColWidths = {};
+          }
           if (Object.keys(layoutPatch).length > 0) {
             repairs.layout = { ...state.layout, ...layoutPatch } as StoreState['layout'];
           }
@@ -805,7 +824,8 @@ export const useStore = create<StoreState>()(
           if (commentsPatch) repairs.comments = commentsPatch;
           // Provider migrations: rename retired `google-ai-mode` →
           // `local-gemma`, and coerce any other unknown id back to
-          // minimax so Settings / chat do not crash.
+          // minimax so Settings / chat do not crash. Known ids:
+          // minimax, openai, local-gemma, ollama, lm-studio.
           if (
             state.api &&
             typeof state.api === 'object' &&
@@ -823,7 +843,9 @@ export const useStore = create<StoreState>()(
             } else if (
               provider !== 'minimax' &&
               provider !== 'openai' &&
-              provider !== 'local-gemma'
+              provider !== 'local-gemma' &&
+              provider !== 'ollama' &&
+              provider !== 'lm-studio'
             ) {
               repairs.api = {
                 ...(repairs.api ?? (state.api as ApiConfig)),

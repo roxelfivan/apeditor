@@ -17,7 +17,7 @@ The top bar shows the ApEditor logo, version, and the title of the open document
 
 Press `Ctrl+/` / `⌘/` (or `Ctrl+Shift+/` / `⌘Shift+/` for `?` on some keyboards) when you are not typing in a field to open Help. Press `Ctrl+Shift+E` / `⌘Shift+E` to open the Functional Specification. Press **Esc** to close either.
 
-If you have not saved an API key for Minimax or OpenAI, the gear shows a small amber reminder.
+If Minimax or OpenAI is selected and you have not saved an API key, the gear shows a small amber reminder.
 
 To hide the top bar, click the chevron on the **top edge** of the window. Click it again to show the bar.
 

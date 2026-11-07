@@ -2,6 +2,34 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## v0.6.13 — Chat edits imported tables as cells
+
+**Ask Chat to change a spreadsheet table without treating cells as prose.**
+
+- **Table-aware Chat.** When the open document has a Markdown table, the model sees a compact table context and can propose **table-edit** cards — set a cell, delete or keep rows, remove a column, or add a column.
+- **Safe Apply.** Cell changes refuse if the cell went stale; short values like `12` are not matched as the first `12` elsewhere in the file.
+- **Safer Best Effort near tables.** Prose Best Effort no longer expands into neighbouring table rows.
+- **Preview column resize.** Drag a table header’s right edge; text wraps; widths are remembered in this browser (not written into the Markdown).
+- **Local Model stays lean.** Local Gemma keeps reading cell values from the full document envelope instead of paying for the table twice.
+
+## v0.6.12 — Import a spreadsheet table
+
+**Bring an Excel export into the editor as a Markdown table.**
+
+- **File → Import .csv / .tsv.** Pick a file and the table appears at your caret. One button covers both formats — the separator is worked out from the file, so a tab-delimited file named `.csv` still imports correctly.
+- **No AI key needed.** The conversion happens in your browser and is deterministic, so it works offline and never sends your sheet anywhere.
+- **Reads what spreadsheets write.** UTF-8 and UTF-16 files, European (`;`) exports, and quoted fields that contain the separator all come through correctly.
+- **Plain Markdown.** The table is ordinary text — edit it by hand, keep it in a revision, export it to `.md`, or hand it to Chat.
+
+Two things worth knowing:
+
+- The conversion is **literal**. A spreadsheet file has no type information, so currency, percentages, dates, and codes with leading zeros (`007`) stay text. ApEditor will not guess that a column is money.
+- **Wide tables now scroll inside their own box** instead of pushing the whole Preview pane sideways.
+
+No migration.
+
+---
+
 ## v0.6.11 — Compare shows the whole document
 
 **Side-by-side Original \| Revised, with unchanged text among the changes, and a resizable panel.**

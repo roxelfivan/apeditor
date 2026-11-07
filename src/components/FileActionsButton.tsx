@@ -21,7 +21,14 @@ import {
   CompareSourceError,
   readCompareFile,
 } from '@/utils/importCompareSource';
+import {
+  CSV_FILE_ACCEPT,
+  CsvImportError,
+  buildCsvMarkdownTable,
+  validateCsvFile,
+} from '@/utils/csvToMarkdown';
 import { compareToProposedEdits } from '@/utils/documentCompare';
+import { isHttpChatConfigured } from '@/config/providers';
 
 const VIEWPORT_PAD = 8;
 const POPOVER_WIDTH = 288; // Tailwind w-72
@@ -89,6 +96,9 @@ type FilePanel = 'closed' | 'menu' | 'ocr' | 'compare';
  *   - **Import photos / PDFs** — OCR panel (language checkboxes, then
  *     a file picker). Extracted text is rewritten as Markdown and
  *     inserted via `mvp:insert-text`.
+ *   - **Import .csv / .tsv** — convert a delimited-text file (Excel
+ *     export) into a Markdown table and insert it at the caret. The
+ *     conversion is local and deterministic — no AI provider needed.
  *   - **Import .json** — restore a versioned document backup.
  *
  * Cleanup: after every OCR batch the file input is reset to '' so the
@@ -116,6 +126,7 @@ export function FileActionsButton() {
   const inputRef = useRef<HTMLInputElement>(null);
   const backupInputRef = useRef<HTMLInputElement>(null);
   const compareInputRef = useRef<HTMLInputElement>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const importModalRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -487,8 +498,10 @@ export function FileActionsButton() {
       e.target.value = '';
       return;
     }
-    if (!api.apiKey || !api.apiEndpoint) {
-      setError('Open Settings and add an API key so imported text can be formatted as Markdown.');
+    if (!isHttpChatConfigured(api)) {
+      setError(
+        'Open Settings and configure a Minimax, OpenAI, Ollama, or LM Studio provider so imported text can be formatted as Markdown.'
+      );
       e.target.value = '';
       return;
     }
@@ -573,6 +586,10 @@ export function FileActionsButton() {
     onImportBackupClick();
     setPanel('closed');
   };
+  const onImportCsv = () => {
+    onImportCsvClick();
+    setPanel('closed');
+  };
 
   const startCompare = (label: string, text: string) => {
     if (!currentDoc) {
@@ -587,6 +604,64 @@ export function FileActionsButton() {
       skippedHunks: result.skippedHunks,
     });
     setPanel('closed');
+  };
+
+  /**
+   * Open the OS file picker filtered to delimited text (CSV / TSV).
+   * Mirrors `onImportBackupClick` — the parsing happens in
+   * `onCsvFile` after the user picks a file.
+   */
+  const onImportCsvClick = () => {
+    if (busy || pendingParsed) return;
+    csvInputRef.current?.click();
+  };
+
+  /**
+   * Handle the picked `.csv` / `.tsv` file:
+   *   1. Require an open document. The `mvp:insert-text` listener in
+   *      Editor.tsx silently no-ops when no document is open, so
+   *      without this guard the user would click and see nothing
+   *      happen.
+   *   2. Reject on size before materialising the bytes.
+   *   3. Read the file and convert it to a Markdown table. The
+   *      conversion is local and deterministic — no AI provider is
+   *      involved, so this path works offline.
+   *   4. Insert the table at the caret via `mvp:insert-text`.
+   */
+  const onCsvFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!currentDoc) {
+      setError('Open a document first, then import.');
+      e.target.value = '';
+      return;
+    }
+    const sizeError = validateCsvFile(file);
+    if (sizeError) {
+      setError(sizeError);
+      e.target.value = '';
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const buffer = await file.arrayBuffer();
+      const markdown = buildCsvMarkdownTable(buffer, { filename: file.name });
+      window.dispatchEvent(
+        new CustomEvent('mvp:insert-text', { detail: { text: markdown } })
+      );
+    } catch (err) {
+      setError(
+        err instanceof CsvImportError
+          ? err.message
+          : (err as Error).message || 'Could not import that file.'
+      );
+    } finally {
+      setBusy(false);
+      // Clear the input so the same file can be re-picked without a
+      // refresh (same invariant as the OCR and backup inputs).
+      if (csvInputRef.current) csvInputRef.current.value = '';
+    }
   };
 
   const onCompareFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -744,6 +819,21 @@ export function FileActionsButton() {
           <button
             type="button"
             role="menuitem"
+            data-import-csv-toggle
+            className={MENU_ITEM_CLASS}
+            onClick={onImportCsv}
+            disabled={busy || pendingParsed !== null || !hasDoc}
+            title={
+              hasDoc
+                ? 'Convert a CSV or TSV file (Excel export) into a Markdown table'
+                : 'Open a document first to import a table'
+            }
+          >
+            Import .csv / .tsv
+          </button>
+          <button
+            type="button"
+            role="menuitem"
             data-import-backup-toggle
             className={MENU_ITEM_CLASS}
             onClick={onImportJson}
@@ -864,19 +954,22 @@ export function FileActionsButton() {
             Strategy: {strategyLabel}.
           </div>
           <p className="text-[11px] text-paper-inkSoft dark:text-cyber-muted leading-snug">
-            {api.apiKey && api.apiEndpoint ? (
+            {isHttpChatConfigured(api) ? (
               <>
                 <span className="font-semibold text-cyber-clay dark:text-cyber-cyan">
-                  Key configured.
+                  Chat provider ready.
                 </span>{' '}
-                Files are OCR'd locally and rewritten as Markdown via your model before insertion.
+                Files are OCR&apos;d locally and rewritten as Markdown via your
+                model before insertion.
               </>
             ) : (
               <>
                 <span className="font-semibold text-cyber-warn">
-                  OCR works without an API key.
+                  OCR works without a chat provider.
                 </span>{' '}
-                Adding one in Settings lets the recognised text be rewritten as Markdown before insertion. Without a key, raw text is inserted as-is.
+                Configure Minimax, OpenAI, Ollama, or LM Studio in Settings so
+                recognised text can be rewritten as Markdown before insertion.
+                Otherwise raw text is inserted as-is.
               </>
             )}
           </p>
@@ -1025,6 +1118,13 @@ export function FileActionsButton() {
         accept="application/json,.json"
         className="hidden"
         onChange={onBackupFile}
+      />
+      <input
+        ref={csvInputRef}
+        type="file"
+        accept={CSV_FILE_ACCEPT}
+        className="hidden"
+        onChange={onCsvFile}
       />
       <input
         ref={compareInputRef}
