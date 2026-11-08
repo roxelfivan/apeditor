@@ -908,9 +908,10 @@ API keys are stored only in this browser's `localStorage` by default
 ### Logo
 
 The ApEditor logo shipped in `public/apeditor-logo.jpg` is original
-artwork created for this project. The ApEditor wordmark and design
-system in `tailwind.config.cjs` are also original to this
-repository.
+artwork created for this project. Square home-screen / PWA icons
+(`apple-touch-icon.png`, `icon-192.png`, `icon-512.png`) are derived
+from that mark. The ApEditor wordmark and design system in
+`tailwind.config.cjs` are also original to this repository.
 
 ---
 

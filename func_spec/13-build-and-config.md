@@ -121,7 +121,9 @@ Raised because PaddleOCR's OpenCV dependency and its worker entry are each aroun
 
 Other head/body content:
 
-- Favicon is an inline SVG data URI — a `#171614` rounded square with a `#1B4636` moss ring and pupil.
+- Tab favicon is an inline SVG data URI — a `#171614` rounded square with a `#1B4636` moss ring and pupil (readable at 16px). PNG fallback: `/favicon-32.png`.
+- Home-screen / PWA icons are the ape logo on a black square: `/apple-touch-icon.png` (180×180, iOS), `/icon-192.png`, `/icon-512.png`, and `/icon-512-maskable.png` (Android adaptive). Declared in `/manifest.webmanifest` and via `<link rel="apple-touch-icon">`. Without the PNG touch icon, iOS Add to Home Screen falls back to a letter **A**.
+- `<meta name="apple-mobile-web-app-capable" content="yes" />`, `mobile-web-app-capable`, `apple-mobile-web-app-title` = `ApEditor`, `apple-mobile-web-app-status-bar-style` = `black-translucent`.
 - `<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />` — `viewport-fit=cover` enables the `env(safe-area-inset-*)` usage throughout the layout.
 - `<meta name="theme-color" content="#F4F1EA" />`
 - `<body class="h-full bg-ape-base text-cyber-primary antialiased">`
