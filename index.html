@@ -3,10 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <!--
-      ApEditor favicon: a minimal black square with a moss-green ape-eye
-      ring, echoing the v0.3.0 editorial palette (deep moss + sumi ink).
+      Tab favicon stays a 16px-readable moss ape-eye (deep moss + sumi ink).
+      Home-screen / PWA icons use the ape logo so iOS does not fall back
+      to a generated letter "A".
     -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%23171614'/><circle cx='32' cy='32' r='14' fill='none' stroke='%231B4636' stroke-width='4'/><circle cx='32' cy='32' r='4' fill='%231B4636'/></svg>" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="ApEditor" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="theme-color" content="#F4F1EA" />
     <!--
