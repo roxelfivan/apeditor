@@ -14,12 +14,21 @@
 > functional specification). See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.6.13](https://img.shields.io/badge/version-0.6.13-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.13)
+[![v0.6.14](https://img.shields.io/badge/version-0.6.14-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.14)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
 
 ---
+
+## What's new in v0.6.14
+
+> Write-panel caret / selection no longer drifts at the bottom of a trailing-newline document. Patch on top of [v0.6.13](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.13).
+
+1. **Bottom selection alignment** — mirror overlay matches textarea line count when the note ends with `\n`.
+2. **Select and type stay on the words you see** at max scroll.
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.14 entry and prior changelogs.
 
 ## What's new in v0.6.13
 
@@ -673,7 +682,7 @@ A longer, task-oriented walkthrough of every screen lives under
 `⌘/Ctrl + /`) to open the same pages as a themed Help site — Light /
 Dark matches the editor. Start at the [table of contents](docs/README.md):
 
-- [What's new](docs/whats-new.md) — current release (v0.6.13)
+- [What's new](docs/whats-new.md) — current release (v0.6.14)
 - [Getting started](docs/getting-started.md) — first launch, connect AI, first document
 - [Your workspace](docs/workspace.md) — layout, theme, panels, Help
 - [Documents](docs/documents.md) — create, rename, switch, delete
@@ -807,6 +816,7 @@ per-release notes also ship on the GitHub release pages.
 
 | Version | Highlights |
 | --- | --- |
+| [v0.6.14](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.14) | **Write selection alignment.** Fix caret / selection drift at the bottom of documents that end with a newline. |
 | [v0.6.13](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.13) | **Chat table edits.** `table-edit` cards (cell / rows / columns); stale-safe Apply; Preview column resize; Best Effort stops at table edges; Local Model compact table context. |
 | [v0.6.12](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.12) | **CSV / TSV import.** **File → Import .csv / .tsv** turns an Excel export into a Markdown table at the caret — separator auto-detected, offline, no AI key needed. Wide tables scroll in place. |
 | [v0.6.11](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.11) | **Compare overlay.** Side-by-side Original \| Revised with unchanged text; left-edge resize; per-card Apply syncs remaining. |

@@ -1044,7 +1044,10 @@ html.dark .cm-mirror {
 /* Shared padding / font rules so textarea + mirror line up. Any
    geometric mismatch here (padding, border, box-sizing, tab-size,
    letter-spacing) accumulates into a vertical selection drift that
-   grows further down a long document. */
+   grows further down a long document. Trailing-newline line-count
+   parity is handled in CommentLayer (appends a `<br>` when content
+   ends with `\n`) — a pre-wrap div otherwise drops that hanging
+   break while a textarea keeps it as an empty last line. */
 .comment-textarea,
 .cm-mirror {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,

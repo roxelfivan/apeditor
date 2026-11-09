@@ -1,3 +1,12 @@
+## v0.6.14 — Fix Write-panel selection drift at document bottom
+
+Patch on top of [v0.6.13](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.13). Selecting or editing near the bottom of a document that ends with a newline no longer misaligns the caret / selection band from the visible words.
+
+### Notes
+
+- See [`.release-notes-v0.6.14.md`](.release-notes-v0.6.14.md) for the root cause and surface list.
+- `package.json` version bumped to `0.6.14`.
+
 ## v0.6.13 — Chat edits imported tables as cells
 
 Patch on top of [v0.6.12](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.12). Chat can propose **table-edit** cards for Markdown tables (set-cell, delete/keep rows, remove/add column). Apply uses span / structural ops with stale checks; Best Effort no longer expands into neighbouring table rows. Preview columns are drag-resizable with remembered widths. Local Gemma keeps a compact table schema so the sheet is not tokenised twice.

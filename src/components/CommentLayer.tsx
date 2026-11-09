@@ -18,6 +18,14 @@ import type { Comment } from '@/types';
  * declared in `src/index.css`. The parent `<Editor>` is responsible
  * for keeping `scrollTop` synchronized between the two.
  *
+ * Trailing-newline parity: a `<textarea>` renders a final `\n` as an
+ * empty extra line, but a `white-space: pre-wrap` div drops that
+ * hanging segment break. Without compensation the mirror is one
+ * line-height shorter, so at max scroll `mirror.scrollTop` clamps and
+ * the visible words drift above the caret / selection. When `content`
+ * ends with `\n` we append a trailing `<br>` (no text node → offset
+ * mapping stays byte-exact) to restore the missing line box.
+ *
  * The overlay is `pointer-events: none` and `aria-hidden` so it never
  * interferes with typing or selection. It also forwards a ref so the
  * parent can call `getSelectionRect(mirrorEl, start, end)` from
@@ -57,6 +65,11 @@ export const CommentLayer = memo(
       [content, comments, extraHighlights]
     );
 
+    // See file-level note: keep mirror scrollHeight == textarea when
+    // the doc ends with a newline so bottom-of-panel selection stays
+    // aligned with the visible words.
+    const trailingNewline = content.endsWith('\n');
+
     return (
       <div
         ref={ref}
@@ -89,6 +102,7 @@ export const CommentLayer = memo(
             </mark>
           )
         )}
+        {trailingNewline ? <br aria-hidden /> : null}
       </div>
     );
   })

@@ -157,6 +157,7 @@ Full changelogs are in [`RELEASE_NOTES.md`](../RELEASE_NOTES.md). The shape of t
 
 | Version | What changed |
 |---|---|
+| v0.6.14 | **Write selection alignment.** Trailing-newline mirror/`textarea` line-count parity so caret / selection no longer drift at document bottom. |
 | v0.6.13 | **Chat edits imported tables as cells.** `sys-table-context` + `table-edit` fences (cell / rows / columns); stale-safe Apply; Preview column resize; Best Effort stops at table edges; Local Gemma compact table schema. |
 | v0.6.12 | **CSV / TSV import.** Spreadsheet → Markdown table at the caret; wide Preview tables scroll in place. |
 | v0.6.11 | **Compare overlay: side-by-side document view + resize.** Unchanged text among change cards; left-edge resize (`layout.compareWidth`); per-card Apply syncs remaining count. |
