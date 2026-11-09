@@ -142,6 +142,7 @@ The things that will bite you. Each has caused a real bug at some point.
 | 1 | Three coordinate spaces coexist: **viewport**, **wrapper-local**, **margin-local**. Converting by even one `getBoundingClientRect()` puts the composer or popover hundreds of pixels off. |
 | 2 | **Do not add `scrollTop` to badge positions.** The margin column does not scroll; only the textarea does. |
 | 3 | The `.comment-textarea, .cm-mirror` shared rule is load-bearing. Any property added to one but not the other accumulates into vertical selection drift that grows with document length. |
+| 3a | Top chrome must not use a fixed `h-14` plus `padding-top: env(safe-area-inset-top)`. Border-box eats the bar into the iOS status-bar inset on a home-screen PWA. Use `.app-safe-top` / `.app-safe-top--bar` (`min-height: calc(3.5rem + inset)`). |
 | 4 | `isolation: 'isolate'` on `[data-cm-wrapper]` is what lets the composer/popover `z-index: 50` beat the mirror and textarea. |
 | 5 | `getSelectionRect` returns **viewport** coordinates. Converting to margin-local subtracts `.cm-margin`'s viewport `top`, not the textarea's. |
 | 6 | `setRangeEndpoints` must advance the TreeWalker to the **next node** when `startIdx === nodeEnd`. Setting offset `len` on the current node collapses the range and `getBoundingClientRect()` returns nothing. |
@@ -256,6 +257,7 @@ npm run test:csv-to-markdown
 npm run test:preview-markdown-render
 npm run test:table-model
 npm run test:table-edits
+npm run test:safe-area-topbar
 npm run check:docs
 npm run build
 ```

@@ -6,6 +6,8 @@ The main window has four regions: **top bar**, **Documents** sidebar, **editor**
 
 The top bar shows the ApEditor logo, version, and the title of the open document (after a `/`).
 
+On a phone **home-screen / PWA**, the top bar sits in the **safe area** below the system status bar. Time, signal, and battery stay visible; the app chrome starts underneath. Landscape notches get the same left/right inset. If you hide the top bar, the editor still starts below that status-bar band.
+
 | Control | What it does |
 | --- | --- |
 | **?** | Opens this [user guide](README.md) as in-app Help (same Light / Dark theme). The sidebar includes [What's new](whats-new.md). |

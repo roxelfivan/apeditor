@@ -205,7 +205,7 @@ src/main.tsx
        │    ├─ <ChatPanel />         // returns null when chatCollapsed
        │    ├─ <EdgeAnchor side="left" />    // in the content row
        │    └─ <EdgeAnchor side="right" />
-       ├─ <EdgeAnchor side="top" />   // sibling of Topbar → absolute top-0 is the page top
+       ├─ <EdgeAnchor side="top" />   // sibling of Topbar; .edge-anchor--top is below the status-bar inset
        ├─ <MoreSheet />               // narrow ⋯ bottom sheet, portaled to document.body
        ├─ <SettingsModal open={…} />
        ├─ <PromptLibrary open={…} />

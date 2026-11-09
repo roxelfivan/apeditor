@@ -21,7 +21,7 @@ This guide is for people using the app. It covers every screen and everyday task
 
 ## Start here
 
-1. [What's new](whats-new.md) — current release (v0.6.14: Write selection alignment at document bottom)
+1. [What's new](whats-new.md) — current release (v0.6.15: phone PWA top bar below the status bar)
 2. [Getting started](getting-started.md) — first launch, connect AI, first document
 3. [Your workspace](workspace.md) — layout, theme, panels, Help
 4. [Documents](documents.md) — create, rename, switch, delete

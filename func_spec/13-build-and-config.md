@@ -23,6 +23,7 @@
 | `test:send-comments-dup` | `node scripts/test-send-comments-dup.mjs` | Comment batch / rejection send paths must not send the user message twice |
 | `test:token-estimate` | `node scripts/test-token-estimate.mjs` | The chars/4 token heuristic and `buildRequestPreview` packing |
 | `test:token-counter-render` | `node scripts/test-token-counter-render.mjs` | `TokenCounter` markup: counts, budget tones, tooltip text |
+| `test:safe-area-topbar` | `node scripts/test-safe-area-topbar.mjs` | PWA top chrome must pad `env(safe-area-inset-top)` without a border-box `h-14` |
 
 There is **no lint script and no CI configuration**. `npm run typecheck` plus the `test:*` scripts is the full quality gate.
 
@@ -125,7 +126,8 @@ Other head/body content:
 - Home-screen / PWA icons are the ape logo on a black square: `/apple-touch-icon.png` (180×180, iOS), `/icon-192.png`, `/icon-512.png`, and `/icon-512-maskable.png` (Android adaptive). Declared in `/manifest.webmanifest` and via `<link rel="apple-touch-icon">`. Without the PNG touch icon, iOS Add to Home Screen falls back to a letter **A**.
 - `<meta name="apple-mobile-web-app-capable" content="yes" />`, `mobile-web-app-capable`, `apple-mobile-web-app-title` = `ApEditor`, `apple-mobile-web-app-status-bar-style` = `black-translucent`.
 - `<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />` — `viewport-fit=cover` enables the `env(safe-area-inset-*)` usage throughout the layout.
-- `<meta name="theme-color" content="#F4F1EA" />`
+- `<meta name="theme-color" content="#F4F1EA" />` — `applyThemeClass` updates this to `#F4F1EA` (light) or `#11171B` (dark).
+- Top chrome (`.app-safe-top` / `.app-safe-top--bar`) must **not** use a fixed `h-14` together with `padding-top: env(safe-area-inset-top)`. Border-box would eat the bar into the iOS status-bar inset. Min-height is `calc(3.5rem + inset)` so the PWA status bar (time / signal / battery) stays visible and the controls sit below it.
 - `<body class="h-full bg-ape-base text-cyber-primary antialiased">`
 - `<div id="root" class="h-full">`
 

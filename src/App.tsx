@@ -131,8 +131,12 @@ function Topbar({
     },
   ] as const;
 
+  // Do not pair a fixed h-14 with padding-top: env(safe-area-inset-top).
+  // Border-box height would collapse into the iOS status bar and hide
+  // this chrome on a home-screen PWA. .app-safe-top--bar adds the inset
+  // to min-height instead. See src/index.css.
   return (
-    <header className="relative z-30 h-14 sm:h-20 px-3 sm:px-4 flex items-center gap-2 sm:gap-3 border-b border-paper-hairline dark:border-cyber-border bg-paper-base/90 dark:bg-ape-base/90 backdrop-blur-sm pt-[env(safe-area-inset-top)]">
+    <header className="app-safe-top app-safe-top--bar relative z-30 flex items-center gap-2 sm:gap-3 border-b border-paper-hairline dark:border-cyber-border bg-paper-base/90 dark:bg-ape-base/90 backdrop-blur-sm pl-[max(0.75rem,env(safe-area-inset-left,0px))] pr-[max(0.75rem,env(safe-area-inset-right,0px))] sm:pl-[max(1rem,env(safe-area-inset-left,0px))] sm:pr-[max(1rem,env(safe-area-inset-right,0px))]">
       <img
         src="/apeditor-logo-transparent.png"
         alt="ApEditor"
@@ -445,9 +449,11 @@ export default function App() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col relative">
+    <div
+      className={`h-full flex flex-col relative ${topbarCollapsed ? 'app-shell-safe-top' : ''}`}
+    >
       {!topbarCollapsed && (
-        <div data-print-hide>
+        <div data-print-hide className="shrink-0">
         <Topbar
           onOpenSettings={() => setSettingsOpen(true)}
           onOpenPrompts={() => setPromptsOpen(true)}

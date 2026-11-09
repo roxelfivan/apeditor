@@ -1,3 +1,12 @@
+## v0.6.15 — Phone PWA top bar sits below the status bar
+
+Patch on top of [v0.6.14](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.14). Home-screen PWA on a notched phone keeps the system status bar (time, signal, battery) visible and places the app top bar in the safe area below it.
+
+### Notes
+
+- See [`.release-notes-v0.6.15.md`](.release-notes-v0.6.15.md) for the root cause and surface list.
+- `package.json` version bumped to `0.6.15`.
+
 ## v0.6.14 — Fix Write-panel selection drift at document bottom
 
 Patch on top of [v0.6.13](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.13). Selecting or editing near the bottom of a document that ends with a newline no longer misaligns the caret / selection band from the visible words.
