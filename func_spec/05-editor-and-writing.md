@@ -393,7 +393,7 @@ A pure presentational chevron strip that acts as both the hide **and** the show 
 | `left` | `›` | `‹` |
 | `right` | `‹` | `›` |
 
-Three instances live in `App.tsx`. Left and right are siblings **inside** the content row, so their `absolute left-0` / `right-0` resolve against that row. The top anchor is a **sibling of `Topbar`**, so its `absolute top-0` resolves to the very top of the page whether or not the topbar is visible.
+Three instances live in `App.tsx`. Left and right are siblings **inside** the content row, so their `absolute left-0` / `right-0` resolve against that row. The top anchor is a **sibling of `Topbar`**, so its `absolute` top resolves to the page top. `.edge-anchor--top` offsets that by `env(safe-area-inset-top)` so the chevron sits below the status bar on a notched PWA, whether or not the topbar is visible.
 
 ## 8. Narrow viewports
 

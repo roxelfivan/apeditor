@@ -74,7 +74,7 @@ rg "mvp:" src/ -n
 | Component | File | Props | Responsibility |
 |---|---|---|---|
 | `App` | [`App.tsx`](../src/App.tsx) | — | Composition, global hotkeys, overlay state, theme + UI-font sync, narrow-viewport collapse, first-run onboarding pop. Defines `Topbar` locally. |
-| `Topbar` | `App.tsx` (local) | `{ onOpenSettings, onOpenPrompts, onOpenRevisions, onOpenHelp, onOpenFuncSpec }` | Logo, version, current document title, and the icon row: **?** (Help), **`{ }`** (Functional Specification), clock (revisions), bookmark (prompts), ☀/☾ (theme), ⚙ (settings). The settings button carries an amber dot when no API key is set. |
+| `Topbar` | `App.tsx` (local) | `{ onOpenSettings, onOpenPrompts, onOpenRevisions, onOpenHelp, onOpenFuncSpec }` | Logo, version, current document title, and the icon row: **?** (Help), **`{ }`** (Functional Specification), clock (revisions), bookmark (prompts), ☀/☾ (theme), ⚙ (settings). The settings button carries an amber dot when no API key is set. Height is `.app-safe-top--bar` so a PWA status bar does not swallow the chrome. |
 
 ### 3.2 Layout
 
@@ -189,7 +189,7 @@ The threat model is stated in the file header: untrusted document and assistant 
 
 | File | Contains |
 |---|---|
-| [`index.css`](../src/index.css) | Tailwind layers; `.prose-md` markdown styles with a full `html.dark` block; `.help-docs-article` overrides; `.comment-textarea` / `.cm-mirror` geometry contract; `.cm-*` comment components; `.mention-popover*`; `.edge-anchor`; `.proposed-edit-card`; `.diff-add` / `.diff-remove`; `.btn-*` button primitives; theme CSS variables |
+| [`index.css`](../src/index.css) | Tailwind layers; `.prose-md` markdown styles with a full `html.dark` block; `.help-docs-article` overrides; `.comment-textarea` / `.cm-mirror` geometry contract; `.cm-*` comment components; `.mention-popover*`; `.edge-anchor` / `.edge-anchor--top`; `.app-safe-top*` PWA status-bar inset; `.proposed-edit-card`; `.diff-add` / `.diff-remove`; `.btn-*` button primitives; theme CSS variables |
 | [`tailwind.config.cjs`](../tailwind.config.cjs) | `paper.*` (light), `cyber.*` (accents, shared), `ape.*` (dark surfaces); `display` / `serif` / `mono` / `sans` font stacks; shadows; the `ape-fire` gradients |
 
 Component CSS classes used across the codebase:

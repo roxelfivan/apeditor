@@ -40,6 +40,7 @@ npm run test:csv-to-markdown
 npm run test:preview-markdown-render
 npm run test:table-model
 npm run test:table-edits
+npm run test:safe-area-topbar
 ```
 
 ---
@@ -274,6 +275,7 @@ npm run test:csv-to-markdown
 npm run test:preview-markdown-render
 npm run test:table-model
 npm run test:table-edits
+npm run test:safe-area-topbar
 npm run check:docs
 npm run build
 ```

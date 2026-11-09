@@ -2,6 +2,14 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## v0.6.15 — Phone home-screen: top bar below the status bar
+
+**Add to Home Screen, then open ApEditor — the clock, signal, and battery stay visible, and the app top bar sits under them.**
+
+- **Safe-area top bar.** The logo, document title, and buttons are no longer hidden under the iPhone status bar in PWA mode.
+- **Same treatment for Help and the Functional Specification.** Those overlays also start below the status bar.
+- **Hide top bar still respects the notch.** Collapsing the top bar does not slide the editor up into the status icons.
+
 ## v0.6.14 — Selection stays aligned at the bottom of Write
 
 **Highlight and edit the last lines without the selection band drifting off the words.**

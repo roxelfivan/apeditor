@@ -97,7 +97,7 @@ export function HelpDocs({ open, onClose, initialPage = 'home' }: Props) {
       aria-modal="true"
       aria-label="ApEditor help"
     >
-      <header className="h-14 sm:h-16 px-4 flex items-center gap-3 border-b border-paper-hairline dark:border-cyber-border bg-paper-surface/95 dark:bg-ape-panel/95 backdrop-blur-sm shrink-0 pt-[env(safe-area-inset-top)]">
+      <header className="app-safe-top app-safe-top--help flex items-center gap-3 border-b border-paper-hairline dark:border-cyber-border bg-paper-surface/95 dark:bg-ape-panel/95 backdrop-blur-sm shrink-0 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))]">
         <img
           src="/apeditor-logo-transparent.png"
           alt=""
