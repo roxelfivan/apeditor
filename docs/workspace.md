@@ -27,11 +27,15 @@ To hide the top bar, click the chevron on the **top edge** of the window. Click 
 
 The left column lists your documents, grouped so a large workspace stays scannable. The right column is Chat.
 
-**Search** at the top of the sidebar filters by title or tag path.
+**Search** at the top of the sidebar filters by title, tag path, or collection name.
 
-**Pinned** (star on a row) stays at the top. **Recent** is the last ten documents you opened.
+The sidebar is a stack of collapsible sections: **Collections**, **Pinned** (star on a row), **Recent** (the last ten documents you opened), **Tags**, and **Other** (documents that are neither tagged nor filed in a collection). Click a section heading to fold it away.
 
-**Tags** are Bear-style nested paths. Write `#drafts/essays` in the markdown (not an ATX heading), or click **#** on a row and type `drafts/essays`. Nested folders expand in the sidebar. A document can have several tags. **Untagged** lists everything else.
+**Tags** are Bear-style nested paths. Write `#drafts/essays` in the markdown (not an ATX heading), or click **#** on a row and type `drafts/essays`. Nested folders expand in the sidebar. A document can have several tags.
+
+**Collections** are your own named groups. Click **＋** next to **Collections** to create one, and the **📁** button on a row to file a document in it. A document can be in several collections at once — each collection lists it on its own. See [Documents](documents.md#collections).
+
+Every section heading and every collection has a **▸ / ▾** arrow, so you can fold away the files you no longer want to see. What you folded is remembered in this browser.
 
 | Edge | Shortcut | Action |
 | --- | --- | --- |

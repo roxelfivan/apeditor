@@ -10,7 +10,7 @@ This guide is for people using the app. It covers every screen and everyday task
 
 - Write Markdown in **Write**, **Preview**, **Graph**, or **Split** view (Split = text + Graph)
 - See [What's new](whats-new.md) for the current release
-- Keep many documents in the sidebar (search, nested tags, pin, recent)
+- Keep many documents in the sidebar (search, collections, nested tags, pin, recent)
 - Comment on a passage, then **Send to AI** in one batch
 - Chat with MiniMax, OpenAI, Ollama, LM Studio, or **Local Model (require around 2gb disk space)**
 - Review proposed edits as cards — **Apply**, **Reject**, or apply several at once
@@ -21,7 +21,7 @@ This guide is for people using the app. It covers every screen and everyday task
 
 ## Start here
 
-1. [What's new](whats-new.md) — current release (v0.6.15: phone PWA top bar below the status bar)
+1. [What's new](whats-new.md) — current release (v0.6.16: sidebar Collections + collapsible sections)
 2. [Getting started](getting-started.md) — first launch, connect AI, first document
 3. [Your workspace](workspace.md) — layout, theme, panels, Help
 4. [Documents](documents.md) — create, rename, switch, delete

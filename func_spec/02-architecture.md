@@ -25,14 +25,14 @@
 
 | Metric | Value |
 |---|---|
-| TypeScript / TSX files under `src/` | 83 |
-| Total lines under `src/` (`.ts` + `.tsx`) | ~31,800 |
-| `src/index.css` | 2,254 lines |
-| Components | 33 files (29 top-level + 4 under `components/mentions/`) |
+| TypeScript / TSX files under `src/` | 92 |
+| Total lines under `src/` (`.ts` + `.tsx`) | ~36,300 |
+| `src/index.css` | 2,609 lines |
+| Components | 38 files (30 top-level + 4 under `components/mentions/` + 4 under `components/sidebar/`) |
 | Largest file | `Editor.tsx` — 2,464 lines |
 | Second largest | `ChatPanel.tsx` — 1,707 lines |
 | Largest pure module | `utils/proposedEdit.ts` — 1,379 lines |
-| Tests | 15 Node scripts, 0 test-framework dependencies |
+| Tests | 21 Node scripts, 0 test-framework dependencies |
 
 Three files dominate: `Editor.tsx`, `ChatPanel.tsx`, and `utils/proposedEdit.ts`. The first two were deliberately *not* merged — see [the event bus](#6-the-event-bus).
 
@@ -143,7 +143,11 @@ HTTP OpenAI-compatible providers (minimax, openai, ollama, lm-studio) use this p
 | [`mentions/SectionPicker.tsx`](../src/components/mentions/SectionPicker.tsx) | 218 | Second-stage picker: heading-grouped checkboxes with cascade. |
 | [`CommentTray.tsx`](../src/components/CommentTray.tsx) | 204 | **Send to AI** bar + the stale-comment Re-link / Dismiss list. |
 | [`TokenCounter.tsx`](../src/components/TokenCounter.tsx) | — | Local Model pill: estimated prompt tokens, with an over-budget warning against the Local Model's limit. |
-| [`Sidebar.tsx`](../src/components/Sidebar.tsx) | 193 | Document list, inline rename, delete, width resize, narrow drawer. |
+| [`Sidebar.tsx`](../src/components/Sidebar.tsx) | — | Document list, collapsible sections, collections, inline rename, delete, width resize, narrow drawer. |
+| [`sidebar/SidebarDocRow.tsx`](../src/components/sidebar/SidebarDocRow.tsx) | — | One document row (star, title, tag, collection, rename, delete). |
+| [`sidebar/SidebarSection.tsx`](../src/components/sidebar/SidebarSection.tsx) | — | Collapsible section heading (▸/▾ + label + count + action). |
+| [`sidebar/CollectionBranch.tsx`](../src/components/sidebar/CollectionBranch.tsx) | — | One collection: collapsible heading, rename, delete, nested rows. |
+| [`sidebar/CollectionPicker.tsx`](../src/components/sidebar/CollectionPicker.tsx) | — | Portal popover for filing a document in one or more collections. |
 | [`HelpDocs.tsx`](../src/components/HelpDocs.tsx) | 185 | In-app viewer for `docs/*.md`. |
 | [`mentions/DocPicker.tsx`](../src/components/mentions/DocPicker.tsx) | 135 | First-stage picker: filtered document list. |
 | [`ResizeHandle.tsx`](../src/components/ResizeHandle.tsx) | 121 | One of 8 resize edges/corners. |
@@ -154,10 +158,11 @@ HTTP OpenAI-compatible providers (minimax, openai, ollama, lm-studio) use this p
 | [`CommentMargin.tsx`](../src/components/CommentMargin.tsx) | 112 | Numbered badges in the right margin column. |
 | [`EdgeAnchor.tsx`](../src/components/EdgeAnchor.tsx) | 70 | Edge-pinned chevron that reveals a collapsed panel. |
 
-### `src/utils/` — 20 files
+### `src/utils/` — 21 files
 
 | File | Lines | Responsibility |
 |---|---:|---|
+| [`collections.ts`](../src/utils/collections.ts) | — | The pure logic behind sidebar collections: `normalizeGroupName`, `normalizeGroupIds`, `sanitizeGroups`, `sortGroups`, `docsForGroup`, `pruneGroupIds`, `mergeGroups`, `remapGroupIds`, `toggleCollapsed`. Zero React. |
 | [`proposedEdit.ts`](../src/utils/proposedEdit.ts) | 1,292 | Fence parsing, `findEditAnchor` (6 strategies), the Best Effort matcher, `applyEdit`, `applyAllEdits`, `applyEditAtCaret`, `formatRejectionBatch`. Zero React. |
 | [`comments.ts`](../src/utils/comments.ts) | 634 | `reanchorComment` / `reanchorAll`, `reattachCommentToRange`, `formatCommentBatch`, `getSelectionRect`, `clampToContainer`, `clampCommentBody`. Zero React. |
 | [`tokenEstimate.ts`](../src/utils/tokenEstimate.ts) | — | The chars/4 token heuristic behind the Debug Mode counters. `estimateTokens`, `estimateMessageTokens`, `formatTokenCount`. Zero React, zero deps. |

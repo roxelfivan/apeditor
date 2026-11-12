@@ -370,10 +370,11 @@ export interface DocumentBackup {
   chats: ChatMessage[];    // [] when none
   chatArchives: ArchivedChat[]; // [] when none; omitted on older files
   revisions: Revision[];   // [] when none
+  groups: DocumentGroup[]; // Collections the document belongs to; [] when none
 }
 ```
 
-Parse still accepts older v1 files that omit `chatArchives` and treats the field as `[]`. A present non-array is rejected.
+Parse still accepts older v1 files that omit `chatArchives` and `groups` and treats the field as `[]`. A present non-array is rejected.
 
 | | |
 |---|---|
@@ -441,7 +442,7 @@ Identity-bearing fields (`id`, `documentId`, `kind`) reject the empty string bec
 
 ### 5.4 Round-trip contract
 
-`buildDocumentBackup → serialiseDocumentBackup → parseDocumentBackup` produces a `ParsedDocumentBackup` whose `document` / `comments` / `chats` / `chatArchives` / `revisions` are deep-equal to the live state at export time (modulo the renumbered-rounds / migrated-shape work the comment restore-path may add via `reattachCommentToRange`). `npm run test:backup-roundtrip` covers:
+`buildDocumentBackup → serialiseDocumentBackup → parseDocumentBackup` produces a `ParsedDocumentBackup` whose `document` / `comments` / `chats` / `chatArchives` / `revisions` / `groups` are deep-equal to the live state at export time (modulo the renumbered-rounds / migrated-shape work the comment restore-path may add via `reattachCommentToRange`). `npm run test:backup-roundtrip` covers:
 
 - Round-trip of a populated backup with comments / chats / chatArchives / revisions
 - Empty-slice round-trip (`[]` not `undefined`)
@@ -481,6 +482,8 @@ The popover stays open while the modal is shown — clicking outside closes the 
 | `keep-both` | New uuid via `buildKeepBothDocument({ newId, sourceTitle, sourceContent, sourceCreatedAt, sourceUpdatedAt })`. Prepends to `documents[]` so the new doc lands at the top, the same convention `createDocument` uses. `comments[newId]`, `chats[newId]`, `chatArchives[newId]`, `revisions[newId]` are written. |
 
 The store does NOT auto-switch to the imported document — `FileActionsButton.onImportApply` calls `setCurrentDocument(firstImportedId)` after the loop so the editor moves over to the imported doc.
+
+**Collections.** `plan.groups` carries the collections the exported document belonged to. `applyImportPlan` merges them into `documentGroups` (`mergeGroups`): a collection that already exists locally (same id) is reused, a missing one is created with a fresh uuid. The document's `groupIds` are rewritten through the id map (`remapGroupIds`), so the imported document keeps its grouping — and a membership pointing at a collection the payload never carried is dropped.
 
 ## 6. The OCR-vs-key gate
 

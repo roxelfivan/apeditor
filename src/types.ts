@@ -50,6 +50,18 @@ export interface ArchivedChat {
   messages: ChatMessage[];
 }
 
+/**
+ * A user-defined collection (folder) that groups documents in the
+ * Documents sidebar. A document may belong to several collections at
+ * once — membership is stored as ids on `DocumentRecord.groupIds`.
+ */
+export interface DocumentGroup {
+  id: string;
+  /** Display name. Normalised (trimmed, whitespace-collapsed, capped). */
+  name: string;
+  createdAt: number;
+}
+
 export interface DocumentRecord {
   id: string;
   title: string;
@@ -65,6 +77,12 @@ export interface DocumentRecord {
   starred: boolean;
   /** Last time this document was opened. 0 if never. */
   lastOpenedAt: number;
+  /**
+   * Ids of the collections this document belongs to. A document can sit
+   * in several collections at the same time; each collection lists it
+   * independently. Unknown ids are dropped when the payload is loaded.
+   */
+  groupIds: string[];
 }
 
 export interface Revision {

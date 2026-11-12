@@ -58,6 +58,13 @@ import {
 } from './defaults';
 import { isOutlineScheme } from '@/utils/outlineNumbering';
 import { mergeDocumentTags, normalizeTagList, normalizeTagPath } from '@/utils/tags';
+import {
+  mergeGroups,
+  normalizeGroupName,
+  pruneGroupIds,
+  remapGroupIds,
+  sanitizeGroups,
+} from '@/utils/collections';
 import type { StoreState } from './types';
 import {
   addCommentAction,
@@ -80,6 +87,7 @@ export const useStore = create<StoreState>()(
     (set, get) => ({
       documents: initialDocs,
       currentDocumentId: initialDocs[0].id,
+      documentGroups: [],
       chats: {},
       chatArchives: {},
       revisions: {},
@@ -107,6 +115,8 @@ export const useStore = create<StoreState>()(
         previewLineNumbers: false,
         outlineNumbering: 'off',
         sidebarExpandedTags: [],
+        sidebarCollapsedSections: [],
+        sidebarCollapsedGroups: [],
       },
       compareSession: null,
       editorFocus: {},
@@ -130,6 +140,7 @@ export const useStore = create<StoreState>()(
         const doc = makeDoc(title?.trim() || fallback, source.content, {
           tags: source.tags,
           starred: source.starred,
+          groupIds: source.groupIds,
         });
         set((s) => ({
           documents: [doc, ...s.documents],
@@ -166,6 +177,14 @@ export const useStore = create<StoreState>()(
         if (plan.strategy === 'keep-both') {
           let resolvedId = '';
           set((s) => {
+            // Collections carried by the backup are created locally if
+            // they are missing, so the imported document keeps its
+            // grouping.
+            const { groups, idMap } = mergeGroups(
+              s.documentGroups,
+              plan.groups ?? [],
+              uuid
+            );
             const newDoc = buildKeepBothDocument({
               newId: plan.resolvedId,
               sourceTitle: plan.document.title,
@@ -174,10 +193,12 @@ export const useStore = create<StoreState>()(
               sourceUpdatedAt: plan.document.updatedAt,
               tags: plan.document.tags,
               starred: plan.document.starred,
+              groupIds: remapGroupIds(plan.document.groupIds, idMap),
             });
             resolvedId = newDoc.id;
             return {
               documents: [newDoc, ...s.documents],
+              documentGroups: groups,
               comments: { ...s.comments, [newDoc.id]: plan.comments },
               chats: { ...s.chats, [newDoc.id]: plan.chats },
               chatArchives: {
@@ -194,14 +215,27 @@ export const useStore = create<StoreState>()(
         // model: "the document I had is now this version") and
         // simplifies undo should it ever be added.
         set((s) => {
+          const { groups, idMap } = mergeGroups(
+            s.documentGroups,
+            plan.groups ?? [],
+            uuid
+          );
           const existing = s.documents.find((d) => d.id === plan.resolvedId);
           const nextDoc: DocumentRecord = existing
-            ? { ...plan.document, id: plan.resolvedId }
-            : plan.document;
+            ? {
+                ...plan.document,
+                id: plan.resolvedId,
+                groupIds: remapGroupIds(plan.document.groupIds, idMap),
+              }
+            : {
+                ...plan.document,
+                groupIds: remapGroupIds(plan.document.groupIds, idMap),
+              };
           return {
             documents: existing
               ? s.documents.map((d) => (d.id === plan.resolvedId ? nextDoc : d))
               : [nextDoc, ...s.documents],
+            documentGroups: groups,
             comments: { ...s.comments, [plan.resolvedId]: plan.comments },
             chats: { ...s.chats, [plan.resolvedId]: plan.chats },
             chatArchives: {
@@ -301,6 +335,60 @@ export const useStore = create<StoreState>()(
               : d
           ),
         })),
+
+      /**
+       * Collections (user-defined document groups). Membership is
+       * multi-valued: a document can sit in several collections at
+       * once and each collection lists it independently.
+       */
+      createDocumentGroup: (name) => {
+        const clean = normalizeGroupName(name);
+        if (!clean) return '';
+        const id = uuid();
+        set((s) => ({
+          documentGroups: [
+            ...s.documentGroups,
+            { id, name: clean, createdAt: Date.now() },
+          ],
+        }));
+        return id;
+      },
+      renameDocumentGroup: (id, name) => {
+        const clean = normalizeGroupName(name);
+        if (!clean) return;
+        set((s) => ({
+          documentGroups: s.documentGroups.map((g) =>
+            g.id === id ? { ...g, name: clean } : g
+          ),
+        }));
+      },
+      deleteDocumentGroup: (id) =>
+        set((s) => ({
+          // The documents themselves survive — they just lose the
+          // membership and fall back to the Ungrouped list.
+          documentGroups: s.documentGroups.filter((g) => g.id !== id),
+          documents: s.documents.map((d) =>
+            (d.groupIds ?? []).includes(id)
+              ? { ...d, groupIds: (d.groupIds ?? []).filter((g) => g !== id) }
+              : d
+          ),
+          layout: {
+            ...s.layout,
+            sidebarCollapsedGroups: (s.layout.sidebarCollapsedGroups ?? []).filter(
+              (g) => g !== id
+            ),
+          },
+        })),
+      setDocumentGroups: (id, groupIds) =>
+        set((s) => {
+          const known = new Set(s.documentGroups.map((g) => g.id));
+          const next = pruneGroupIds(groupIds, known);
+          return {
+            documents: s.documents.map((d) =>
+              d.id === id ? { ...d, groupIds: next } : d
+            ),
+          };
+        }),
       setCompareSession: (compareSession) => set({ compareSession }),
 
       saveRevision: (documentId, label) =>
@@ -656,6 +744,7 @@ export const useStore = create<StoreState>()(
       partialize: (s) => ({
         documents: s.documents,
         currentDocumentId: s.currentDocumentId,
+        documentGroups: s.documentGroups,
         chats: s.chats,
         chatArchives: s.chatArchives,
         revisions: s.revisions,
@@ -741,6 +830,15 @@ export const useStore = create<StoreState>()(
           }
           if (!Array.isArray(state.layout?.sidebarExpandedTags)) {
             layoutPatch.sidebarExpandedTags = [];
+          }
+          // Collapsed sections / collections use the opposite convention
+          // from `sidebarExpandedTags`: they list what is HIDDEN, so the
+          // empty array means "everything open".
+          if (!Array.isArray(state.layout?.sidebarCollapsedSections)) {
+            layoutPatch.sidebarCollapsedSections = [];
+          }
+          if (!Array.isArray(state.layout?.sidebarCollapsedGroups)) {
+            layoutPatch.sidebarCollapsedGroups = [];
           }
           if (
             !state.layout?.previewTableColWidths ||
@@ -871,6 +969,13 @@ export const useStore = create<StoreState>()(
           if (typeof state.persistApiKey !== 'boolean') {
             repairs.persistApiKey = true;
           }
+          // Collections (user-defined document groups). Older payloads
+          // have no `documentGroups` at all, and a hand-edited payload
+          // can hold anything — so the array is sanitized before it is
+          // used as the source of truth for memberships.
+          const groups = sanitizeGroups(state.documentGroups);
+          repairs.documentGroups = groups;
+          const knownGroupIds = new Set(groups.map((g) => g.id));
           if (Array.isArray(state.documents)) {
             let docsChanged = false;
             const documents = state.documents.map((d) => {
@@ -881,16 +986,25 @@ export const useStore = create<StoreState>()(
               const starred = Boolean(d.starred);
               const lastOpenedAt =
                 typeof d.lastOpenedAt === 'number' ? d.lastOpenedAt : 0;
+              // Memberships pointing at a collection that no longer
+              // exists are dropped, so a deleted collection never
+              // leaves a dangling id behind.
+              const groupIds = pruneGroupIds(
+                Array.isArray(d.groupIds) ? d.groupIds : [],
+                knownGroupIds
+              );
               if (
                 !Array.isArray(d.tags) ||
                 d.tags.length !== tags.length ||
                 d.starred !== starred ||
-                d.lastOpenedAt !== lastOpenedAt
+                d.lastOpenedAt !== lastOpenedAt ||
+                !Array.isArray(d.groupIds) ||
+                d.groupIds.length !== groupIds.length
               ) {
                 docsChanged = true;
-                return { ...d, tags, starred, lastOpenedAt };
+                return { ...d, tags, starred, lastOpenedAt, groupIds };
               }
-              return { ...d, tags, starred, lastOpenedAt };
+              return { ...d, tags, starred, lastOpenedAt, groupIds };
             });
             if (docsChanged) repairs.documents = documents;
           }

@@ -34,6 +34,7 @@ npm run test:token-estimate
 npm run test:token-counter-render
 npm run test:outline-numbering
 npm run test:tags
+npm run test:collections
 npm run test:document-compare
 npm run test:compare-panel-render
 npm run test:csv-to-markdown
@@ -269,6 +270,7 @@ npm run test:token-estimate
 npm run test:token-counter-render
 npm run test:outline-numbering
 npm run test:tags
+npm run test:collections
 npm run test:document-compare
 npm run test:compare-panel-render
 npm run test:csv-to-markdown

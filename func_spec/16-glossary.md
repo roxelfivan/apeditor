@@ -62,6 +62,15 @@ type Role = 'system' | 'user' | 'assistant';
 | `tags` | `string[]` | Nested paths without `#`. Merged with body hashtags |
 | `starred` | `boolean` | Sidebar pin |
 | `lastOpenedAt` | `number` | Bumped by `setCurrentDocument` |
+| `groupIds` | `string[]` | Collections the document belongs to. Multi-valued — a document can sit in several collections at once |
+
+### `DocumentGroup`
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `string` | `uuid()` |
+| `name` | `string` | User-named collection. Normalised (trimmed, whitespace-collapsed, capped at 60 chars) |
+| `createdAt` | `number` | Creation time; collections are listed oldest-first |
 
 ### `Revision`
 

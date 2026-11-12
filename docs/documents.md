@@ -44,7 +44,21 @@ Other documents can be attached to a Chat or comment turn with `@`. The picker l
 - **Recent** lists the last ten documents you opened
 - **#** on a row adds a nested tag (`drafts/essays`). Hashtags in the body (`#drafts/essays`) are picked up on save. See [Your workspace](workspace.md)
 
-The search box filters by title or tag.
+The search box filters by title, tag, or collection name.
+
+## Collections
+
+Collections are your own named groups of documents — the way to file things away so a large sidebar stays scannable.
+
+**Create one** with the **＋** next to the **Collections** heading. Type a name and press Enter.
+
+**Put a document in a collection** with the **📁** button on its row. The popover lists every collection with a checkbox, so a document can sit in **several** collections at once — each collection lists it on its own. **+ New collection** at the bottom of the popover creates one and files the document in it straight away.
+
+**Rename** a collection with **✎** on its heading, **delete** it with **×**. Deleting a collection keeps the documents — they simply move to the **Other** list.
+
+Every section heading in the sidebar — **Collections**, **Pinned**, **Recent**, **Tags**, **Other** — and every collection itself has a **▸ / ▾** arrow. Click it to fold the section away and hide the files you no longer want to see. What you folded stays folded the next time you open ApEditor.
+
+Documents that are neither tagged nor filed in a collection are listed under **Other** (or **All** when you have no tags and no collections).
 
 ## Rename
 

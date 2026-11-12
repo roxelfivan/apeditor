@@ -41,7 +41,7 @@ ApEditor is built for a single, narrow audience:
 
 | Capability | Where it lives |
 |---|---|
-| Multiple documents: create, rename, switch, delete; nested tags, pin, recent, search | [`Sidebar.tsx`](../src/components/Sidebar.tsx), [`utils/tags.ts`](../src/utils/tags.ts) |
+| Multiple documents: create, rename, switch, delete; nested tags, pin, recent, search, **collections** | [`Sidebar.tsx`](../src/components/Sidebar.tsx), [`utils/tags.ts`](../src/utils/tags.ts), [`utils/collections.ts`](../src/utils/collections.ts) |
 | Four editor views — **Write**, **Preview**, **Graph**, **Split** (Split = Write/Preview left + Graph right) | [`Editor.tsx`](../src/components/Editor.tsx) |
 | Markdown rendering with GFM, raw HTML, sanitization; Preview line numbers and heading outline schemes | [`utils/markdown.ts`](../src/utils/markdown.ts), [`PreviewMarkdown.tsx`](../src/components/PreviewMarkdown.tsx), [`PreviewNumberingMenu.tsx`](../src/components/PreviewNumberingMenu.tsx), [`utils/outlineNumbering.ts`](../src/utils/outlineNumbering.ts) |
 | Bold / Italic / Underline + font size (10–24 px) | `wrapSelection` in [`Editor.tsx`](../src/components/Editor.tsx) |
@@ -157,6 +157,7 @@ Full changelogs are in [`RELEASE_NOTES.md`](../RELEASE_NOTES.md). The shape of t
 
 | Version | What changed |
 |---|---|
+| v0.6.16 | **Sidebar Collections + collapsible sections.** Named multi-membership groups; foldable Collections / Pinned / Recent / Tags / Other; persisted collapse; backup `groups` + `groupIds`. |
 | v0.6.15 | **Phone PWA top bar below the status bar.** `.app-safe-top` min-height includes `env(safe-area-inset-top)` so home-screen chrome is not swallowed by `h-14` + border-box padding; Help / Functional Specification headers and collapsed-shell match. |
 | v0.6.14 | **Write selection alignment.** Trailing-newline mirror/`textarea` line-count parity so caret / selection no longer drift at document bottom. |
 | v0.6.13 | **Chat edits imported tables as cells.** `sys-table-context` + `table-edit` fences (cell / rows / columns); stale-safe Apply; Preview column resize; Best Effort stops at table edges; Local Gemma compact table schema. |

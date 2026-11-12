@@ -9,237 +9,40 @@ import {
   MAX_SIDEBAR_WIDTH,
 } from '@/hooks/useDragResize';
 import { useIsNarrow } from '@/hooks/useMediaQuery';
-import { buildTagTree, normalizeTagPath, type TagNode } from '@/utils/tags';
+import { buildTagTree, type TagNode } from '@/utils/tags';
+import { docsForGroup, sortGroups } from '@/utils/collections';
+import { SidebarDocRow } from '@/components/sidebar/SidebarDocRow';
+import { SidebarSection } from '@/components/sidebar/SidebarSection';
+import { CollectionBranch } from '@/components/sidebar/CollectionBranch';
 import type { DocumentRecord } from '@/types';
 
 const RECENT_LIMIT = 10;
+
+/** Ids of the collapsible sections in the sidebar. */
+const SECTION_COLLECTIONS = 'collections';
+const SECTION_PINNED = 'pinned';
+const SECTION_RECENT = 'recent';
+const SECTION_TAGS = 'tags';
+const SECTION_OTHER = 'other';
 
 const useSidebarWidth = () => {
   const raw = useStore((s) => s.layout.sidebarWidth);
   return clamp(raw, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH);
 };
 
-function matchesQuery(doc: DocumentRecord, q: string): boolean {
+function matchesQuery(
+  doc: DocumentRecord,
+  q: string,
+  groupNames: readonly string[]
+): boolean {
   if (!q) return true;
   const hay = `${doc.title} ${(doc.tags ?? []).join(' ')}`.toLowerCase();
-  return hay.includes(q);
+  if (hay.includes(q)) return true;
+  // A collection name match pulls the whole collection in.
+  return groupNames.some((name) => name.toLowerCase().includes(q));
 }
 
-function SidebarDocRow({
-  doc,
-  rowKey,
-  active,
-  isEditing,
-  draft,
-  setDraft,
-  setEditingKey,
-  onOpen,
-  compact,
-}: {
-  doc: DocumentRecord;
-  /** Unique among every row that can render this document (Pinned + Recent + All). */
-  rowKey: string;
-  active: boolean;
-  isEditing: boolean;
-  draft: string;
-  setDraft: (v: string) => void;
-  setEditingKey: (key: string | null) => void;
-  onOpen: () => void;
-  compact?: boolean;
-}) {
-  const renameDocument = useStore((s) => s.renameDocument);
-  const deleteDocument = useStore((s) => s.deleteDocument);
-  const toggleDocumentStarred = useStore((s) => s.toggleDocumentStarred);
-  const addDocumentTag = useStore((s) => s.addDocumentTag);
-  const removeDocumentTag = useStore((s) => s.removeDocumentTag);
-  const [tagDraft, setTagDraft] = useState<string | null>(null);
-  const skipBlurCommit = useRef(false);
-
-  const startRename = () => {
-    skipBlurCommit.current = false;
-    setDraft(doc.title);
-    setEditingKey(rowKey);
-  };
-
-  const commitRename = (value: string) => {
-    if (skipBlurCommit.current) {
-      skipBlurCommit.current = false;
-      return;
-    }
-    renameDocument(doc.id, value || doc.title);
-    setEditingKey(null);
-  };
-
-  const stopRowActivate = (e: { stopPropagation: () => void }) => {
-    e.stopPropagation();
-  };
-
-  return (
-    <li
-      className={`group flex flex-col mx-1 my-0.5 rounded cursor-pointer border-l-2 transition-colors ${
-        active
-          ? 'bg-paper-elevated text-cyber-clay dark:bg-ape-elevated dark:text-cyber-cyan border-cyber-clay dark:border-cyber-cyan'
-          : 'border-transparent text-paper-ink dark:text-cyber-primary hover:bg-paper-elevated dark:hover:bg-ape-elevated hover:border-paper-hairline dark:hover:border-cyber-border'
-      }`}
-      onClick={(e) => {
-        if (isEditing) return;
-        const target = e.target as HTMLElement | null;
-        if (target?.closest('button, input, [data-row-action]')) return;
-        onOpen();
-      }}
-    >
-      <div className="flex items-center gap-1 px-2 py-1">
-        <button
-          type="button"
-          data-row-action
-          className={`text-xs px-0.5 ${
-            doc.starred
-              ? 'text-cyber-clay dark:text-cyber-cyan'
-              : 'text-paper-inkSoft dark:text-cyber-muted opacity-100 sm:opacity-0 sm:group-hover:opacity-100'
-          }`}
-          title={doc.starred ? 'Unpin' : 'Pin / star'}
-          onPointerDown={stopRowActivate}
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleDocumentStarred(doc.id);
-          }}
-        >
-          {doc.starred ? '★' : '☆'}
-        </button>
-        {isEditing ? (
-          <input
-            autoFocus
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={(e) => {
-              // Strict Mode remounts the input; that blur must not save/exit.
-              if (!e.currentTarget.isConnected) return;
-              commitRename(e.currentTarget.value);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                e.currentTarget.blur();
-              } else if (e.key === 'Escape') {
-                e.preventDefault();
-                skipBlurCommit.current = true;
-                setEditingKey(null);
-              }
-            }}
-            className="flex-1 bg-white dark:bg-ape-base border border-cyber-clay dark:border-cyber-cyan text-paper-ink dark:text-cyber-primary rounded px-1 text-sm outline-none focus:border-cyber-clay dark:focus:shadow-ape-glow-soft"
-            onPointerDown={stopRowActivate}
-            onClick={stopRowActivate}
-          />
-        ) : (
-          <span
-            className="flex-1 truncate text-sm"
-            onDoubleClick={(e) => {
-              e.stopPropagation();
-              startRename();
-            }}
-          >
-            {doc.title || 'Untitled'}
-          </span>
-        )}
-        <div
-          data-row-action
-          className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center gap-0.5"
-          onPointerDown={stopRowActivate}
-          onClick={stopRowActivate}
-        >
-          <button
-            type="button"
-            className="text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan text-xs px-1"
-            title="Add tag"
-            onClick={(e) => {
-              e.stopPropagation();
-              setTagDraft('');
-            }}
-          >
-            #
-          </button>
-          <button
-            type="button"
-            className="text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan text-xs px-1"
-            title="Rename"
-            onPointerDown={(e) => {
-              // pointerdown so the row's click-to-open never runs, and so
-              // a single click is enough (no double-click needed).
-              e.preventDefault();
-              e.stopPropagation();
-              startRename();
-            }}
-            onClick={stopRowActivate}
-          >
-            ✎
-          </button>
-          <button
-            type="button"
-            className="text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-danger text-xs px-1"
-            title="Delete"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (confirm(`Delete "${doc.title}"?`)) {
-                deleteDocument(doc.id);
-              }
-            }}
-          >
-            ×
-          </button>
-        </div>
-      </div>
-      {!compact && (doc.tags?.length > 0 || tagDraft !== null) && (
-        <div
-          className="flex flex-wrap gap-1 px-2 pb-1.5 pl-7"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {(doc.tags ?? []).map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-0.5 max-w-full text-[10px] px-1 py-0 rounded bg-paper-elevated dark:bg-ape-elevated text-paper-inkSoft dark:text-cyber-muted"
-              title={`#${tag}`}
-            >
-              <span className="truncate">#{tag}</span>
-              <button
-                type="button"
-                className="hover:text-cyber-danger"
-                aria-label={`Remove tag ${tag}`}
-                onClick={() => removeDocumentTag(doc.id, tag)}
-              >
-                ×
-              </button>
-            </span>
-          ))}
-          {tagDraft !== null && (
-            <input
-              autoFocus
-              value={tagDraft}
-              placeholder="drafts/essays"
-              className="w-28 bg-white dark:bg-ape-base border border-paper-hairline dark:border-cyber-border rounded px-1 text-[10px] outline-none"
-              onChange={(e) => setTagDraft(e.target.value)}
-              onBlur={() => {
-                const n = normalizeTagPath(tagDraft);
-                if (n) addDocumentTag(doc.id, n);
-                setTagDraft(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const n = normalizeTagPath(tagDraft);
-                  if (n) addDocumentTag(doc.id, n);
-                  setTagDraft(null);
-                } else if (e.key === 'Escape') {
-                  setTagDraft(null);
-                }
-              }}
-            />
-          )}
-        </div>
-      )}
-    </li>
-  );
-}
-
-function TagBranch({
+function SidebarTagBranch({
   node,
   depth,
   docsById,
@@ -297,7 +100,7 @@ function TagBranch({
           ))}
           {node.children.map((child) => (
             <li key={child.path} className="list-none">
-              <TagBranch
+              <SidebarTagBranch
                 node={child}
                 depth={depth + 1}
                 docsById={docsById}
@@ -327,11 +130,19 @@ export function Sidebar() {
   const width = useSidebarWidth();
   const setLayout = useStore((s) => s.setLayout);
   const expandedTags = useStore((s) => s.layout.sidebarExpandedTags) ?? [];
+  const collapsedSections = useStore((s) => s.layout.sidebarCollapsedSections) ?? [];
+  const collapsedGroups = useStore((s) => s.layout.sidebarCollapsedGroups) ?? [];
+  const documentGroups = useStore((s) => s.documentGroups);
+  const createDocumentGroup = useStore((s) => s.createDocumentGroup);
   const isNarrow = useIsNarrow();
   const containerRef = useRef<HTMLDivElement>(null);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [query, setQuery] = useState('');
+  const [newGroupName, setNewGroupName] = useState<string | null>(null);
+  // Strict Mode remounts the new-collection input; that blur must not
+  // create a second collection.
+  const skipNewGroupBlur = useRef(false);
   const { start } = useDragResize({
     mode: 'axis',
     axis: 'horizontal',
@@ -343,10 +154,16 @@ export function Sidebar() {
     },
   });
 
+  const groups = useMemo(() => sortGroups(documentGroups), [documentGroups]);
+  const groupNames = useMemo(
+    () => groups.map((g) => g.name),
+    [groups]
+  );
+
   const q = query.trim().toLowerCase();
   const filtered = useMemo(
-    () => documents.filter((d) => matchesQuery(d, q)),
-    [documents, q]
+    () => documents.filter((d) => matchesQuery(d, q, groupNames)),
+    [documents, q, groupNames]
   );
   const docsById = useMemo(
     () => new Map(filtered.map((d) => [d.id, d])),
@@ -367,8 +184,26 @@ export function Sidebar() {
     }
     return ids;
   }, [filtered]);
-  const untagged = filtered.filter((d) => !taggedIds.has(d.id));
+  // The flat section lists the documents that are NOT shown anywhere
+  // else — i.e. neither tagged (they live in the tag tree) nor filed
+  // in a collection (they live in that collection). With no tags and
+  // no collections this is every document, which is the "All" list.
+  const restDocs = useMemo(
+    () =>
+      filtered.filter(
+        (d) => !taggedIds.has(d.id) && (d.groupIds ?? []).length === 0
+      ),
+    [filtered, taggedIds]
+  );
   const expanded = useMemo(() => new Set(expandedTags), [expandedTags]);
+  const collapsedSectionSet = useMemo(
+    () => new Set(collapsedSections),
+    [collapsedSections]
+  );
+  const collapsedGroupSet = useMemo(
+    () => new Set(collapsedGroups),
+    [collapsedGroups]
+  );
 
   const toggleExpanded = (path: string) => {
     const next = new Set(expandedTags);
@@ -377,11 +212,41 @@ export function Sidebar() {
     setLayout({ sidebarExpandedTags: [...next] });
   };
 
+  const toggleSection = (id: string) => {
+    const next = new Set(collapsedSections);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setLayout({ sidebarCollapsedSections: [...next] });
+  };
+
+  const toggleGroup = (id: string) => {
+    const next = new Set(collapsedGroups);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setLayout({ sidebarCollapsedGroups: [...next] });
+  };
+
   const onOpen = (id: string) => {
     setCurrentDocument(id);
     if (isNarrow) setSidebarCollapsed(true);
   };
 
+  const createGroup = (name: string) => {
+    const id = createDocumentGroup(name);
+    setNewGroupName(null);
+    return id;
+  };
+
+  /** Commit the new-collection input (Enter or blur). */
+  const commitNewGroup = () => {
+    if (skipNewGroupBlur.current) {
+      skipNewGroupBlur.current = false;
+      return;
+    }
+    const name = newGroupName ?? '';
+    if (name.trim()) createGroup(name);
+    else setNewGroupName(null);
+  };
   if (sidebarCollapsed) return null;
 
   const aside = (
@@ -400,7 +265,7 @@ export function Sidebar() {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search title or #tag"
+          placeholder="Search title, #tag, or collection"
           aria-label="Search documents"
           className="w-full bg-white dark:bg-ape-base border border-paper-hairline dark:border-cyber-border rounded px-2 py-1 text-sm text-paper-ink dark:text-cyber-primary outline-none focus:border-cyber-clay dark:focus:border-cyber-cyan"
         />
@@ -416,11 +281,80 @@ export function Sidebar() {
             No matching documents.
           </p>
         )}
+        {groups.length > 0 || documents.length > 0 ? (
+          <SidebarSection
+            id={SECTION_COLLECTIONS}
+            label="Collections"
+            count={groups.length}
+            collapsed={collapsedSectionSet.has(SECTION_COLLECTIONS)}
+            onToggle={() => toggleSection(SECTION_COLLECTIONS)}
+            action={
+              newGroupName === null ? (
+                <button
+                  type="button"
+                  data-new-collection
+                  title="New collection"
+                  aria-label="New collection"
+                  onClick={() => setNewGroupName('')}
+                  className="text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan text-xs px-1"
+                >
+                  ＋
+                </button>
+              ) : (
+                <input
+                  autoFocus
+                  value={newGroupName}
+                  placeholder="Collection name"
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  onBlur={(e) => {
+                    // Strict Mode remounts the input; that blur must
+                    // not create the collection.
+                    if (!e.currentTarget.isConnected) return;
+                    commitNewGroup();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      // Commit directly — waiting for the blur would
+                      // lose the collection in browsers that swallow
+                      // the focus change.
+                      commitNewGroup();
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      skipNewGroupBlur.current = true;
+                      setNewGroupName(null);
+                    }
+                  }}
+                  className="w-24 bg-white dark:bg-ape-base border border-cyber-clay dark:border-cyber-cyan text-paper-ink dark:text-cyber-primary rounded px-1 text-[11px] outline-none"
+                />
+              )
+            }
+          >
+            {groups.map((group) => (
+              <CollectionBranch
+                key={group.id}
+                group={group}
+                docs={docsForGroup(filtered, group.id)}
+                collapsed={collapsedGroupSet.has(group.id)}
+                onToggle={() => toggleGroup(group.id)}
+                currentId={currentId}
+                editingKey={editingKey}
+                draft={draft}
+                setDraft={setDraft}
+                setEditingKey={setEditingKey}
+                onOpen={onOpen}
+              />
+            ))}
+          </SidebarSection>
+        ) : null}
         {pinned.length > 0 && (
-          <section className="mb-2">
-            <h3 className="px-3 py-1 text-[11px] uppercase tracking-wide text-paper-inkSoft dark:text-cyber-muted">
-              Pinned
-            </h3>
+          <SidebarSection
+            id={SECTION_PINNED}
+            label="Pinned"
+            count={pinned.length}
+            collapsed={collapsedSectionSet.has(SECTION_PINNED)}
+            onToggle={() => toggleSection(SECTION_PINNED)}
+          >
             <ul>
               {pinned.map((doc) => (
                 <SidebarDocRow
@@ -437,13 +371,16 @@ export function Sidebar() {
                 />
               ))}
             </ul>
-          </section>
+          </SidebarSection>
         )}
         {recent.length > 0 && (
-          <section className="mb-2">
-            <h3 className="px-3 py-1 text-[11px] uppercase tracking-wide text-paper-inkSoft dark:text-cyber-muted">
-              Recent
-            </h3>
+          <SidebarSection
+            id={SECTION_RECENT}
+            label="Recent"
+            count={recent.length}
+            collapsed={collapsedSectionSet.has(SECTION_RECENT)}
+            onToggle={() => toggleSection(SECTION_RECENT)}
+          >
             <ul>
               {recent.map((doc) => (
                 <SidebarDocRow
@@ -460,15 +397,17 @@ export function Sidebar() {
                 />
               ))}
             </ul>
-          </section>
+          </SidebarSection>
         )}
         {tagTree.length > 0 && (
-          <section className="mb-2">
-            <h3 className="px-3 py-1 text-[11px] uppercase tracking-wide text-paper-inkSoft dark:text-cyber-muted">
-              Tags
-            </h3>
+          <SidebarSection
+            id={SECTION_TAGS}
+            label="Tags"
+            collapsed={collapsedSectionSet.has(SECTION_TAGS)}
+            onToggle={() => toggleSection(SECTION_TAGS)}
+          >
             {tagTree.map((node) => (
-              <TagBranch
+              <SidebarTagBranch
                 key={node.path}
                 node={node}
                 depth={0}
@@ -483,15 +422,18 @@ export function Sidebar() {
                 toggleExpanded={toggleExpanded}
               />
             ))}
-          </section>
+          </SidebarSection>
         )}
-        {untagged.length > 0 && (
-          <section className="mb-2">
-            <h3 className="px-3 py-1 text-[11px] uppercase tracking-wide text-paper-inkSoft dark:text-cyber-muted">
-              {tagTree.length > 0 ? 'Untagged' : 'All'}
-            </h3>
+        {restDocs.length > 0 && (
+          <SidebarSection
+            id={SECTION_OTHER}
+            label={tagTree.length > 0 || groups.length > 0 ? 'Other' : 'All'}
+            count={restDocs.length}
+            collapsed={collapsedSectionSet.has(SECTION_OTHER)}
+            onToggle={() => toggleSection(SECTION_OTHER)}
+          >
             <ul>
-              {untagged.map((doc) => (
+              {restDocs.map((doc) => (
                 <SidebarDocRow
                   key={doc.id}
                   doc={doc}
@@ -505,7 +447,7 @@ export function Sidebar() {
                 />
               ))}
             </ul>
-          </section>
+          </SidebarSection>
         )}
       </div>
     </aside>

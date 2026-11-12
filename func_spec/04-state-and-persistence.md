@@ -42,8 +42,13 @@ Split from a single 1,485-line file in v0.5.2.
 |---|---|---|:-:|---|
 | `documents` | `DocumentRecord[]` | `[Welcome, Ideas]` | ✅ | Newest-first; `createDocument` prepends |
 | `currentDocumentId` | `string \| null` | `initialDocs[0].id` | ✅ | Falls back to `documents[0].id ?? null` on delete |
+| `documentGroups` | `DocumentGroup[]` | `[]` | ✅ | User-defined collections (folders) for the sidebar |
 
-`DocumentRecord` = `{ id, title, content, createdAt, updatedAt, tags, starred, lastOpenedAt }`. Older payloads missing the last three fields are repaired on rehydrate (`tags` merged from body hashtags, `starred: false`, `lastOpenedAt: 0`).
+`DocumentRecord` = `{ id, title, content, createdAt, updatedAt, tags, starred, lastOpenedAt, groupIds }`. Older payloads missing the last four fields are repaired on rehydrate (`tags` merged from body hashtags, `starred: false`, `lastOpenedAt: 0`, `groupIds: []`).
+
+`DocumentGroup` = `{ id, name, createdAt }` — a user-named collection. Membership is stored on the document (`groupIds`), so one document can belong to several collections at once and each collection lists it independently. The collection list is sanitized on rehydrate (`sanitizeGroups`), and memberships pointing at a collection that no longer exists are dropped (`pruneGroupIds`).
+
+Actions: `createDocumentGroup(name)` (returns the new id, or `''` for a blank name), `renameDocumentGroup(id, name)`, `deleteDocumentGroup(id)` (documents survive and fall back to **Other**), `setDocumentGroups(id, groupIds)`.
 
 ### 3.2 Per-document collections
 
@@ -119,6 +124,10 @@ All three are `Record<documentId, …>`. They are deleted with the document.
 | `layout.previewLineNumbers` | `boolean` | `false` | ✅ | Source-line gutter in Preview / print |
 | `layout.outlineNumbering` | `'off' \| 'decimal' \| 'legal'` | `'off'` | ✅ | Heading labels in Preview / print only |
 | `layout.sidebarExpandedTags` | `string[]` | `[]` | ✅ | Open nested-tag paths |
+| `layout.sidebarCollapsedSections` | `string[]` | `[]` | ✅ | Folded sidebar section headers (`collections`/`pinned`/`recent`/`tags`/`other`) |
+| `layout.sidebarCollapsedGroups` | `string[]` | `[]` | ✅ | Folded collection ids in the sidebar |
+
+> `sidebarExpandedTags` lists what is **open** (tag branches start closed), while `sidebarCollapsedSections` / `sidebarCollapsedGroups` list what is **hidden** (sections and collections start open). The two conventions differ on purpose: a new collection should show its documents immediately, while a new tag branch should stay quiet until the user asks for it.
 
 > `previewSizes` and `previewTableColWidths` are persisted but are **not** part of `setLayout`'s signature. They have `setPreviewSize(key, patch)` and `setPreviewTableColWidths(key, widths)`.
 
@@ -146,11 +155,11 @@ There is **no `version` / `migrate` pair configured** on the persist options. Al
 
 ### 4.2 `partialize`
 
-Exactly these 21 keys are written:
+Exactly these 22 keys are written:
 
 ```ts
 {
-  documents, currentDocumentId,
+  documents, currentDocumentId, documentGroups,
   chats, chatArchives, revisions, prompts,
   viewMode, editorFontSize, uiFontSize,
   chatOpen, sidebarCollapsed, chatCollapsed, topbarCollapsed,
@@ -216,6 +225,9 @@ Steps, in execution order:
 | 9 | `persistApiKey` | Non-boolean → `true` |
 | 10 | `proposedEditHighlights` | Falsy or non-object → `{}` (defensive for HMR) |
 | 11 | Session API key | If `persistApiKey === false`, read `readSessionApiKey()` and restore it into `api.apiKey` |
+| 12 | `documentGroups` | `sanitizeGroups(state.documentGroups)` — a missing / non-array payload becomes `[]`; entries without a usable id or name are dropped, duplicate ids keep the first |
+| 13 | Document `groupIds` | Every document gets a `groupIds: string[]`. Ids are de-duplicated and any id with no matching collection is dropped (`pruneGroupIds`) |
+| 14 | Sidebar collapse fields | `layout.sidebarCollapsedSections` / `layout.sidebarCollapsedGroups` — non-array → `[]` |
 
 ### The flat-comment migration
 
@@ -249,6 +261,15 @@ All actions follow the same pattern: never mutate, always `set(...)`, return the
 | `deleteDocument(id)` | Removes the doc and `delete`s `chats[id]`, `chatArchives[id]`, `revisions[id]`, `comments[id]`; `currentDocumentId` → `documents[0]?.id ?? null` |
 | `setCurrentDocument(id)` | Direct set |
 | `updateDocumentContent(id, content)` | Bumps `updatedAt` |
+
+### 6.1a Collections
+
+| Action | Behaviour |
+|---|---|
+| `createDocumentGroup(name)` | Normalises the name (`normalizeGroupName` — trimmed, whitespace-collapsed, capped at 60 chars). A blank name is rejected and returns `''`. Appends `{ id: uuid(), name, createdAt }` and returns the id |
+| `renameDocumentGroup(id, name)` | Normalises; a blank name is ignored |
+| `deleteDocumentGroup(id)` | Removes the collection, strips the id from every document's `groupIds`, and drops the id from `layout.sidebarCollapsedGroups`. **The documents survive** |
+| `setDocumentGroups(id, groupIds)` | Replaces a document's membership. Ids are de-duplicated and any id with no matching collection is dropped |
 
 ### 6.2 Revisions
 

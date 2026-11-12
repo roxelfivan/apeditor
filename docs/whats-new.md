@@ -2,6 +2,15 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## v0.6.16 — Collections and foldable sidebar sections
+
+**File documents into named Collections, and fold away the sections you are not using.**
+
+- **Collections.** Create a group with **＋**, file a document with **📁**. A document can sit in several collections at once.
+- **Rename or delete** a collection from its heading. Deleting a collection keeps the documents — they move to **Other**.
+- **Fold sections and collections.** ▸ / ▾ on **Collections**, **Pinned**, **Recent**, **Tags**, **Other**, and each collection. What you folded stays folded next time.
+- **Search** also matches collection names. Export / import JSON keeps collections with the documents.
+
 ## v0.6.15 — Phone home-screen: top bar below the status bar
 
 **Add to Home Screen, then open ApEditor — the clock, signal, and battery stay visible, and the app top bar sits under them.**

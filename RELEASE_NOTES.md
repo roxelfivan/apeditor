@@ -1,3 +1,12 @@
+## v0.6.16 — Sidebar Collections + collapsible sections
+
+Patch on top of [v0.6.15](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.15). Named Collections (multi-membership), foldable sidebar sections / collections with persisted collapse state, and backup round-trip for groups.
+
+### Notes
+
+- See [`.release-notes-v0.6.16.md`](.release-notes-v0.6.16.md) for the surface list.
+- `package.json` version bumped to `0.6.16`.
+
 ## v0.6.15 — Phone PWA top bar sits below the status bar
 
 Patch on top of [v0.6.14](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.14). Home-screen PWA on a notched phone keeps the system status bar (time, signal, battery) visible and places the app top bar in the safe area below it.

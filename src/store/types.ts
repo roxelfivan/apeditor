@@ -10,6 +10,7 @@ import type {
   Comment,
   CommentOp,
   CommentRound,
+  DocumentGroup,
   DocumentRecord,
   MentionToken,
   Prompt,
@@ -47,6 +48,13 @@ export interface StoreState {
   // Documents
   documents: DocumentRecord[];
   currentDocumentId: string | null;
+
+  /**
+   * User-defined collections (folders) that group documents in the
+   * sidebar. Membership lives on `DocumentRecord.groupIds`, so a
+   * document can sit in several collections at once. Persisted.
+   */
+  documentGroups: DocumentGroup[];
 
   // Per-document chat histories, keyed by documentId.
   chats: Record<string, ChatMessage[]>;
@@ -143,6 +151,17 @@ export interface StoreState {
     outlineNumbering: 'off' | 'decimal' | 'legal';
     /** Expanded nested-tag paths in the sidebar. */
     sidebarExpandedTags: string[];
+    /**
+     * Collapsed sidebar section headers. Ids are
+     * `'collections' | 'pinned' | 'recent' | 'tags' | 'other'`.
+     * Empty (the default) means every section starts open — the list
+     * stores what is *hidden*, the opposite convention of
+     * `sidebarExpandedTags` (which stores what is open because tag
+     * branches start closed).
+     */
+    sidebarCollapsedSections: string[];
+    /** Collapsed collection ids in the sidebar. Empty = all open. */
+    sidebarCollapsedGroups: string[];
   };
 
   /**
@@ -210,6 +229,23 @@ export interface StoreState {
   setDocumentTags: (id: string, tags: string[]) => void;
   addDocumentTag: (id: string, tag: string) => void;
   removeDocumentTag: (id: string, tag: string) => void;
+  /**
+   * Create a collection and return its id. A blank / unusable name is
+   * rejected and returns `''` (no collection is created).
+   */
+  createDocumentGroup: (name: string) => string;
+  /** Rename a collection. A blank name is ignored. */
+  renameDocumentGroup: (id: string, name: string) => void;
+  /**
+   * Delete a collection. The documents it held are NOT deleted — they
+   * simply lose the membership and fall back to the Ungrouped list.
+   */
+  deleteDocumentGroup: (id: string) => void;
+  /**
+   * Replace a document's collection membership. Ids that do not
+   * resolve to a known collection are ignored.
+   */
+  setDocumentGroups: (id: string, groupIds: string[]) => void;
   setCompareSession: (session: StoreState['compareSession']) => void;
 
   /**
@@ -277,6 +313,8 @@ export interface StoreState {
       previewLineNumbers: boolean;
       outlineNumbering: 'off' | 'decimal' | 'legal';
       sidebarExpandedTags: string[];
+      sidebarCollapsedSections: string[];
+      sidebarCollapsedGroups: string[];
     }>
   ) => void;
   setPreviewSize: (
@@ -390,6 +428,12 @@ export interface ImportPlan {
   chats: ChatMessage[];
   chatArchives: ArchivedChat[];
   revisions: Revision[];
+  /**
+   * Collections the imported document belongs to. The store creates
+   * any that are missing locally, so a backup round-trip keeps the
+   * grouping.
+   */
+  groups: DocumentGroup[];
   /**
    * Final id the document will live under once the plan lands.
    * Equals the file's id for `'replace'` and `'skip'`, or a

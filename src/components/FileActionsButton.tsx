@@ -113,6 +113,7 @@ export function FileActionsButton() {
   // selectors so a typing keystroke in the editor does not re-render
   // this button, but each call is a shallow read — cheap.
   const documents = useStore((s) => s.documents);
+  const documentGroups = useStore((s) => s.documentGroups);
   const commentsByDoc = useStore((s) => s.comments);
   const chatsByDoc = useStore((s) => s.chats);
   const chatArchivesByDoc = useStore((s) => s.chatArchives);
@@ -302,6 +303,7 @@ export function FileActionsButton() {
       chats: chatsByDoc,
       chatArchives: chatArchivesByDoc,
       revisions: revisionsByDoc,
+      groups: documentGroups,
       appVersion: import.meta.env.VITE_APP_VERSION ?? 'unknown',
     });
     if (!backup) return;
@@ -414,6 +416,7 @@ export function FileActionsButton() {
           chats: parsed.chats,
           chatArchives: parsed.chatArchives,
           revisions: parsed.revisions,
+          groups: parsed.groups,
           resolvedId: d.documentId,
           strategy: 'keep-both',
         };
@@ -429,6 +432,7 @@ export function FileActionsButton() {
           chats: parsed.chats,
           chatArchives: parsed.chatArchives,
           revisions: parsed.revisions,
+          groups: parsed.groups,
           resolvedId: d.documentId,
           strategy: 'replace',
         };

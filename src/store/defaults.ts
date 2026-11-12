@@ -76,7 +76,9 @@ export const seedPrompts: Prompt[] = [
 export function makeDoc(
   title: string,
   content = '',
-  extra?: Partial<Pick<DocumentRecord, 'tags' | 'starred'>>
+  extra?: Partial<
+    Pick<DocumentRecord, 'tags' | 'starred' | 'groupIds'>
+  >
 ): DocumentRecord {
   const now = Date.now();
   return {
@@ -88,6 +90,7 @@ export function makeDoc(
     tags: extra?.tags ?? [],
     starred: extra?.starred ?? false,
     lastOpenedAt: now,
+    groupIds: extra?.groupIds ?? [],
   };
 }
 

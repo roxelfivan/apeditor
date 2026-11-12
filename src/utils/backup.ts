@@ -31,6 +31,7 @@ import type {
   ChatMessage,
   Comment,
   CommentRound,
+  DocumentGroup,
   DocumentRecord,
   MentionToken,
   ProposedEditRationale,
@@ -39,6 +40,7 @@ import type {
 import { v4 as uuid } from 'uuid';
 import { sanitizeFilename } from '@/utils/storage';
 import { mergeDocumentTags } from '@/utils/tags';
+import { normalizeGroupIds, sanitizeGroups } from '@/utils/collections';
 
 export const BACKUP_SCHEMA = 'apeditor-document-backup';
 export const BACKUP_VERSION = 1;
@@ -70,6 +72,13 @@ export interface DocumentBackup {
    */
   chatArchives: ArchivedChat[];
   revisions: Revision[];
+  /**
+   * The collections (folders) the exported document belongs to. Always
+   * emitted (empty array when the document is in none) so the file
+   * shape stays predictable. Older v1 files omit the field; parse
+   * treats that as `[]`.
+   */
+  groups: DocumentGroup[];
 }
 
 /**
@@ -83,6 +92,8 @@ export interface ParsedDocumentBackup {
   chats: ChatMessage[];
   chatArchives: ArchivedChat[];
   revisions: Revision[];
+  /** Collections the document belongs to (see `DocumentBackup.groups`). */
+  groups: DocumentGroup[];
   meta: {
     schema: typeof BACKUP_SCHEMA;
     version: number;
@@ -147,6 +158,8 @@ export function buildDocumentBackup(args: {
   chats: Record<string, ChatMessage[]>;
   chatArchives?: Record<string, ArchivedChat[]>;
   revisions: Record<string, Revision[]>;
+  /** Collections the document belongs to (see `DocumentBackup.groups`). */
+  groups?: DocumentGroup[];
   appVersion?: string;
 }): DocumentBackup | null {
   const document = args.documents.find((d) => d.id === args.documentId);
@@ -161,6 +174,11 @@ export function buildDocumentBackup(args: {
     chats: args.chats[args.documentId] ?? [],
     chatArchives: args.chatArchives?.[args.documentId] ?? [],
     revisions: args.revisions[args.documentId] ?? [],
+    // Only the collections this document actually belongs to travel
+    // with the backup.
+    groups: (args.groups ?? []).filter((g) =>
+      (document.groupIds ?? []).includes(g.id)
+    ),
   };
 }
 
@@ -279,6 +297,13 @@ function parseDocument(value: unknown): DocumentRecord {
     starred: value.starred === true,
     lastOpenedAt:
       typeof value.lastOpenedAt === 'number' ? value.lastOpenedAt : 0,
+    // Collection membership. Older backups have no `groupIds` — that
+    // means "in no collection".
+    groupIds: normalizeGroupIds(
+      Array.isArray(value.groupIds)
+        ? value.groupIds.filter((g): g is string => typeof g === 'string')
+        : []
+    ),
   };
 }
 
@@ -658,12 +683,17 @@ export function parseDocumentBackup(raw: string): ParsedDocumentBackup {
     }
   }
 
+  // Collections the document belongs to. Older backups omit the
+  // field — that means "no collections".
+  const groups = sanitizeGroups(parsed.groups);
+
   return {
     document,
     comments,
     chats,
     chatArchives,
     revisions,
+    groups,
     meta: {
       schema: BACKUP_SCHEMA,
       version,
@@ -762,6 +792,7 @@ export function buildKeepBothDocument(args: {
   sourceUpdatedAt: number;
   tags?: string[];
   starred?: boolean;
+  groupIds?: string[];
 }): DocumentRecord {
   const SUFFIX = ' (imported)';
   const baseSafe = sanitizeFilename(args.sourceTitle, '');
@@ -785,5 +816,6 @@ export function buildKeepBothDocument(args: {
     tags: mergeDocumentTags(args.tags, args.sourceContent),
     starred: Boolean(args.starred),
     lastOpenedAt: Date.now(),
+    groupIds: normalizeGroupIds(args.groupIds),
   };
 }
