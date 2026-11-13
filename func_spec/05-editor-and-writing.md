@@ -79,6 +79,7 @@ const showWriteTools = showWrite;
 | Control | write | preview | split (left Write) | split (left Preview) | graph |
 |---|:-:|:-:|:-:|:-:|:-:|
 | View-mode `<select>` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Select All** | ✅ | ✅ | ✅ | ✅ | — |
 | Left-pane Write \| Preview tabs | — | — | ✅ | ✅ | — |
 | `GraphViewControls` | — | — | ✅ | ✅ | ✅ |
 | **Format** dropdown (B/I/U + Size ±) | ✅ | — | ✅ | — | — |
@@ -95,6 +96,8 @@ const showWriteTools = showWrite;
 † the comment tray only renders in Write panes, and the counter only renders when the Local Model is the active provider. See [AI chat & prompts](07-ai-chat.md#6a-local-model-token-counter).
 
 In full `graph` mode the text panes are replaced entirely; Format, Comment, and Predict hide because they need the textarea. In Split they appear only when the left pane is Write. Preview (and Split-with-Preview) shows standalone **Size +** / **Size −** so the caption font can still be adjusted without Format. File actions and Save stay.
+
+**Select All** ([`SelectAllCopyDialog.tsx`](../src/components/SelectAllCopyDialog.tsx)) is on the toolbar whenever Write or Preview is showing. Click highlights the live textarea (`setSelectionRange(0, length)`) or the Preview `.prose-md` tree (`Range.selectNodeContents`), then opens a confirm dialog with that captured text. Confirm calls `writeClipboardText` ([`clipboard.ts`](../src/utils/clipboard.ts)); Cancel / Escape / backdrop leave the clipboard unchanged. Write copies Markdown source; Preview copies `innerText` of the rendered tree.
 
 ### Pane rendering
 

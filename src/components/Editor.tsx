@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { useStore, useCurrentDocument } from '@/store/useStore';
 import { PreviewMarkdown } from '@/components/PreviewMarkdown';
 import { PreviewNumberingMenu } from '@/components/PreviewNumberingMenu';
+import { SelectAllCopyDialog } from '@/components/SelectAllCopyDialog';
 import { useInlineCompletion } from '@/hooks/useInlineCompletion';
 import { useDocumentMentions } from '@/hooks/useDocumentMentions';
 import {
@@ -273,8 +274,13 @@ export function Editor() {
     editorFocusState.selectionEnd > editorFocusState.selectionStart
   );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const previewScrollRef = useRef<HTMLDivElement>(null);
   const writePaneRef = useRef<HTMLDivElement>(null);
   const splitRowRef = useRef<HTMLDivElement>(null);
+  const [copyDialog, setCopyDialog] = useState<{
+    text: string;
+    source: 'write' | 'preview';
+  } | null>(null);
   // Mirror overlay ref — used by `getSelectionRect` to measure the
   // selection's y-offset for the floating composer + the margin badges.
   const mirrorRef = useRef<HTMLDivElement>(null);
@@ -1494,6 +1500,46 @@ export function Editor() {
   const showGraph = viewMode === 'graph' || isSplit;
   const showWriteTools = showWrite;
 
+  /**
+   * Select All — highlight every character in the live Write textarea
+   * or every rendered node in Preview, then ask before putting that
+   * captured text on the clipboard. The dialog stores the text up
+   * front because focusing the confirm box collapses the live
+   * selection.
+   */
+  const onSelectAll = () => {
+    if (showWrite) {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      try {
+        ta.focus({ preventScroll: true });
+      } catch {
+        ta.focus();
+      }
+      const len = ta.value.length;
+      try {
+        ta.setSelectionRange(0, len);
+      } catch {
+        ta.select();
+      }
+      setCopyDialog({ text: ta.value, source: 'write' });
+      return;
+    }
+    if (!showPreview) return;
+    const root = previewScrollRef.current;
+    if (!root) return;
+    const target =
+      root.querySelector<HTMLElement>('.prose-md') ?? root;
+    const sel = window.getSelection();
+    if (sel) {
+      const range = document.createRange();
+      range.selectNodeContents(target);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+    setCopyDialog({ text: target.innerText ?? '', source: 'preview' });
+  };
+
   return (
     <div
       className="flex-1 flex flex-col min-w-0 bg-paper-base dark:bg-ape-base"
@@ -1558,6 +1604,18 @@ export function Editor() {
             <path d="M2 4 L5 7 L8 4" />
           </svg>
         </div>
+        {(showWrite || showPreview) && (
+          <button
+            type="button"
+            className="inline-flex items-center justify-center h-9 px-2.5 rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-panel text-[15px] leading-none text-paper-inkSoft dark:text-cyber-muted hover:border-cyber-clay dark:hover:border-cyber-cyan hover:text-cyber-clay dark:hover:text-cyber-cyan transition-colors"
+            onClick={onSelectAll}
+            onMouseDown={(e) => e.preventDefault()}
+            aria-label="Select all"
+            title="Select all contents, then confirm copying them to the clipboard"
+          >
+            Select All
+          </button>
+        )}
         {showGraph && (
           <GraphViewControls
             labelPx={graphLabelPx}
@@ -2413,6 +2471,7 @@ export function Editor() {
             )}
             {showPreview && isSplit && (
               <div
+                ref={previewScrollRef}
                 data-print-root
                 className="preview-scroll flex-1 min-h-0 min-w-0 p-4 bg-paper-base dark:bg-ape-base"
               >
@@ -2437,6 +2496,7 @@ export function Editor() {
         )}
         {showPreview && !isSplit && (
           <div
+              ref={previewScrollRef}
               data-print-root
               className="preview-scroll flex-1 min-h-0 min-w-0 p-4 bg-paper-base dark:bg-ape-base"
             >
@@ -2448,6 +2508,13 @@ export function Editor() {
               style={{ fontSize: `${editorFontSize}px`, lineHeight: 1.55 }}
             />
           </div>
+        )}
+        {copyDialog && (
+          <SelectAllCopyDialog
+            text={copyDialog.text}
+            source={copyDialog.source}
+            onClose={() => setCopyDialog(null)}
+          />
         )}
         {showGraph && (
           <div data-print-hide className="contents">

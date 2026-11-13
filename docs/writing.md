@@ -15,6 +15,8 @@ Use the dropdown on the left of the editor toolbar (order: Write → Preview →
 
 An empty Preview shows *Nothing to preview yet.*
 
+**Select All** on the editor toolbar (Write or Preview, including Split’s left pane) highlights everything in that box, then asks whether to copy it to the clipboard. Write copies the Markdown source; Preview copies the rendered text. Cancel leaves the clipboard unchanged.
+
 ### Line numbers and outline numbering
 
 On Preview (and Split with Preview on the left), extra toolbar controls:

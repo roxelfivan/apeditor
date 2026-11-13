@@ -1048,6 +1048,18 @@ html.dark .comment-textarea {
   caret-color: #00e5ff;
 }
 
+/* Select All / drag-select still needs a visible band: the textarea
+   glyphs are transparent (the mirror paints the words), so only the
+   selection background shows through. */
+.comment-textarea::selection {
+  background: rgba(232, 93, 59, 0.28);
+  color: transparent;
+}
+html.dark .comment-textarea::selection {
+  background: rgba(0, 229, 255, 0.28);
+  color: transparent;
+}
+
 .cm-mirror {
   /* Identical geometry to the textarea — see the rule that
      `.cm-mirror, .comment-textarea` shares padding, font, line-height
