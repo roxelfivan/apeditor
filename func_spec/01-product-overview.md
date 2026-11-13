@@ -157,6 +157,7 @@ Full changelogs are in [`RELEASE_NOTES.md`](../RELEASE_NOTES.md). The shape of t
 
 | Version | What changed |
 |---|---|
+| v0.6.17 | **Select All copies Write or Preview with confirm.** Toolbar Select All highlights the live box; Copy writes Markdown (Write) or rendered text (Preview) after confirm. Hidden in Graph-only mode. |
 | v0.6.16 | **Sidebar Collections + collapsible sections.** Named multi-membership groups; foldable Collections / Pinned / Recent / Tags / Other; persisted collapse; backup `groups` + `groupIds`. |
 | v0.6.15 | **Phone PWA top bar below the status bar.** `.app-safe-top` min-height includes `env(safe-area-inset-top)` so home-screen chrome is not swallowed by `h-14` + border-box padding; Help / Functional Specification headers and collapsed-shell match. |
 | v0.6.14 | **Write selection alignment.** Trailing-newline mirror/`textarea` line-count parity so caret / selection no longer drift at document bottom. |

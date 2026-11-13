@@ -1,3 +1,12 @@
+## v0.6.17 — Select All copies Write or Preview with confirm
+
+Patch on top of [v0.6.16](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.16). **Select All** on the editor toolbar highlights Write source or Preview text, then asks before copying to the clipboard.
+
+### Notes
+
+- See [`.release-notes-v0.6.17.md`](.release-notes-v0.6.17.md) for the surface list.
+- `package.json` version bumped to `0.6.17`.
+
 ## v0.6.16 — Sidebar Collections + collapsible sections
 
 Patch on top of [v0.6.15](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.15). Named Collections (multi-membership), foldable sidebar sections / collections with persisted collapse state, and backup round-trip for groups.
