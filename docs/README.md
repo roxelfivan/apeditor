@@ -21,7 +21,7 @@ This guide is for people using the app. It covers every screen and everyday task
 
 ## Start here
 
-1. [What's new](whats-new.md) — current release (v0.6.16: sidebar Collections + collapsible sections)
+1. [What's new](whats-new.md) — current release (v0.6.17: Select All copies Write or Preview)
 2. [Getting started](getting-started.md) — first launch, connect AI, first document
 3. [Your workspace](workspace.md) — layout, theme, panels, Help
 4. [Documents](documents.md) — create, rename, switch, delete

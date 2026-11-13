@@ -2,6 +2,16 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## v0.6.17 — Select All copies Write or Preview
+
+**Highlight everything in the editor box, then confirm before it goes on the clipboard.**
+
+- **Select All** on the editor toolbar in **Write** and **Preview** (including Split’s left pane). Hidden in Graph-only mode.
+- **Write** copies the Markdown source. **Preview** copies the rendered text (headings without `#`).
+- A confirm box shows the selected contents. **Copy** writes them to the clipboard; **Cancel** leaves the clipboard unchanged.
+
+No new Settings. No migration.
+
 ## v0.6.16 — Collections and foldable sidebar sections
 
 **File documents into named Collections, and fold away the sections you are not using.**
