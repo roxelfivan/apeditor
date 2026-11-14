@@ -54,4 +54,8 @@ assert.match(sidebar, /app-overlay-above-nav/, 'Documents overlay leaves the tab
 const chat = read('src/components/ChatPanel.tsx');
 assert.match(chat, /app-overlay-above-nav/, 'Chat overlay leaves the tab bar');
 
-console.log('mobile shell: 16 checks passed');
+assert.match(editor, /badges=\{/, 'phone comment chips mount in the tray');
+assert.match(css, /\.cm-tray__row--with-badges/, 'tray centres comment chips');
+assert.match(css, /\.cm-tray__badges/, 'comment chips have a centre slot');
+
+console.log('mobile shell: 19 checks passed');

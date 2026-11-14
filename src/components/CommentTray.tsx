@@ -12,7 +12,7 @@
  * remains as the swept-everything path when callers don't supply
  * per-row callbacks.
  */
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { Comment } from '@/types';
 import { TokenCounter } from '@/components/TokenCounter';
 
@@ -66,6 +66,11 @@ interface Props {
    * `reattachComment(id, { start, end })` from the store.
    */
   onReanchor?: (commentId: string) => void;
+  /**
+   * Optional numbered comment chips rendered in the centre of the
+   * tray (phone layout). Keeps 1 / 2 off the left and right edges.
+   */
+  badges?: ReactNode;
 }
 
 export function CommentTray({
@@ -80,6 +85,7 @@ export function CommentTray({
   onDismissOutdated,
   onDismissOne,
   onReanchor,
+  badges,
 }: Props) {
   const [staleOpen, setStaleOpen] = useState(false);
   if (count === 0) return null;
@@ -96,8 +102,10 @@ export function CommentTray({
 
   return (
     <div className="cm-tray" role="region" aria-label="Comment actions">
-      <div className="cm-tray__row">
+      <div className={`cm-tray__row${badges ? ' cm-tray__row--with-badges' : ''}`}>
         <div className="cm-tray__label">{sendableLabel}</div>
+        {badges ? <div className="cm-tray__badges">{badges}</div> : null}
+        <div className="cm-tray__end">
         {outdatedCount > 0 && onDismissOutdated && !hasPerRowControls && (
           <button
             type="button"
@@ -132,6 +140,7 @@ export function CommentTray({
             label="this Send to AI batch"
           />
         )}
+        </div>
       </div>
 
       {/* Per-comment stale list. Hidden until the user expands it so

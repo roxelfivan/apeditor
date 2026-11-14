@@ -2044,6 +2044,55 @@ html.dark .cm-tray {
   align-items: center;
   gap: 12px;
 }
+.cm-tray__row--with-badges {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.cm-tray__row--with-badges .cm-tray__label {
+  flex: unset;
+  min-width: 0;
+}
+.cm-tray__badges {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+.cm-tray__end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+.cm-tray__badges .cm-margin {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: auto;
+  height: auto;
+  border: none;
+  background: transparent;
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: min(48vw, 12rem);
+}
+.cm-tray__badges .cm-margin__badge {
+  position: static;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin: 0;
+  font-size: 13px;
+  flex-shrink: 0;
+  z-index: 2;
+}
+.cm-tray__badges .cm-margin__badge::before {
+  inset: 0;
+}
 .cm-tray__label {
   font-size: 13px;
   font-weight: 500;
@@ -2328,18 +2377,19 @@ html.dark .cm-undo-toast {
     z-index: 60;
   }
   .cm-margin {
-    /* Horizontal chip lane below the textarea on small viewports. */
+    /* Fallback chip lane (unused when chips sit in the tray). */
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    gap: 10px;
     width: 100%;
     flex-shrink: 0;
     border-left: none;
     border-top: 1px solid #e5dfd3;
     background: #f7f2e7;
-    height: 44px;
-    padding: 0 8px;
+    min-height: 2.75rem;
+    padding: 6px 20%;
     overflow-x: auto;
     overflow-y: hidden;
   }
