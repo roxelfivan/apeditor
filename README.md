@@ -14,12 +14,22 @@
 > functional specification). See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.6.18](https://img.shields.io/badge/version-0.6.18-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.18)
+[![v0.6.19](https://img.shields.io/badge/version-0.6.19-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.19)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
 
 ---
+
+## What's new in v0.6.19
+
+> Phone comment chips sit in the centre of Send to AI, each chip opens its own comment, and the box sits above the bar. Patch on top of [v0.6.18](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.18).
+
+1. **Centred chips** — 1 / 2 / 3 are in the middle of the bar, not on both edges.
+2. **Tap 1 or 2** — the last chip no longer steals the tap.
+3. **Box above the bar** — the comment sheet no longer covers Send to AI.
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.19 entry and prior changelogs.
 
 ## What's new in v0.6.18
 
@@ -722,7 +732,7 @@ A longer, task-oriented walkthrough of every screen lives under
 `⌘/Ctrl + /`) to open the same pages as a themed Help site — Light /
 Dark matches the editor. Start at the [table of contents](docs/README.md):
 
-- [What's new](docs/whats-new.md) — current release (v0.6.18)
+- [What's new](docs/whats-new.md) — current release (v0.6.19)
 - [Getting started](docs/getting-started.md) — first launch, connect AI, first document
 - [Your workspace](docs/workspace.md) — layout, theme, panels, Help
 - [Documents](docs/documents.md) — create, rename, switch, delete
@@ -857,6 +867,7 @@ per-release notes also ship on the GitHub release pages.
 
 | Version | Highlights |
 | --- | --- |
+| [v0.6.19](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.19) | **Phone comment chips.** Centred Send to AI badges; each chip opens its own comment; the comment box sits above the bar. |
 | [v0.6.18](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.18) | **Phone and desktop chrome.** Documents / Editor / Chat tab bar on phones; Write / Preview / Graph / Split tabs; document title opens Documents. |
 | [v0.6.17](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.17) | **Select All.** Highlight Write source or Preview text, then confirm before copying to the clipboard. |
 | [v0.6.16](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.16) | **Sidebar Collections.** Named multi-membership groups; foldable sections / collections with persisted collapse; backup round-trip. |

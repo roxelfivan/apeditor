@@ -2,6 +2,16 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## v0.6.19 — Phone comment chips you can tap, above the bar
+
+**On a phone, comment 1 / 2 / 3 sit in the middle of Send to AI. Each chip opens that comment. The comment box sits above the bar.**
+
+- **Centred chips.** Numbered badges are no longer pushed to both edges of the bar.
+- **Tap 1 or 2.** The last chip no longer steals the tap.
+- **No overlap.** The comment box docks above Send to AI so the chips stay fully visible.
+
+No new Settings. No migration.
+
 ## v0.6.18 — Easier to switch panes on phone and desktop
 
 **Documents, Editor, and Chat are labeled tabs on a phone. View modes are tabs on every size.**
