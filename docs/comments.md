@@ -10,7 +10,7 @@ Comments let you mark a passage, write what you want changed, and send every not
    - Type `@` to attach another document or its headings — see [Reference other documents](reference-other-documents.md).
 4. Click **Save**, or press `Ctrl+Enter` / `⌘Enter`. **Cancel** or Escape discards the draft. The comment body itself still needs text; `@` chips alone are not enough to Save a new comment.
 
-The passage is highlighted. A numbered badge appears in the margin (1, 2, 3… in document order).
+The passage is highlighted. A numbered badge appears in the margin (1, 2, 3… in document order). On a phone the badges sit in the **centre** of the Send to AI bar so they stay tappable and off the left and right edges.
 
 Comments have a soft limit of 2,000 characters (the counter turns into a long-comment warning) and a hard limit of 4,000.
 

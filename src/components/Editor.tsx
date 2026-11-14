@@ -2202,20 +2202,30 @@ export function Editor() {
                 )}
               </div>
               {/* Right-margin column. Renders one numbered badge per
-                  comment, positioned by `badgePositions`. On narrow
-                  viewports the CSS switches this to a horizontal
-                  chip lane (parent is `flex-col` when `isNarrow`). */}
+                  comment, positioned by `badgePositions`. On a phone
+                  the chips sit in the comment tray (centred) instead. */}
+              {!isNarrow && (
               <CommentMargin
                 comments={sortedComments}
                 badgePositions={badgePositions}
                 onSelect={handleSelectComment}
               />
+              )}
             </div>
             {/* Comment tray (sticky bar). Visible only when the doc
                 has ≥ 1 comment. The Send button dispatches a
                 `mvp:send-comments` event the ChatPanel handles. */}
             {currentComments.length > 0 && (
               <CommentTray
+                badges={
+                  isNarrow ? (
+                    <CommentMargin
+                      comments={sortedComments}
+                      badgePositions={badgePositions}
+                      onSelect={handleSelectComment}
+                    />
+                  ) : undefined
+                }
                 count={currentComments.length}
                 outdatedCount={
                   currentComments.filter((c) => c.outdated).length
