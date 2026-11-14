@@ -149,7 +149,7 @@ These are out of scope for the MVP. They are listed in the README under "What's 
 - **Token counting or cost tracking.**
 - **Internationalisation.** UI strings are English only.
 - **Real-time collaboration.**
-- **A mobile-first layout.** Narrow viewports degrade to overlay drawers; the product is desktop-first.
+- **A fully mobile-first product.** Narrow viewports use a Documents / Editor / Chat tab bar and overlay drawers; the default layout is still the desktop three-column shell.
 
 ## 7. Version history at a glance
 
@@ -157,6 +157,7 @@ Full changelogs are in [`RELEASE_NOTES.md`](../RELEASE_NOTES.md). The shape of t
 
 | Version | What changed |
 |---|---|
+| v0.6.18 | **Easier phone and desktop chrome.** Documents / Editor / Chat bottom tab bar on narrow viewports; Write / Preview / Graph / Split as tabs; document title opens Documents; pointer cursor, visible focus, reduced motion. |
 | v0.6.17 | **Select All copies Write or Preview with confirm.** Toolbar Select All highlights the live box; Copy writes Markdown (Write) or rendered text (Preview) after confirm. Hidden in Graph-only mode. |
 | v0.6.16 | **Sidebar Collections + collapsible sections.** Named multi-membership groups; foldable Collections / Pinned / Recent / Tags / Other; persisted collapse; backup `groups` + `groupIds`. |
 | v0.6.15 | **Phone PWA top bar below the status bar.** `.app-safe-top` min-height includes `env(safe-area-inset-top)` so home-screen chrome is not swallowed by `h-14` + border-box padding; Help / Functional Specification headers and collapsed-shell match. |

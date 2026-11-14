@@ -72,13 +72,13 @@ const showGraph = viewMode === 'graph' || isSplit;
 const showWriteTools = showWrite;
 ```
 
-`splitLeftMode: 'write' | 'preview'` lives on `layout` (persisted). It only affects Split: the left pane shows Write or Preview; the right pane is always Graph. The view-mode `<select>` option order is **Write → Preview → Graph → Split**.
+`splitLeftMode: 'write' | 'preview'` lives on `layout` (persisted). It only affects Split: the left pane shows Write or Preview; the right pane is always Graph. The view-mode tab order is **Write → Preview → Graph → Split**.
 
 ### Toolbar visibility matrix
 
 | Control | write | preview | split (left Write) | split (left Preview) | graph |
 |---|:-:|:-:|:-:|:-:|:-:|
-| View-mode `<select>` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| View-mode tabs | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Select All** | ✅ | ✅ | ✅ | ✅ | — |
 | Left-pane Write \| Preview tabs | — | — | ✅ | ✅ | — |
 | `GraphViewControls` | — | — | ✅ | ✅ | ✅ |

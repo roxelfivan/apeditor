@@ -2,6 +2,17 @@
 
 This page is the in-app changelog. It stays with the version in the top bar. Older releases are summarized at the bottom; the full developer changelog is [RELEASE_NOTES.md](https://github.com/roxelfivan/apeditor/blob/main/RELEASE_NOTES.md) on GitHub.
 
+## v0.6.18 — Easier to switch panes on phone and desktop
+
+**Documents, Editor, and Chat are labeled tabs on a phone. View modes are tabs on every size.**
+
+- **Phone bar.** **Documents**, **Editor**, and **Chat** sit above the home indicator. The slim left/right chevrons stay on desktop.
+- **View tabs.** **Write / Preview / Graph / Split** are one tap, not a dropdown.
+- **Title opens Documents.** Click the document name in the top bar.
+- **Larger taps on a phone.** Buttons and menus are easier to hit. Theme and More use icons, not emoji.
+
+No new Settings. No migration.
+
 ## v0.6.17 — Select All copies Write or Preview
 
 **Highlight everything in the editor box, then confirm before it goes on the clipboard.**

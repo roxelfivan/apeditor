@@ -14,12 +14,22 @@
 > functional specification). See [Credits](#credits) for details.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/darrylschaefer/ai-text-editor/blob/main/LICENSE)
-[![v0.6.17](https://img.shields.io/badge/version-0.6.17-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.17)
+[![v0.6.18](https://img.shields.io/badge/version-0.6.18-blueviolet.svg)](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.18)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Using the app?** Start with the [user guide](./docs/README.md) or **What's new** ([docs/whats-new.md](./docs/whats-new.md)). In the app, click **?** in the top bar (in-app Help renders the same pages, including What's new, and follows Light / Dark mode). Developers: click **`{ }`** (or `⌘/Ctrl+Shift+E`) for the [Functional Specification](./func_spec/README.md).
 
 ---
+
+## What's new in v0.6.18
+
+> Phone **Documents / Editor / Chat** tab bar, and Write / Preview / Graph / Split as tabs. Patch on top of [v0.6.17](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.17).
+
+1. **Phone bar** — labeled Documents / Editor / Chat above the home indicator; desktop keeps the edge chevrons.
+2. **View tabs** — Write, Preview, Graph, Split are one click.
+3. **Title opens Documents** — click the document name in the top bar.
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for the v0.6.18 entry and prior changelogs.
 
 ## What's new in v0.6.17
 
@@ -712,7 +722,7 @@ A longer, task-oriented walkthrough of every screen lives under
 `⌘/Ctrl + /`) to open the same pages as a themed Help site — Light /
 Dark matches the editor. Start at the [table of contents](docs/README.md):
 
-- [What's new](docs/whats-new.md) — current release (v0.6.17)
+- [What's new](docs/whats-new.md) — current release (v0.6.18)
 - [Getting started](docs/getting-started.md) — first launch, connect AI, first document
 - [Your workspace](docs/workspace.md) — layout, theme, panels, Help
 - [Documents](docs/documents.md) — create, rename, switch, delete
@@ -785,7 +795,8 @@ src/
     ├── RevisionHistory.tsx
     ├── SettingsModal.tsx    # Provider, System Message, Rationale Rules.
     ├── ImportMediaButton.tsx  → FileActionsButton.tsx (v0.5.0+)
-    ├── EdgeAnchor.tsx       # Side / top edge-anchor toggles.
+    ├── EdgeAnchor.tsx       # Side / top edge-anchor toggles (desktop).
+    ├── MobileBottomNav.tsx  # Phone Documents / Editor / Chat tab bar (v0.6.18).
     ├── ResizeHandle.tsx     # Drag-to-resize between sidebar/editor/chat.
     └── Topbar.tsx           # (inlined in App.tsx — see App.tsx)
 ```
@@ -846,6 +857,7 @@ per-release notes also ship on the GitHub release pages.
 
 | Version | Highlights |
 | --- | --- |
+| [v0.6.18](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.18) | **Phone and desktop chrome.** Documents / Editor / Chat tab bar on phones; Write / Preview / Graph / Split tabs; document title opens Documents. |
 | [v0.6.17](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.17) | **Select All.** Highlight Write source or Preview text, then confirm before copying to the clipboard. |
 | [v0.6.16](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.16) | **Sidebar Collections.** Named multi-membership groups; foldable sections / collections with persisted collapse; backup round-trip. |
 | [v0.6.15](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.15) | **Phone PWA top bar.** Safe-area inset so the status bar (time / signal / battery) stays visible and the app chrome sits below it. |
@@ -884,7 +896,7 @@ into this project one at a time.
 - **Google Drive sync, GitHub sync, Electron desktop build**.
 - **Token counting, cost tracking, fine-tune UI**.
 - **Multi-language i18n**.
-- **Mobile-specific layout** (works, but is a desktop-first design).
+- **A fully mobile-first product** (phones get a Documents / Editor / Chat bar; the default shell is still three desktop columns).
 
 ---
 

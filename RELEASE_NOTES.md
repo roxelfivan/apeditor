@@ -1,3 +1,12 @@
+## v0.6.18 — Easier phone and desktop chrome
+
+Patch on top of [v0.6.17](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.17). Phone **Documents / Editor / Chat** tab bar; Write / Preview / Graph / Split as tabs; document title opens Documents. Pointer cursor, visible focus, reduced motion.
+
+### Notes
+
+- See [`.release-notes-v0.6.18.md`](.release-notes-v0.6.18.md) for the surface list.
+- `package.json` version bumped to `0.6.18`.
+
 ## v0.6.17 — Select All copies Write or Preview with confirm
 
 Patch on top of [v0.6.16](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.16). **Select All** on the editor toolbar highlights Write source or Preview text, then asks before copying to the clipboard.

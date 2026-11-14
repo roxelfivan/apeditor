@@ -72,7 +72,7 @@ This codebase explains *why*, not *what*. Existing comments document the bug tha
 | Change the Apply waterfall | [`proposedEdit.ts`](../src/utils/proposedEdit.ts) | Run `npm run test:proposed-edit` |
 | Change the Predict behaviour | [`useInlineCompletion.ts`](../src/hooks/useInlineCompletion.ts) | The gating order in the state machine |
 | Add a toolbar control | [`Editor.tsx`](../src/components/Editor.tsx) | Decide whether it should hide in `graph` mode |
-| Add a view mode | `viewMode` union + `Editor.tsx` render branches + the toolbar `<select>` | The toolbar visibility matrix |
+| Add a view mode | `viewMode` union + `Editor.tsx` render branches + the toolbar tab list | The toolbar visibility matrix |
 | Add a resizable panel | [`useDragResize.ts`](../src/hooks/useDragResize.ts) (bounds) + [`ResizeHandle.tsx`](../src/components/ResizeHandle.tsx) | — |
 | Add a keyboard shortcut | [`App.tsx`](../src/App.tsx) for global, or the owning component for local | Respect the `editable` guard in the global handler |
 | Add a new `mvp:*` event | Dispatch and listen | Add the row to the table in [Events & components §2](12-events-and-ui-contracts.md#22-three-shapes-worth-knowing) |

@@ -156,7 +156,8 @@ HTTP OpenAI-compatible providers (minimax, openai, ollama, lm-studio) use this p
 | [`PromptLibrary.tsx`](../src/components/PromptLibrary.tsx) | 174 | Saved prompt CRUD + `{{selection}}` substitution. |
 | [`mentions/MentionChip.tsx`](../src/components/mentions/MentionChip.tsx) | 83 | The reference pill above an input. |
 | [`CommentMargin.tsx`](../src/components/CommentMargin.tsx) | 112 | Numbered badges in the right margin column. |
-| [`EdgeAnchor.tsx`](../src/components/EdgeAnchor.tsx) | 70 | Edge-pinned chevron that reveals a collapsed panel. |
+| [`EdgeAnchor.tsx`](../src/components/EdgeAnchor.tsx) | 70 | Edge-pinned chevron that reveals a collapsed panel (desktop). |
+| [`MobileBottomNav.tsx`](../src/components/MobileBottomNav.tsx) | — | Phone Documents / Editor / Chat tab bar (`NARROW_QUERY`). |
 
 ### `src/utils/` — 21 files
 
@@ -208,9 +209,10 @@ src/main.tsx
        │    ├─ <Sidebar />           // returns null when sidebarCollapsed
        │    ├─ <Editor />            // the middle column
        │    ├─ <ChatPanel />         // returns null when chatCollapsed
-       │    ├─ <EdgeAnchor side="left" />    // in the content row
+       │    ├─ <EdgeAnchor side="left" />    // desktop only
        │    └─ <EdgeAnchor side="right" />
        ├─ <EdgeAnchor side="top" />   // sibling of Topbar; .edge-anchor--top is below the status-bar inset
+       ├─ <MobileBottomNav />         // narrow: Documents / Editor / Chat
        ├─ <MoreSheet />               // narrow ⋯ bottom sheet, portaled to document.body
        ├─ <SettingsModal open={…} />
        ├─ <PromptLibrary open={…} />
