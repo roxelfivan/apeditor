@@ -2220,6 +2220,7 @@ export function Editor() {
                 badges={
                   isNarrow ? (
                     <CommentMargin
+                      layout="inline"
                       comments={sortedComments}
                       badgePositions={badgePositions}
                       onSelect={handleSelectComment}

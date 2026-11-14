@@ -30,6 +30,12 @@ interface Props {
    * switch to a horizontal chip lane on `< sm` viewports).
    */
   className?: string;
+  /**
+   * `column` (default) absolutely positions each badge on its line.
+   * `inline` is a centred row (phone tray): no `top` offset, every
+   * comment is shown even before line metrics land.
+   */
+  layout?: 'column' | 'inline';
 }
 
 export function CommentMargin({
@@ -37,6 +43,7 @@ export function CommentMargin({
   badgePositions,
   onSelect,
   className,
+  layout = 'column',
 }: Props) {
   // Sort by document position so the numbering is stable and matches
   // the order the passages appear in the article.
@@ -55,7 +62,7 @@ export function CommentMargin({
     >
       {sorted.map((comment, i) => {
         const y = badgePositions[comment.id];
-        if (typeof y !== 'number') return null;
+        if (layout === 'column' && typeof y !== 'number') return null;
         // True when the comment has at least one applied-edit
         // rationale attached across any of its rounds. The badge
         // shows a small dot to indicate "this comment has a
@@ -75,17 +82,18 @@ export function CommentMargin({
             ]
               .filter(Boolean)
               .join(' ')}
-            // Desktop: absolute y from line position. On `< sm` the
-            // chip-lane CSS sets `position: static`, so `top` is ignored.
-            style={{ top: `${y}px` }}
-            onClick={() => onSelect(comment.id)}
-            // PointerUp is used in addition to onClick so tap-driven
-            // mobile behaviour fires before drag-from-scroll is also
-            // resolved. `onClick` alone is fine on desktop; both
-            // paths are no-ops on the other's platform.
+            // Desktop column: absolute y from line position. Inline
+            // (phone tray) must not set `top` — it would stack chips.
+            style={layout === 'column' && typeof y === 'number' ? { top: `${y}px` } : undefined}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(comment.id);
+            }}
             onPointerUp={(e) => {
-              // Prevent the parent textarea from blurring — keeps the
-              // editor focus intact while interacting with the margin.
+              // Prevent the parent textarea from blurring. Inline
+              // chips use click only so one tap cannot hit two ids.
+              e.stopPropagation();
+              if (layout === 'inline') return;
               e.preventDefault();
               onSelect(comment.id);
             }}

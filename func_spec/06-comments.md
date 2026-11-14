@@ -182,10 +182,10 @@ The merge is event-based:
 ### 5.2 `CommentMargin` — the badges
 
 - Re-sorts by `a.start - b.start` in a `useMemo`, so **badge numbers follow document order, not creation order**.
-- Skips any comment missing from `badgePositions` (it has not been measured yet this render).
+- `layout="column"` (desktop) skips any comment missing from `badgePositions`. `layout="inline"` (phone tray) shows every comment and does not apply `top`.
 - Renders `.cm-margin__badge-rationale` when any round has `applied.length > 0`.
 - `aria-label` = `Comment ${i+1}: ${body.slice(0,30)}` plus `(anchor needs attention)` or `(has rationale)`.
-- Both `onClick` and `onPointerUp` call `onSelect`, and `onPointerUp` calls `preventDefault()` to stop the textarea blurring. That means a single tap fires the callback twice — idempotent, but a real double invocation.
+- Column layout: both `onClick` and `onPointerUp` call `onSelect`, and `onPointerUp` calls `preventDefault()` to stop the textarea blurring. Inline layout uses `onClick` only so one tap cannot select two ids. Tray chips are `position: relative` with `::before { pointer-events: none }` so the last chip cannot steal taps from 1 / 2.
 
 ### 5.3 `CommentComposer` — creating a comment
 
@@ -324,7 +324,7 @@ Which comment an edit belongs to is **inferred** when the caller does not supply
 | 6 | ⌘Z must return before `preventDefault()` when the stack is empty, or native textarea undo breaks. |
 | 7 | The auto-reanchor effect depends on `[doc?.id, viewMode]`. Dropping `viewMode` leaves the scroll-sync listener bound to a detached textarea after a mode switch. |
 | 8 | `hasRationale` reads `r.applied.length` with no `Array.isArray` guard. A round missing `applied` throws. `ensureRoundsShape` is what prevents this. |
-| 9 | `CommentMargin` invokes `onSelect` twice per tap (`onPointerUp` then `onClick`). Idempotent, but do not add side effects to the handler. |
+| 9 | `CommentMargin` column layout invokes `onSelect` twice per tap (`onPointerUp` then `onClick`). Idempotent; do not add side effects. Inline (phone tray) uses `onClick` only. |
 | 10 | `CommentComposer` registers its Escape effect twice. |
 
 ## 10. Next
