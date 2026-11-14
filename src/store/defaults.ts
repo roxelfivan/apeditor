@@ -117,10 +117,10 @@ key). The whole app also works with no AI at all.
 
 ## 2. ✍️ Write, Preview, Graph, or Split
 
-**Pick a mode from the editor dropdown** (Write → Preview → Graph →
+**Pick a mode from the editor tabs** (Write → Preview → Graph →
 Split). **Write** is a plain textarea, **Preview** renders your
 Markdown, **Graph** is the full-pane map, and **Split** keeps Write or
-Preview on the left (use the tabs) with Graph on the right.
+Preview on the left (use the pane tabs) with Graph on the right.
 \`⌘/Ctrl + B\` / \`I\` / \`U\` bold, italicise, and underline while
 you type; the **Format** menu also adjusts the text size.
 
