@@ -2151,8 +2151,8 @@ export function Editor() {
               spellCheck={false}
                 />
                 {/* Floating composer — anchored to the selection.
-                    On `< sm` viewports `bottomSheet` activates the
-                    fixed bottom-sheet CSS variant. */}
+                    On `< sm` viewports `bottomSheet` docks the sheet
+                    in this wrapper, above the comment tray. */}
                 {composerOpen && pendingSelection && composerPosition && (
                   <CommentComposer
                     position={composerPosition}

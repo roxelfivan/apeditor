@@ -214,6 +214,7 @@ Props include `comment`, `index`, `position`, `onSaveBody`, `onDelete`, `onReatt
 - **Save gating:** `canSave = trimmed.length > 0 || draftMentions.length > 0` — a body consisting only of `@` references is valid.
 - **Escape:** in edit mode it exits edit and resets the draft from the comment; otherwise it closes.
 - **Resize:** 8 handles, suppressed entirely in `bottomSheet` mode. Size persists to `apeditor:popover-size:<commentId>`; `loadPopoverSize` rejects payloads outside the popover bounds and accepts both `{w,h}` and the older `{width,height}` shape.
+- **Narrow sheet:** `.cm-popover--sheet` / `.cm-composer--sheet` are `position: absolute` in `[data-cm-wrapper]` with `bottom: 8px` and `max-height` capped to the write pane, so the box sits above the Send to AI / chip bar instead of overlapping it.
 - `RationaleEntry` renders a compact diff: `lineDiff(entry.original, entry.replacement)` filtered to at most 2 removes then 2 adds, with `+` / `−` markers, `aria-hidden`.
 
 ### 5.5 `CommentTray` — Send to AI
