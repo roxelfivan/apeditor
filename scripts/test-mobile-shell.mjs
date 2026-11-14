@@ -55,7 +55,18 @@ const chat = read('src/components/ChatPanel.tsx');
 assert.match(chat, /app-overlay-above-nav/, 'Chat overlay leaves the tab bar');
 
 assert.match(editor, /badges=\{/, 'phone comment chips mount in the tray');
+assert.match(editor, /layout="inline"/, 'tray chips use inline layout (no stacked top offsets)');
 assert.match(css, /\.cm-tray__row--with-badges/, 'tray centres comment chips');
 assert.match(css, /\.cm-tray__badges/, 'comment chips have a centre slot');
+assert.match(
+  css,
+  /\.cm-tray__badges \.cm-margin__badge\s*\{[\s\S]*position:\s*relative/,
+  'tray badges contain their own hit area'
+);
+assert.match(
+  css,
+  /\.cm-tray__badges \.cm-margin__badge::before[\s\S]*pointer-events:\s*none/,
+  'tray badge ::before does not steal taps from neighbouring chips'
+);
 
-console.log('mobile shell: 19 checks passed');
+console.log('mobile shell: 22 checks passed');
