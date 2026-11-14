@@ -42,6 +42,7 @@ npm run test:preview-markdown-render
 npm run test:table-model
 npm run test:table-edits
 npm run test:safe-area-topbar
+npm run test:mobile-shell
 ```
 
 ---
@@ -278,6 +279,7 @@ npm run test:preview-markdown-render
 npm run test:table-model
 npm run test:table-edits
 npm run test:safe-area-topbar
+npm run test:mobile-shell
 npm run check:docs
 npm run build
 ```

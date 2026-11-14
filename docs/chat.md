@@ -9,7 +9,7 @@ Chat is the right-hand panel. Use it for free-form questions, selection-based re
 - **History** — browse the live thread and archived conversations for this document
 - **Archive** — park the live conversation and start a new empty chat (disabled when empty). Archived threads are **not** sent to the model on the next prompt.
 - **Clear** — deletes this document’s **live** conversation without archiving (disabled when empty)
-- **×** — hides the panel (show it again from the right-edge chevron)
+- **Close** — hides the panel (show it again from the right-edge chevron on desktop, or the **Chat** tab on a phone)
 
 You can drag the left edge of the panel to resize its width, and drag the thin divider between the messages area and the input area to grow or shrink the composer (**include selection** and the typing box move with the handle; the messages list fills the leftover space above). Both splits persist across reloads.
 

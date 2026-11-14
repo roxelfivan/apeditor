@@ -11,6 +11,7 @@ import { SettingsModal } from '@/components/SettingsModal';
 import { HelpDocs } from '@/components/HelpDocs';
 import { FuncSpecDocs } from '@/components/FuncSpecDocs';
 import { EdgeAnchor } from '@/components/EdgeAnchor';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { applyThemeClass } from '@/utils/theme';
 import { requiresApiKey } from '@/config/providers';
 import { isHelpPageId, type HelpPageId } from '@/docs/catalog';
@@ -40,6 +41,7 @@ function Topbar({
   onOpenFuncSpec,
   moreOpen,
   onToggleMore,
+  onOpenDocuments,
 }: {
   onOpenSettings: () => void;
   onOpenPrompts: () => void;
@@ -48,6 +50,7 @@ function Topbar({
   onOpenFuncSpec: () => void;
   moreOpen: boolean;
   onToggleMore: () => void;
+  onOpenDocuments: () => void;
 }) {
   const theme = useStore((s) => s.theme);
   const toggleTheme = useStore((s) => s.toggleTheme);
@@ -153,10 +156,15 @@ function Topbar({
         </div>
       )}
       {doc && (
-        <span className="ml-1 sm:ml-3 text-sm text-paper-ink dark:text-cyber-primary truncate flex items-center gap-1 min-w-0 max-w-[40vw] sm:max-w-none">
+        <button
+          type="button"
+          onClick={onOpenDocuments}
+          title="Open documents"
+          className="ml-1 sm:ml-3 text-sm text-paper-ink dark:text-cyber-primary truncate flex items-center gap-1 min-w-0 max-w-[40vw] sm:max-w-none text-left hover:text-cyber-clay dark:hover:text-cyber-cyan"
+        >
           <span className="text-paper-inkSoft dark:text-cyber-muted shrink-0">/</span>
           <span className="truncate">{doc.title}</span>
-        </span>
+        </button>
       )}
       <div className="flex-1 min-w-2" />
       {isNarrow ? (
@@ -169,9 +177,16 @@ function Topbar({
           aria-haspopup="dialog"
           aria-expanded={moreOpen}
         >
-          <span className="text-lg font-semibold leading-none" aria-hidden>
-            ⋯
-          </span>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 16 16"
+            className="h-4 w-4"
+            fill="currentColor"
+          >
+            <circle cx="3" cy="8" r="1.4" />
+            <circle cx="8" cy="8" r="1.4" />
+            <circle cx="13" cy="8" r="1.4" />
+          </svg>
         </button>
       ) : (
         extraItems.map((item) => (
@@ -194,9 +209,33 @@ function Topbar({
         title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
         aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
       >
-        <span className="text-base leading-none" aria-hidden>
-          {theme === 'dark' ? '☀' : '☾'}
-        </span>
+        {theme === 'dark' ? (
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 16 16"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          >
+            <circle cx="8" cy="8" r="3" />
+            <path d="M8 1.5 V3 M8 13 V14.5 M1.5 8 H3 M13 8 H14.5 M3.4 3.4 L4.5 4.5 M11.5 11.5 L12.6 12.6 M12.6 3.4 L11.5 4.5 M4.5 11.5 L3.4 12.6" />
+          </svg>
+        ) : (
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 16 16"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M13 10.2 A5.2 5.2 0 0 1 6.2 3.2 5.5 5.5 0 1 0 13 10.2 Z" />
+          </svg>
+        )}
       </button>
       <button
         type="button"
@@ -312,11 +351,18 @@ export default function App() {
   const topbarCollapsed = useStore((s) => s.topbarCollapsed);
   const setTopbarCollapsed = useStore((s) => s.setTopbarCollapsed);
   const isNarrow = useIsNarrow();
+  const hideBottomNav =
+    settingsOpen ||
+    promptsOpen ||
+    revisionsOpen ||
+    helpOpen ||
+    funcSpecOpen ||
+    moreOpen;
 
   // Narrow viewports cannot host three peer columns. Collapse side
   // panels when we first land on — or transition into — a narrow
-  // viewport so the editor owns the first paint; EdgeAnchors reopen
-  // them as overlays. Skip re-collapsing while already narrow so a
+  // viewport so the editor owns the first paint; the bottom tab bar
+  // reopens them as overlays. Skip re-collapsing while already narrow so a
   // user who opened a panel is not immediately closed again.
   const wasNarrowRef = useRef<boolean | null>(null);
   useEffect(() => {
@@ -450,7 +496,7 @@ export default function App() {
 
   return (
     <div
-      className={`h-full flex flex-col relative ${topbarCollapsed ? 'app-shell-safe-top' : ''}`}
+      className={`h-full flex flex-col relative ${topbarCollapsed ? 'app-shell-safe-top' : ''} ${isNarrow && !hideBottomNav ? 'app-shell-with-bottom-nav' : ''}`}
     >
       {!topbarCollapsed && (
         <div data-print-hide className="shrink-0">
@@ -468,6 +514,11 @@ export default function App() {
           }}
           moreOpen={moreOpen}
           onToggleMore={() => setMoreOpen((open) => !open)}
+          onOpenDocuments={() => {
+            setChatCollapsed(true);
+            setChatOpen(false);
+            setSidebarCollapsed(false);
+          }}
         />
         </div>
       )}
@@ -479,9 +530,11 @@ export default function App() {
         <div data-print-hide className="contents">
         <ChatPanel />
         </div>
-        {/* Edge-anchor toggles: a single always-visible chevron strip on
-            each side acts as both the hide and the show button. The
-            chevron direction reflects the current state. */}
+        {/* Desktop: slim edge chevrons. Phone / landscape-phone: the
+            bottom tab bar is the primary Documents / Editor / Chat
+            switcher — the chevrons are too easy to miss-tap. */}
+        {!isNarrow && (
+        <>
         <div data-print-hide>
         <EdgeAnchor
           side="left"
@@ -489,7 +542,6 @@ export default function App() {
           label={sidebarCollapsed ? 'Show sidebar (⌘/Ctrl + B)' : 'Hide sidebar (⌘/Ctrl + B)'}
           onClick={() => {
             const next = !sidebarCollapsed;
-            if (!next && isNarrow) setChatCollapsed(true);
             setSidebarCollapsed(next);
           }}
         />
@@ -502,16 +554,14 @@ export default function App() {
           onClick={() => {
             const next = !chatCollapsed;
             setChatCollapsed(next);
-            // When un-collapsing, also make sure the legacy open flag
-            // is set so the panel renders. On narrow screens only one
-            // overlay is open at a time.
             if (!next) {
               setChatOpen(true);
-              if (isNarrow) setSidebarCollapsed(true);
             }
           }}
         />
         </div>
+        </>
+        )}
       </div>
       {/* Top-anchor is rendered as a sibling of the Topbar (not inside the
           content row) so its `absolute top-0` resolves to the very top of
@@ -525,6 +575,8 @@ export default function App() {
         onClick={() => setTopbarCollapsed(!topbarCollapsed)}
       />
       </div>
+
+      {isNarrow && !hideBottomNav && <MobileBottomNav />}
 
       <MoreSheet
         open={moreOpen}

@@ -87,6 +87,139 @@ button,
   touch-action: manipulation;
 }
 
+/* UI UX Pro Max pre-delivery: pointer cursor, visible focus, reduced
+   motion, and a phone bottom-nav reserve so overlays do not cover the
+   workspace tabs. The nav query matches `NARROW_QUERY` in
+   src/hooks/useMediaQuery.ts. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+a[href],
+select:not(:disabled),
+summary,
+label[for] {
+  cursor: pointer;
+}
+button:disabled,
+[role="button"][aria-disabled="true"],
+select:disabled {
+  cursor: not-allowed;
+}
+
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: 2px solid rgb(27 70 54);
+  outline-offset: 2px;
+}
+html.dark button:focus-visible,
+html.dark [role="button"]:focus-visible,
+html.dark a:focus-visible,
+html.dark select:focus-visible,
+html.dark summary:focus-visible {
+  outline-color: rgb(111 191 153);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:not(.allow-motion) *,
+  html:not(.allow-motion) *::before,
+  html:not(.allow-motion) *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:root {
+  --app-bottom-nav-height: 0px;
+}
+
+@media (max-width: 767px), (max-height: 540px) {
+  :root {
+    --app-bottom-nav-height: calc(
+      3.5rem + env(safe-area-inset-bottom, 0px)
+    );
+  }
+  .btn-icon-square,
+  .btn-icon-square-fire {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    width: 2.75rem;
+  }
+  [role="menuitem"] {
+    min-height: 2.75rem;
+    display: flex;
+    align-items: center;
+  }
+  [data-editor-toolbar-scroll] button,
+  [data-editor-toolbar-scroll] [role="tab"] {
+    min-height: 2.75rem;
+  }
+}
+
+.app-shell-with-bottom-nav {
+  padding-bottom: var(--app-bottom-nav-height);
+}
+
+.app-overlay-above-nav {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: var(--app-bottom-nav-height);
+}
+
+.app-bottom-nav {
+  position: fixed;
+  z-index: 45;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  min-height: var(--app-bottom-nav-height);
+  padding: 0.25rem 0.5rem env(safe-area-inset-bottom, 0px);
+  padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
+  padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
+  box-sizing: border-box;
+  border-top: 1px solid rgb(var(--cyber-muted) / 0.25);
+  background: color-mix(in srgb, #f4f1ea 92%, transparent);
+  backdrop-filter: blur(10px);
+}
+html.dark .app-bottom-nav {
+  border-top-color: rgb(var(--cyber-muted) / 0.35);
+  background: color-mix(in srgb, #11171b 92%, transparent);
+}
+.app-bottom-nav__tab {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 2.75rem;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: rgb(var(--cyber-muted));
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+.app-bottom-nav__tab--active {
+  color: rgb(var(--cyber-primary));
+  background: rgb(27 70 54 / 0.08); /* cyber-clay */
+}
+html.dark .app-bottom-nav__tab--active {
+  background: rgb(111 191 153 / 0.12);
+}
+
 /* ---------- Theme-aware text tokens ----------
    `text-cyber-primary` and `text-cyber-muted` resolve to these RGB
    triplets. Light uses near-black ink + warm grey-muted; dark uses warm

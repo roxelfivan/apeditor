@@ -4,7 +4,7 @@ The center pane is your Markdown editor. You always edit plain Markdown; Preview
 
 ## Write, Preview, Graph, and Split
 
-Use the dropdown on the left of the editor toolbar (order: Write → Preview → Graph → Split):
+Use the **Write / Preview / Graph / Split** tabs on the left of the editor toolbar:
 
 | Mode | What you see |
 | --- | --- |

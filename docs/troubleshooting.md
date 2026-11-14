@@ -51,7 +51,7 @@ If you see **No text was recognized in the selected file(s).**, try a clearer im
 
 Use the chevrons on the left, right, or top edge of the window. Shortcuts: `Ctrl+B` / `⌘B` for the sidebar (when not typing in the editor), `Ctrl+Shift+C` / `⌘Shift+C` for Chat.
 
-If you clicked **×** on Chat, use the right-edge chevron to show it again.
+If you closed Chat, use the right-edge chevron on desktop or the **Chat** tab on a phone to show it again.
 
 ## My documents vanished
 

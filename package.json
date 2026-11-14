@@ -33,6 +33,7 @@
     "test:table-model": "node scripts/test-table-model.mjs",
     "test:table-edits": "node scripts/test-table-edits.mjs",
     "test:safe-area-topbar": "node scripts/test-safe-area-topbar.mjs",
+    "test:mobile-shell": "node scripts/test-mobile-shell.mjs",
     "check:docs": "node scripts/check-func-spec-links.mjs"
   },
   "dependencies": {

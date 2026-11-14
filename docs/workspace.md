@@ -4,7 +4,7 @@ The main window has four regions: **top bar**, **Documents** sidebar, **editor**
 
 ## Top bar
 
-The top bar shows the ApEditor logo, version, and the title of the open document (after a `/`).
+The top bar shows the ApEditor logo, version, and the title of the open document (after a `/`). Click the title to open **Documents**.
 
 On a phone **home-screen / PWA**, the top bar sits in the **safe area** below the system status bar. Time, signal, and battery stay visible; the app chrome starts underneath. Landscape notches get the same left/right inset. If you hide the top bar, the editor still starts below that status-bar band.
 
@@ -14,7 +14,7 @@ On a phone **home-screen / PWA**, the top bar sits in the **safe area** below th
 | **{ }** | Opens the **Functional Specification** — a developer guide to the codebase, with architecture, contracts, and maintenance notes. Groups pages into Parts. Not part of this user guide. |
 | Clock | Opens [Revision history](revisions.md) |
 | Bookmark | Opens the [Prompt library](prompt-library.md) |
-| **☀ Light** / **☾ Dark** | Toggles theme (also restyles Help) |
+| Sun / moon | Toggles theme (also restyles Help) |
 | Gear | Opens [Settings](settings.md) |
 
 Press `Ctrl+/` / `⌘/` (or `Ctrl+Shift+/` / `⌘Shift+/` for `?` on some keyboards) when you are not typing in a field to open Help. Press `Ctrl+Shift+E` / `⌘Shift+E` to open the Functional Specification. Press **Esc** to close either.
@@ -22,6 +22,8 @@ Press `Ctrl+/` / `⌘/` (or `Ctrl+Shift+/` / `⌘Shift+/` for `?` on some keyboa
 If Minimax or OpenAI is selected and you have not saved an API key, the gear shows a small amber reminder.
 
 To hide the top bar, click the chevron on the **top edge** of the window. Click it again to show the bar.
+
+On a phone (or a short landscape viewport), the left and right chevrons are replaced by a **Documents / Editor / Chat** bar along the bottom. That bar stays above the home indicator; Help, Settings, and the **⋯** sheet cover it while they are open.
 
 ## Sidebar and Chat
 
@@ -37,14 +39,15 @@ The sidebar is a stack of collapsible sections: **Collections**, **Pinned** (sta
 
 Every section heading and every collection has a **▸ / ▾** arrow, so you can fold away the files you no longer want to see. What you folded is remembered in this browser.
 
-| Edge | Shortcut | Action |
+| Control | Shortcut | Action |
 | --- | --- | --- |
-| Left chevron | `Ctrl+B` / `⌘B` | Show or hide the sidebar |
-| Right chevron | `Ctrl+Shift+C` / `⌘Shift+C` | Show or hide Chat |
+| Left chevron (desktop) or **Documents** (phone) | `Ctrl+B` / `⌘B` | Show or hide the sidebar |
+| Right chevron (desktop) or **Chat** (phone) | `Ctrl+Shift+C` / `⌘Shift+C` | Show or hide Chat |
+| **Editor** (phone) | — | Close both overlays and return to the document |
 
 Those shortcuts apply when you are **not** typing in the editor. Inside the editor, `Ctrl+B` / `⌘B` is **Bold**.
 
-Chat also has an **×** in its header. After you close it that way, use the right-edge chevron (or the shortcut) to bring Chat back.
+Chat also has a close control in its header. After you close it that way, use the right-edge chevron on desktop, the **Chat** tab on a phone, or the shortcut to bring Chat back.
 
 ## Resize columns
 

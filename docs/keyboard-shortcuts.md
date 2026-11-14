@@ -2,7 +2,7 @@
 
 On Windows and Linux use **Ctrl**. On Mac use **⌘**.
 
-Global shortcuts are ignored while you are typing in a text field, so they do not fight Bold or Chat send. Edge-anchor tooltips still mention the panel shortcuts.
+Global shortcuts are ignored while you are typing in a text field, so they do not fight Bold or Chat send. Desktop edge-anchor tooltips still mention the panel shortcuts; on a phone, **Documents** / **Editor** / **Chat** are on the bottom bar.
 
 ## App
 

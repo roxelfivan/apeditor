@@ -24,6 +24,7 @@
 | `test:token-estimate` | `node scripts/test-token-estimate.mjs` | The chars/4 token heuristic and `buildRequestPreview` packing |
 | `test:token-counter-render` | `node scripts/test-token-counter-render.mjs` | `TokenCounter` markup: counts, budget tones, tooltip text |
 | `test:safe-area-topbar` | `node scripts/test-safe-area-topbar.mjs` | PWA top chrome must pad `env(safe-area-inset-top)` without a border-box `h-14` |
+| `test:mobile-shell` | `node scripts/test-mobile-shell.mjs` | Phone tab bar, overlay inset, view-mode tabs, pointer/focus/reduced-motion |
 
 There is **no lint script and no CI configuration**. `npm run typecheck` plus the `test:*` scripts is the full quality gate.
 

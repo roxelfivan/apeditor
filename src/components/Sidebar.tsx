@@ -455,7 +455,7 @@ export function Sidebar() {
 
   if (isNarrow) {
     return (
-      <div className="fixed inset-0 z-40 flex">
+      <div className="app-overlay-above-nav z-40 flex">
         <button
           type="button"
           className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -464,7 +464,7 @@ export function Sidebar() {
         />
         <div
           ref={containerRef}
-          className="relative z-10 h-full w-[min(100%,20rem)] max-w-[85vw] shadow-ape-paper-lift dark:shadow-2xl pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+          className="relative z-10 h-full w-[min(100%,20rem)] max-w-[85vw] shadow-ape-paper-lift dark:shadow-2xl pt-[env(safe-area-inset-top)]"
           role="dialog"
           aria-modal="true"
           aria-label="Documents"

@@ -1577,32 +1577,37 @@ export function Editor() {
           data-editor-toolbar-scroll
           className="flex flex-nowrap items-center gap-2 min-w-0 flex-1 overflow-x-auto overscroll-x-contain [scrollbar-width:thin]"
         >
-        <div className="relative inline-block shrink-0">
-          <select
-            value={viewMode}
-            onChange={(e) =>
-              setViewMode(e.target.value as 'write' | 'preview' | 'split' | 'graph')
-            }
-            aria-label="Editor view mode"
-            className="appearance-none cursor-pointer pl-2 pr-6 h-9 text-[15px] leading-none rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-panel text-paper-ink dark:text-cyber-primary hover:border-cyber-clay dark:hover:border-cyber-cyan focus:outline-none focus:border-cyber-clay dark:focus:border-cyber-cyan transition-colors"
-          >
-            <option value="write">Write</option>
-            <option value="preview">Preview</option>
-            <option value="graph">Graph</option>
-            <option value="split">Split</option>
-          </select>
-          <svg
-            aria-hidden="true"
-            className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-2.5 w-2.5 text-paper-inkSoft dark:text-cyber-muted"
-            viewBox="0 0 10 10"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M2 4 L5 7 L8 4" />
-          </svg>
+        <div
+          role="tablist"
+          aria-label="Editor view mode"
+          className="inline-flex items-center shrink-0 rounded border border-paper-hairline dark:border-cyber-border bg-paper-surface dark:bg-ape-panel p-0.5"
+        >
+          {(
+            [
+              { id: 'write', label: 'Write' },
+              { id: 'preview', label: 'Preview' },
+              { id: 'graph', label: 'Graph' },
+              { id: 'split', label: 'Split' },
+            ] as const
+          ).map(({ id, label }) => {
+            const active = viewMode === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setViewMode(id)}
+                className={`h-8 min-h-[2rem] px-2 sm:px-2.5 rounded text-[13px] sm:text-[14px] leading-none whitespace-nowrap transition-colors ${
+                  active
+                    ? 'bg-paper-elevated dark:bg-ape-elevated text-paper-ink dark:text-cyber-primary border border-cyber-clay dark:border-cyber-cyan'
+                    : 'border border-transparent text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
         {(showWrite || showPreview) && (
           <button
@@ -1992,9 +1997,11 @@ export function Editor() {
         data-print-hide
         className="px-4 pt-3 pb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 bg-paper-base dark:bg-ape-base"
       >
-        <h2 className="font-semibold text-paper-ink dark:text-cyber-primary truncate text-base min-w-0">
-          {doc.title}
-        </h2>
+        {!isNarrow && (
+          <h2 className="font-semibold text-paper-ink dark:text-cyber-primary truncate text-base min-w-0">
+            {doc.title}
+          </h2>
+        )}
         <span
           data-saved-label
           className="text-xs text-paper-inkSoft dark:text-cyber-muted font-mono uppercase tracking-wider whitespace-nowrap"

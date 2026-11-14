@@ -702,11 +702,9 @@ export function ChatPanel() {
   };
 
   if (!chatOpen || chatCollapsed) {
-    // When the panel is closed (topbar Chat toggle) or explicitly
-    // collapsed (edge-anchor), render nothing. The edge-anchor button
-    // rendered by App.tsx is responsible for bringing it back. We
-    // deliberately do not render the old top-right "Chat" floating
-    // button — it would clash with the edge-anchor strip.
+    // When the panel is closed or collapsed, render nothing. Desktop
+    // uses the right-edge chevron; narrow viewports use the bottom
+    // Chat tab. We do not render a floating "Chat" button.
     return null;
   }
 
@@ -1183,7 +1181,7 @@ export function ChatPanel() {
       <div className="px-3 py-2 border-b border-paper-hairline dark:border-cyber-border flex items-center flex-wrap gap-2 bg-paper-elevated/50 dark:bg-ape-elevated/40 pt-[max(0.5rem,env(safe-area-inset-top))] max-md:pt-2">
         <button
           type="button"
-          className="text-[15px] font-medium text-paper-ink dark:text-cyber-primary flex items-center gap-1 min-w-0"
+          className="text-[15px] font-medium text-paper-ink dark:text-cyber-primary flex items-center gap-1 min-w-0 min-h-11"
           onClick={() => setMessagesCollapsed((v) => !v)}
           aria-expanded={!messagesCollapsed}
           title={
@@ -1209,7 +1207,7 @@ export function ChatPanel() {
         {!messagesCollapsed && turns.length > 1 && (
           <button
             type="button"
-            className="text-xs text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan transition-colors"
+            className="text-xs min-h-11 px-2 text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan transition-colors"
             onClick={() => {
               const latestOpen = latestTurnId
                 ? { [latestTurnId]: true }
@@ -1229,8 +1227,8 @@ export function ChatPanel() {
         )}
         <button
           type="button"
-          className="text-xs text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan transition-colors"
-          onClick={() => setHistoryOpen(true)}
+            className="text-xs min-h-11 px-2 text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan transition-colors"
+            onClick={() => setHistoryOpen(true)}
           disabled={!currentDocumentId}
           title="Browse current and archived chats"
         >
@@ -1238,7 +1236,7 @@ export function ChatPanel() {
         </button>
         <button
           type="button"
-          className="text-xs text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan transition-colors"
+          className="text-xs min-h-11 px-2 text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan transition-colors"
           onClick={() => currentDocumentId && archiveChat(currentDocumentId)}
           disabled={!messages.length}
           title="Park this conversation and start a new empty chat"
@@ -1246,7 +1244,7 @@ export function ChatPanel() {
           Archive
         </button>
         <button
-          className="text-xs text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-danger transition-colors"
+          className="text-xs min-h-11 px-2 text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-danger transition-colors"
           onClick={() => currentDocumentId && clearChat(currentDocumentId)}
           disabled={!messages.length}
           title="Delete the live conversation without archiving"
@@ -1254,11 +1252,23 @@ export function ChatPanel() {
           Clear
         </button>
         <button
-          className="text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan transition-colors"
+          type="button"
+          className="inline-flex items-center justify-center min-h-11 min-w-11 text-paper-inkSoft dark:text-cyber-muted hover:text-cyber-clay dark:hover:text-cyber-cyan transition-colors"
           onClick={closeChat}
           title="Close chat"
+          aria-label="Close chat"
         >
-          ×
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 16 16"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          >
+            <path d="M4 4 L12 12 M12 4 L4 12" />
+          </svg>
         </button>
       </div>
 
@@ -1535,7 +1545,7 @@ export function ChatPanel() {
   // Narrow: full-screen overlay over the editor (not a peer column).
   if (isNarrow) {
     return (
-      <div className="fixed inset-0 z-40 flex justify-end">
+      <div className="app-overlay-above-nav z-40 flex justify-end">
         <button
           type="button"
           className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -1544,7 +1554,7 @@ export function ChatPanel() {
         />
         <div
           ref={containerRef}
-          className="relative z-10 h-full w-full max-w-lg shadow-ape-paper-lift dark:shadow-2xl pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]"
+          className="relative z-10 h-full w-full max-w-lg shadow-ape-paper-lift dark:shadow-2xl pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)]"
           role="dialog"
           aria-modal="true"
           aria-label="Chat"
