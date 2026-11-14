@@ -1,3 +1,12 @@
+## v0.6.19 — Phone comment chips stay tappable and clear of the box
+
+Patch on top of [v0.6.18](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.18). On a phone, numbered comment chips sit in the centre of the Send to AI bar, each chip opens its own comment, and the comment box sits above that bar.
+
+### Notes
+
+- See [`.release-notes-v0.6.19.md`](.release-notes-v0.6.19.md) for the surface list.
+- `package.json` version bumped to `0.6.19`.
+
 ## v0.6.18 — Easier phone and desktop chrome
 
 Patch on top of [v0.6.17](https://github.com/roxelfivan/apeditor/releases/tag/v0.6.17). Phone **Documents / Editor / Chat** tab bar; Write / Preview / Graph / Split as tabs; document title opens Documents. Pointer cursor, visible focus, reduced motion.

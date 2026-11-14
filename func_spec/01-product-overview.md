@@ -157,6 +157,7 @@ Full changelogs are in [`RELEASE_NOTES.md`](../RELEASE_NOTES.md). The shape of t
 
 | Version | What changed |
 |---|---|
+| v0.6.19 | **Phone comment chips.** Centred Send to AI badges; each chip opens its own comment; the comment box sits above the bar. |
 | v0.6.18 | **Easier phone and desktop chrome.** Documents / Editor / Chat bottom tab bar on narrow viewports; Write / Preview / Graph / Split as tabs; document title opens Documents; pointer cursor, visible focus, reduced motion. |
 | v0.6.17 | **Select All copies Write or Preview with confirm.** Toolbar Select All highlights the live box; Copy writes Markdown (Write) or rendered text (Preview) after confirm. Hidden in Graph-only mode. |
 | v0.6.16 | **Sidebar Collections + collapsible sections.** Named multi-membership groups; foldable Collections / Pinned / Recent / Tags / Other; persisted collapse; backup `groups` + `groupIds`. |
