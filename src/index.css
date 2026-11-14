@@ -2372,12 +2372,15 @@ html.dark .cm-undo-toast {
 @media (max-width: 767px), (max-height: 540px) {
   .cm-composer--sheet,
   .cm-popover--sheet {
-    position: fixed;
-    left: max(8px, env(safe-area-inset-left));
-    right: max(8px, env(safe-area-inset-right));
-    bottom: max(8px, env(safe-area-inset-bottom));
+    /* Absolute inside `[data-cm-wrapper]`, which sits above the
+       Send to AI / chip bar. `position: fixed` to the viewport
+       painted the sheet under those chips (the tray stacks later). */
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
     width: auto;
-    max-height: min(60vh, 60dvh);
+    max-height: min(60vh, 60dvh, calc(100% - 16px));
     overflow-y: auto;
     transform: none;
     z-index: 60;

@@ -16,7 +16,7 @@ Comments have a soft limit of 2,000 characters (the counter turns into a long-co
 
 ## Open, edit, or delete
 
-Click a badge. The popover title is **Comment**, **Sent to AI**, or **Outdated — anchor needs attention**.
+Click a badge. The popover title is **Comment**, **Sent to AI**, or **Outdated — anchor needs attention**. On a phone the box sits **above** the Send to AI bar so the numbered chips stay fully visible.
 
 - **Edit** — change the note, then **Save**. After a comment has already been sent, editing the body starts a **new round**. Earlier rounds stay in the history.
 - **Delete** — removes the comment and highlight.

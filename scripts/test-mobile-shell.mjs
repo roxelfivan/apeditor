@@ -68,5 +68,20 @@ assert.match(
   /\.cm-tray__badges \.cm-margin__badge::before[\s\S]*pointer-events:\s*none/,
   'tray badge ::before does not steal taps from neighbouring chips'
 );
+assert.match(
+  css,
+  /\.cm-composer--sheet,\s*\.cm-popover--sheet \{[\s\S]*?position:\s*absolute/,
+  'phone comment sheet is positioned in the write pane'
+);
+assert.match(
+  css,
+  /\.cm-composer--sheet,\s*\.cm-popover--sheet \{[\s\S]*?bottom:\s*8px/,
+  'phone comment sheet sits above the chip bar'
+);
+assert.match(
+  css,
+  /\.cm-composer--sheet,\s*\.cm-popover--sheet \{[\s\S]*?max-height:\s*min\([^)]*100%/,
+  'phone comment sheet cannot grow into the tray'
+);
 
-console.log('mobile shell: 22 checks passed');
+console.log('mobile shell: 25 checks passed');
