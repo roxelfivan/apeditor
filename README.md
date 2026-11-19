@@ -973,10 +973,12 @@ API keys are stored only in this browser's `localStorage` by default
 
 ### Logo
 
-The ApEditor logo shipped in `public/apeditor-logo.jpg` is original
-artwork created for this project. Square home-screen / PWA icons
-(`apple-touch-icon.png`, `icon-192.png`, `icon-512.png`) are derived
-from that mark. The ApEditor wordmark and design system in
+The ApEditor mark is original artwork for this project: the black
+lockup lives in `public/apeditor-logo.jpg`, and the top-bar image is
+`public/apeditor-logo-transparent.png` (background removed). Square
+home-screen / PWA icons (`apple-touch-icon.png`, `icon-192.png`,
+`icon-512.png`) are that mark on a black square so iOS does not fall
+back to a letter **A**. The wordmark and design system in
 `tailwind.config.cjs` are also original to this repository.
 
 ---
