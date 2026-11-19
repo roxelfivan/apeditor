@@ -204,7 +204,7 @@ export function FuncSpecDocs({ open, onClose, initialPage }: Props) {
         <img
           src="/apeditor-logo-transparent.png"
           alt=""
-          className="brand-mark h-9 w-9 object-contain"
+          className="brand-mark h-9 w-auto object-contain"
         />
         <div className="flex flex-col leading-tight min-w-0">
           <span className="display text-lg text-paper-ink dark:text-cyber-primary truncate">
